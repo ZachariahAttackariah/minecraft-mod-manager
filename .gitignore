@@ -1,0 +1,11 @@
+# Only the source and the docs are tracked. Everything else in this folder is the built app and
+# its local data (settings, the action log, downloaded jars), which stays on this PC.
+/*
+!/.gitignore
+!/README.md
+!/README.txt
+!/source/
+
+# Build leftovers, and the optional local list of display names.
+/source/build-temp/
+/source/names.json
