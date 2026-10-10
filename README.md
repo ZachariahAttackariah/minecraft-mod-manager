@@ -41,7 +41,11 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
 - **Find a problem mod:** a guided search that turns off half the suspects each round. Libraries stay on while something that's still on needs them, and everything is put back at the end.
 - **Disk cleanup:** old logs, crash reports, Java crash dumps, debug output and Distant Horizons LOD data, all moved to the Recycle Bin.
 - **Tabs:** links open as tabs in the same window. A `.jar` downloaded in any tab goes straight into the mods folder.
-- **Play:** launches the game through [Prism Launcher](https://prismlauncher.org/) when the mods folder belongs to a Prism instance.
+- **Instances and Play:** a launcher-style bottom bar has an instance picker on the left and a big PLAY button in the middle.
+  - The picker lists every [Prism Launcher](https://prismlauncher.org/) instance with its Minecraft version, loader and mod count, plus other mods folders you've used.
+  - Choosing an instance also sets the Minecraft version and loader used for Modrinth lookups.
+  - PLAY launches the chosen instance through Prism.
+  - Instances can be created (empty, or as a copy of another), duplicated, renamed, given more or less memory, moved to another loader version, and deleted (to the Recycle Bin). They are written in Prism's own format, and Prism downloads the game files on first launch.
 
 ## CurseForge
 
@@ -74,6 +78,7 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | --- | --- |
 | `source/Program.cs` | Core: the local web server, Modrinth, tags |
 | `source/Window.cs` | The window and its tabs |
+| `source/Instances.cs` | The instance picker, and creating, changing and deleting Prism instances |
 | `source/Server.cs` | Starting, stopping and talking to the Minecraft server |
 | `source/Sync.cs` | Comparing and syncing the game and the server |
 | `source/JarMeta.cs` | Reading jar metadata, and the pre-launch check |

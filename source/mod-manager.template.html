@@ -6,77 +6,78 @@
 <title>Minecraft Mod Manager</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Pixelify+Sans:wght@500;600;700&display=swap">
 <style>
 /* Layout: one working column. Live folder header, summary (side split + topic tags), a sticky filter + selection bar, then a dense, selectable mod list with row actions that folds into cards on phones. */
 :root {
-  --bg: #eceeea;
-  --surface: #f8f9f6;
-  --sunken: #dfe3dc;
-  --ink: #1b2220;
-  --muted: #59635e;
-  --line: #ccd3cb;
-  --accent: #1d6a63;
+  /* Minecraft Launcher look: charcoal panels, white text, Minecraft green, bevelled buttons. Dark only, like the launcher. */
+  --bg: #262626;
+  --surface: #313233;
+  --sunken: #1b1b1b;
+  --ink: #ffffff;
+  --muted: #b1b2b5;
+  --line: #3e3f41;
+  --accent: #3c8527;
+  --accent-hover: #46972f;
+  --accent-deep: #1d4d13;
+  --accent-fg: #74c654;
   --accent-ink: #ffffff;
-  --danger: #b3261e;
+  --btn: #48494a;
+  --btn-hover: #58595b;
+  --danger: #c33a32;
+  --danger-fg: #ff8a80;
   --danger-ink: #ffffff;
-  --scrim: rgba(18, 24, 22, 0.45);
-  --slot-ink: #ffffff;
-  --bevel-hi: rgba(255, 255, 255, 0.55);
-  --bevel-lo: rgba(0, 0, 0, 0.16);
-  --shadow-lg: 0 12px 32px -12px rgba(16, 24, 20, 0.35), 0 2px 6px rgba(16, 24, 20, 0.08);
-  --c-client: #2a64a8;
-  --c-server: #a4521b;
-  --c-worldgen: #3d7a22;
-  --c-horses: #7a5230;
-  --c-enchanting: #7043b3;
-  --c-x1: #1a7272;
-  --c-x2: #ad3f67;
-  --c-x3: #55667a;
-  --c-x4: #6c7a1e;
-  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --scrim: rgba(0, 0, 0, 0.65);
+  --slot-ink: #111111;
+  --bevel-hi: rgba(255, 255, 255, 0.16);
+  --bevel-lo: rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 14px 36px -12px rgba(0, 0, 0, 0.8), 0 2px 6px rgba(0, 0, 0, 0.5);
+  --c-client: #6ea8ff;
+  --c-server: #f0a35e;
+  --c-worldgen: #7fc85a;
+  --c-horses: #d2a679;
+  --c-enchanting: #c39bff;
+  --c-x1: #5fc8c8;
+  --c-x2: #ef8fb2;
+  --c-x3: #aab8cb;
+  --c-x4: #c7d65f;
+  --font-display: "Noto Sans", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Noto Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --font-pixel: "Pixelify Sans", "Noto Sans", sans-serif;
   --gutter: clamp(16px, 4vw, 32px);
-  color-scheme: light;
+  --bar-h: 84px;
+  color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #141917; --surface: #1b211f; --sunken: #0f1312; --ink: #e5eae6; --muted: #98a49d; --line: #2c3632;
-    --accent: #62b9ae; --accent-ink: #0b1816; --danger: #f2877e; --danger-ink: #1d0b09; --scrim: rgba(0, 0, 0, 0.6);
-    --slot-ink: #0d1311; --bevel-hi: rgba(255, 255, 255, 0.16); --bevel-lo: rgba(0, 0, 0, 0.55);
-    --shadow-lg: 0 14px 36px -12px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.4);
-    --c-client: #78a9ea; --c-server: #e5975c; --c-worldgen: #91c66d; --c-horses: #cba27c; --c-enchanting: #b694f2;
-    --c-x1: #5fc2c2; --c-x2: #eb88aa; --c-x3: #a6b5c8; --c-x4: #bfcd5f;
-    color-scheme: dark;
-  }
-}
-
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--font-body); }
 button, input { font: inherit; color: inherit; }
 [hidden] { display: none !important; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent-fg); outline-offset: 2px; }
 code { font-family: var(--font-mono); font-size: 0.92em; }
 
 .wrap { max-width: 1180px; margin: 0 auto; padding-inline: var(--gutter); padding-block: 26px 56px; }
 
-.top { display: grid; gap: 6px; margin-bottom: 18px; }
+.top { display: grid; gap: 0; margin-bottom: 14px; }
+.brand-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.wordmark { margin: 0; display: flex; align-items: center; gap: 14px; font: 700 clamp(22px, 3vw, 28px)/1 var(--font-pixel); letter-spacing: 0.03em; text-transform: uppercase; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.45); }
+.block { flex: none; display: inline-block; width: 36px; height: 36px; border-radius: 3px; background: linear-gradient(180deg, #74b84b 0 30%, #4f8f34 30% 38%, #8b5d3b 38% 100%); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.18); }
+.block.folder { background: linear-gradient(180deg, #9a9a9a 0 30%, #7a7a7a 30% 100%); }
+.block.sm { width: 28px; height: 28px; }
 .eyebrow { margin: 0; display: flex; align-items: center; gap: 8px; font: 500 12px/1.2 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .live-dot.on { background: var(--c-worldgen); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-worldgen) 22%, transparent); }
-h1 { margin: 0; font: 700 clamp(30px, 4.4vw, 42px)/1.05 var(--font-display); letter-spacing: -0.015em; text-wrap: balance; }
-.folder-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 4px; font-size: 14px; color: var(--muted); }
+h1 { margin: 0; }
+.folder-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 12px; font-size: 13px; color: var(--muted); }
 .folder-bar code { color: var(--ink); overflow-wrap: anywhere; }
 .folder-actions { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .get-mods { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; }
 .get-label { font: 600 12px/1.2 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-.title-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; }
-.play-box { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.btn.play { gap: 8px; padding: 11px 22px; font: 700 16px/1 var(--font-display); letter-spacing: 0.02em; color: var(--accent-ink); background: var(--c-worldgen); border-color: var(--c-worldgen); border-radius: 6px; box-shadow: inset 0 -3px 0 var(--bevel-lo), inset 0 2px 0 var(--bevel-hi); }
-.btn.play:hover { filter: brightness(1.06); border-color: var(--c-worldgen); }
-.btn.play:disabled { filter: grayscale(0.6); }
+.play-box { display: inline-flex; justify-self: center; }
+.btn.play { justify-content: center; min-width: min(280px, 38vw); height: 56px; padding: 0 28px; font: 800 22px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: #fff; background: var(--accent); border-radius: 3px; box-shadow: inset 0 -4px 0 var(--accent-deep), inset 0 2px 0 rgba(255, 255, 255, 0.2); }
+.btn.play:hover { background: var(--accent-hover); }
+.btn.play:disabled { background: var(--btn); box-shadow: inset 0 -4px 0 var(--bevel-lo); color: var(--muted); opacity: 1; }
 @media (max-width: 560px) { .play-box { align-items: flex-start; } }
 .mr-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 8px; padding: 8px 10px; font-size: 13.5px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
 .target { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -135,14 +136,14 @@ h1 { margin: 0; font: 700 clamp(30px, 4.4vw, 42px)/1.05 var(--font-display); let
 .search-empty { margin: 18px 8px; color: var(--muted); }
 .drawer-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
 @media (max-width: 560px) { .result { grid-template-columns: 36px minmax(0, 1fr); } .result .btn { grid-column: 2; justify-self: start; } .result-icon { width: 36px; height: 36px; } }
-.linkish { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.linkish { background: none; border: 0; padding: 0; color: var(--accent-fg); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 
 .notice { margin: 0 0 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 12px; border: 1px solid var(--line); border-left: 3px solid var(--c-x2); border-radius: 5px; background: var(--surface); font-size: 14px; }
 .notice.info { border-left-color: var(--accent); }
 
 .summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.75fr); gap: 14px; margin-bottom: 18px; }
 @media (max-width: 860px) { .summary { grid-template-columns: minmax(0, 1fr); } }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 16px; min-width: 0; }
 .section-label { margin: 0 0 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font: 600 14px/1.2 var(--font-display); letter-spacing: 0.01em; }
 .hint { font: 400 12px/1.2 var(--font-body); color: var(--muted); }
 
@@ -183,16 +184,18 @@ h1 { margin: 0; font: 700 clamp(30px, 4.4vw, 42px)/1.05 var(--font-display); let
 .seg-control { display: inline-flex; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
 .seg-control button { padding: 8px 10px; font-size: 13px; font-weight: 500; line-height: 1; color: var(--muted); background: none; border: 0; border-right: 1px solid var(--line); cursor: pointer; white-space: nowrap; }
 .seg-control button:last-child { border-right: 0; }
-.seg-control button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.seg-control button[aria-pressed="true"] { background: var(--accent); color: #fff; }
 .seg-control .k { font-family: var(--font-mono); font-variant-numeric: tabular-nums; opacity: 0.75; margin-left: 4px; }
 .tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
 .count-label { font: 500 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
-.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; font-size: 13px; font-weight: 500; line-height: 1; white-space: nowrap; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; cursor: pointer; }
-.btn:hover { border-color: var(--muted); }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px 9px; font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap; color: var(--ink); background: var(--btn); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
+.btn:hover { background: var(--btn-hover); }
 .btn:disabled { opacity: 0.5; cursor: default; }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.btn.danger { background: var(--danger); border-color: var(--danger); color: var(--danger-ink); }
-.btn.danger-outline { color: var(--danger); }
+.btn.primary { background: var(--accent); color: #fff; box-shadow: inset 0 -2px 0 var(--accent-deep); }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn.danger { background: var(--danger); color: var(--danger-ink); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.4); }
+.btn.danger:hover { background: #d4463d; }
+.btn.danger-outline { color: var(--danger-fg); }
 .active { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; font-size: 13px; color: var(--muted); }
 .pill { --c: var(--c-x3); display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 8px; font: 500 12px/1 var(--font-mono); color: color-mix(in srgb, var(--c) 80%, var(--ink)); background: color-mix(in srgb, var(--c) 13%, transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); border-radius: 4px; cursor: pointer; }
 .pill .x { font-size: 13px; line-height: 1; opacity: 0.7; }
@@ -241,8 +244,8 @@ a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--acce
 .act { display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; color: var(--muted); background: none; border: 1px solid transparent; border-radius: 5px; cursor: pointer; opacity: 0.45; }
 .row:hover .act, .row:focus-within .act, .row.is-selected .act, .act.enable { opacity: 1; }
 .act:hover { color: var(--ink); background: var(--sunken); border-color: var(--line); }
-.act.enable { color: var(--accent); }
-.act.delete:hover { color: var(--danger); }
+.act.enable { color: var(--accent-fg); }
+.act.delete:hover { color: var(--danger-fg); }
 .act:disabled { cursor: default; opacity: 0.3; }
 @media (hover: none) { .act { opacity: 1; } }
 
@@ -276,7 +279,7 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .menu-actions button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; font-size: 13.5px; text-align: left; background: none; border: 0; border-radius: 4px; cursor: pointer; }
 .menu-actions button svg { flex: none; color: var(--muted); }
 .menu-actions button:hover, .menu-actions button:focus-visible { background: var(--sunken); outline: none; }
-.menu-actions button.danger, .menu-actions button.danger svg { color: var(--danger); }
+.menu-actions button.danger, .menu-actions button.danger svg { color: var(--danger-fg); }
 .menu hr { margin: 4px 2px; border: 0; border-top: 1px solid var(--line); }
 .tag-options { display: grid; gap: 1px; max-height: 300px; overflow: auto; }
 .tag-opt { --c: var(--c-x3); display: flex; align-items: center; gap: 9px; width: 100%; padding: 6px 8px; font: 500 13px/1.2 var(--font-mono); text-align: left; color: var(--ink); background: none; border: 0; border-radius: 4px; cursor: pointer; }
@@ -290,7 +293,7 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .new-tag { display: flex; gap: 6px; margin-top: 4px; padding: 6px 4px 2px; border-top: 1px solid var(--line); }
 .new-tag input { flex: 1; min-width: 0; padding: 6px 8px; font: 500 13px/1.2 var(--font-mono); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
 .new-tag input::placeholder { color: var(--muted); }
-.tag-error { margin: 4px 6px 2px; font-size: 12px; color: var(--danger); }
+.tag-error { margin: 4px 6px 2px; font-size: 12px; color: var(--danger-fg); }
 .tag-note { margin: 2px 8px 4px; font-size: 11.5px; color: var(--muted); }
 
 .scrim { position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; padding: 16px; background: var(--scrim); }
@@ -301,28 +304,28 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .dlg-files .more { list-style: none; margin-left: -16px; font-family: var(--font-body); color: var(--muted); }
 .dialog .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 
-.copy-fallback { position: fixed; inset: auto var(--gutter) calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 25; display: grid; gap: 8px; max-width: 560px; margin: 0 auto; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow-lg); }
+.copy-fallback { position: fixed; inset: auto var(--gutter) calc(var(--bar-h) + 16px); z-index: 25; display: grid; gap: 8px; max-width: 560px; margin: 0 auto; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; box-shadow: var(--shadow-lg); }
 .copy-fallback p { margin: 0; font-size: 13.5px; }
 .copy-fallback textarea { width: 100%; height: 140px; font: 400 12px/1.4 var(--font-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px; resize: vertical; }
-.toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 50; display: flex; align-items: center; gap: 14px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 14px; font-size: 13.5px; color: var(--bg); background: var(--ink); border-radius: 6px; box-shadow: var(--shadow-lg); }
-.toast button { padding: 0; font-weight: 600; color: var(--bg); background: none; border: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; white-space: nowrap; }
+.toast { position: fixed; left: 50%; bottom: calc(var(--bar-h) + 16px); z-index: 50; display: flex; align-items: center; gap: 14px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 14px; font-size: 13.5px; color: var(--ink); background: #3a3b3c; border: 1px solid #111; border-radius: 6px; box-shadow: var(--shadow-lg); }
+.toast button { padding: 0; font-weight: 600; color: var(--accent-fg); background: none; border: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; white-space: nowrap; }
 @media (prefers-reduced-motion: no-preference) {
   .tag-card, .legend-item, .btn, .pill, .act, .check, .row { transition: border-color 120ms ease, background-color 120ms ease, opacity 120ms ease; }
 }
 
 /* ---- Sections (Mods / Server / Snapshots / Cleanup) ---- */
-.action-box { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.server-chip { display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px; font: 600 13.5px/1 var(--font-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
-.server-chip:hover { border-color: var(--muted); }
+.bar-right { justify-self: end; display: inline-flex; align-items: center; gap: 10px; }
+.server-chip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; font: 600 13.5px/1 var(--font-body); color: var(--ink); background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
+.server-chip:hover { background: var(--btn); }
 .dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
 .dot.running { background: var(--c-worldgen); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-worldgen) 22%, transparent); }
 .dot.starting, .dot.stopping { background: var(--c-server); }
 .dot.crashed { background: var(--danger); }
-.view-nav { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 14px; border-bottom: 1px solid var(--line); }
-.view-nav button { position: relative; padding: 9px 14px 10px; font: 600 14px/1 var(--font-display); color: var(--muted); background: none; border: 0; cursor: pointer; }
+.view-nav { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 16px; border-bottom: 2px solid var(--line); }
+.view-nav button { position: relative; padding: 10px 14px 12px; font: 700 13.5px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: none; border: 0; cursor: pointer; }
 .view-nav button:hover { color: var(--ink); }
 .view-nav button[aria-current="page"] { color: var(--ink); }
-.view-nav button[aria-current="page"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 3px; border-radius: 2px 2px 0 0; background: var(--accent); }
+.view-nav button[aria-current="page"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -2px; height: 3px; background: var(--accent-hover); }
 .view-nav .badge-n { margin-left: 6px; padding: 1px 6px; font: 600 11px/1.4 var(--font-mono); color: var(--danger-ink); background: var(--danger); border-radius: 8px; }
 .view { padding-top: 2px; }
 .subnav { display: inline-flex; margin-bottom: 12px; }
@@ -338,7 +341,7 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .banner .b-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .cards { display: grid; gap: 14px; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 16px; min-width: 0; }
 .card h2 { margin: 0 0 4px; font: 700 17px/1.25 var(--font-display); }
 .card .lead { margin: 0 0 12px; font-size: 13.5px; color: var(--muted); }
 .row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -420,9 +423,9 @@ details.more > summary { cursor: pointer; font: 600 13.5px/1.3 var(--font-displa
 .clean-row .size { font: 600 14px/1.3 var(--font-mono); text-align: right; white-space: nowrap; }
 .clean-row .desc { font-size: 13px; color: var(--muted); }
 .clean-row.blocked { opacity: 0.6; }
-.risk { margin-left: 6px; padding: 1px 6px; font: 600 11px/1.4 var(--font-mono); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent); border-radius: 3px; }
+.risk { margin-left: 6px; padding: 1px 6px; font: 600 11px/1.4 var(--font-mono); color: var(--danger-fg); border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent); border-radius: 3px; }
 .where-head { margin: 16px 0 2px; font: 600 12px/1.2 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-.sticky-foot { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 0; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(4px); border-top: 1px solid var(--line); }
+.sticky-foot { position: sticky; bottom: var(--bar-h); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 0; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(4px); border-top: 1px solid var(--line); }
 .sticky-foot .grow { flex: 1; font-size: 13.5px; color: var(--muted); }
 
 /* Details drawer */
@@ -442,7 +445,7 @@ details.more > summary { cursor: pointer; font: 600 13.5px/1.3 var(--font-displa
 .dep .sub { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
 .st { padding: 2px 7px; font: 600 11px/1.4 var(--font-mono); border-radius: 3px; white-space: nowrap; border: 1px solid currentColor; }
 .st.ok, .st.same { color: var(--c-worldgen); }
-.st.missing, .st.wrong-version, .st.different { color: var(--danger); }
+.st.missing, .st.wrong-version, .st.different { color: var(--danger-fg); }
 .st.off, .st.optional { color: var(--muted); }
 .ver { border-bottom: 1px solid var(--line); }
 .ver > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 9px 2px; cursor: pointer; list-style: none; }
@@ -454,7 +457,7 @@ details.more > summary { cursor: pointer; font: 600 13.5px/1.3 var(--font-displa
 .ver .spacer { flex: 1; }
 .vtype { padding: 1px 6px; font: 600 11px/1.4 var(--font-mono); border-radius: 3px; color: var(--muted); border: 1px solid var(--line); }
 .vtype.beta { color: var(--c-server); border-color: currentColor; }
-.vtype.alpha { color: var(--danger); border-color: currentColor; }
+.vtype.alpha { color: var(--danger-fg); border-color: currentColor; }
 .vtag { padding: 1px 6px; font: 600 11px/1.4 var(--font-mono); border-radius: 3px; color: var(--accent-ink); background: var(--accent); }
 .md { font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }
 .md h1, .md h2, .md h3, .md h4 { margin: 14px 0 6px; font-family: var(--font-display); line-height: 1.25; }
@@ -466,7 +469,7 @@ details.more > summary { cursor: pointer; font: 600 13.5px/1.3 var(--font-displa
 .md pre code { padding: 0; background: none; }
 .md blockquote { margin: 8px 0; padding: 2px 12px; color: var(--muted); border-left: 3px solid var(--line); }
 .md img { max-width: 100%; height: auto; border-radius: 4px; }
-.md a { color: var(--accent); }
+.md a { color: var(--accent-fg); }
 .md hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
 .ver .md { padding: 0 4px 12px 18px; }
 
@@ -485,32 +488,54 @@ details.more > summary { cursor: pointer; font: 600 13.5px/1.3 var(--font-displa
 .issue .files { grid-column: 2; font: 400 12px/1.4 var(--font-mono); color: var(--muted); overflow-wrap: anywhere; }
 button.mod-name { padding: 0; font: inherit; font-weight: 600; font-size: 14.5px; text-align: left; color: var(--ink); background: none; border: 0; cursor: pointer; }
 button.mod-name:hover { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 2px; }
+
+/* ---- Bottom bar: instance picker + PLAY, like the Minecraft Launcher ---- */
+body { padding-bottom: var(--bar-h); }
+.playbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; height: var(--bar-h); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; padding: 0 var(--gutter); background: #1b1b1b; border-top: 1px solid #111; box-shadow: 0 -8px 24px -12px rgba(0, 0, 0, 0.7); }
+.inst-btn { justify-self: start; display: flex; align-items: center; gap: 12px; min-width: 0; max-width: 100%; padding: 8px 14px 8px 8px; color: var(--ink); text-align: left; background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
+.inst-btn:hover, .inst-btn[aria-expanded="true"] { background: var(--btn); }
+.inst-text { display: grid; min-width: 0; gap: 3px; }
+.inst-name { font: 700 15px/1.2 var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inst-sub { font-size: 12px; line-height: 1.2; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.caret { margin-left: 4px; font-size: 12px; color: var(--muted); }
+.inst-pop { position: fixed; left: var(--gutter); bottom: calc(var(--bar-h) + 8px); z-index: 41; display: flex; flex-direction: column; width: min(480px, calc(100vw - 32px)); max-height: min(70vh, 560px); background: #202020; border: 1px solid #111; border-radius: 4px; box-shadow: var(--shadow-lg); }
+.inst-pop .head { padding: 12px 14px; font: 700 12px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
+.inst-list { overflow: auto; padding: 6px; }
+.inst-group { padding: 10px 8px 4px; font: 700 11px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.inst-item { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; width: 100%; padding: 8px; color: var(--ink); text-align: left; background: none; border: 0; border-radius: 3px; cursor: pointer; }
+.inst-item:hover, .inst-item:focus-visible { background: var(--surface); outline: none; }
+.inst-item[aria-current="true"] { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+.inst-item:disabled { opacity: 0.5; cursor: default; }
+.inst-item .n { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inst-item .d { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inst-item .tick { font-size: 15px; color: var(--accent-fg); }
+.inst-empty { margin: 10px 8px; font-size: 13px; color: var(--muted); }
+.inst-row { position: relative; }
+.inst-row > .inst-item { padding-right: 46px; }
+.inst-more { position: absolute; right: 6px; top: 11px; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; font-size: 18px; line-height: 1; color: var(--muted); background: none; border: 0; border-radius: 3px; cursor: pointer; }
+.inst-more:hover, .inst-more[aria-expanded="true"] { color: var(--ink); background: var(--btn); }
+.inst-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 8px 10px 56px; }
+.inst-actions .btn { padding: 6px 10px 7px; font-size: 12.5px; }
+.inst-form { display: grid; gap: 14px; padding: 4px 0 8px; }
+.inst-form .prop { align-content: start; }
+.inst-form .prop select, .inst-form .prop input[type=text] { width: 100%; }
+.inst-form .fixed { padding: 8px 10px; font-size: 13.5px; background: var(--sunken); border-radius: 3px; }
+.inst-form .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 560px) { .inst-form .pair { grid-template-columns: minmax(0, 1fr); } }
+.inst-foot { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border-top: 1px solid var(--line); }
+@media (max-width: 720px) {
+  .playbar { grid-template-columns: minmax(0, 1fr) auto; }
+  .bar-right { display: none; }
+  .btn.play { min-width: 0; height: 48px; font-size: 18px; }
+}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <p class="eyebrow"><span class="live-dot" id="live-dot"></span><span id="eyebrow">Mods folder</span></p>
-    <div class="title-row">
-      <h1>Minecraft Mod Manager</h1>
-      <span class="action-box">
-        <button class="server-chip" type="button" id="server-chip" title="Open the Server page"><span class="dot" id="server-dot"></span><span id="server-chip-text">Server</span></button>
-        <span class="play-box" id="play-box" hidden>
-          <button class="btn play" type="button" id="play">
-            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>
-            Play
-          </button>
-          <span class="hint" id="play-hint"></span>
-        </span>
-      </span>
-    </div>
-    <div class="folder-bar">
-      <span id="folder-line">Connecting…</span>
-      <span class="folder-actions">
-        <button class="btn" type="button" id="choose-folder">Change folder…</button>
-        <button class="btn" type="button" id="open-folder">Open folder</button>
-        <button class="btn" type="button" id="refresh">Refresh</button>
-      </span>
+    <div class="brand-row">
+      <h1 class="wordmark"><span class="block" aria-hidden="true"></span>Minecraft Mod Manager</h1>
+      <p class="eyebrow"><span class="live-dot" id="live-dot"></span><span id="eyebrow">Mods folder</span></p>
     </div>
     <nav class="view-nav" id="view-nav" aria-label="Sections">
       <button type="button" data-view="mods" aria-current="page">Mods</button>
@@ -518,6 +543,13 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
       <button type="button" data-view="snapshots">Snapshots</button>
       <button type="button" data-view="cleanup">Cleanup</button>
     </nav>
+    <div class="folder-bar">
+      <span id="folder-line">Connecting…</span>
+      <span class="folder-actions">
+        <button class="btn" type="button" id="open-folder">Open folder</button>
+        <button class="btn" type="button" id="refresh">Refresh</button>
+      </span>
+    </div>
     <div class="banner" id="bisect-banner" role="region" aria-label="Finding a problem mod" hidden></div>
   </header>
 
@@ -672,6 +704,30 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
       <div class="sticky-foot"><span class="grow" id="clean-total"></span><button class="btn danger" type="button" id="clean-run" disabled>Move to Recycle Bin</button></div>
     </div>
   </section>
+</div>
+
+<footer class="playbar" id="playbar">
+  <button class="inst-btn" type="button" id="inst-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="inst-pop" title="Choose an instance">
+    <span class="block" id="inst-icon" aria-hidden="true"></span>
+    <span class="inst-text"><span class="inst-name" id="inst-name">Choose an instance</span><span class="inst-sub" id="inst-sub"></span></span>
+    <span class="caret" aria-hidden="true">▼</span>
+  </button>
+  <span class="play-box" id="play-box">
+    <button class="btn play" type="button" id="play">Play</button>
+  </span>
+  <span class="bar-right">
+    <button class="server-chip" type="button" id="server-chip" title="Open the Server page"><span class="dot" id="server-dot"></span><span id="server-chip-text">Server</span></button>
+  </span>
+</footer>
+
+<div class="inst-pop" id="inst-pop" role="dialog" aria-label="Instances" hidden>
+  <div class="head">Instances</div>
+  <div class="inst-list" id="inst-list"></div>
+  <div class="inst-foot">
+    <button class="btn primary" type="button" id="new-instance">New instance…</button>
+    <button class="btn" type="button" id="choose-folder">Other mods folder…</button>
+    <button class="btn" type="button" id="open-prism">Open launcher</button>
+  </div>
 </div>
 
 <div class="menu" id="menu" role="dialog" aria-label="Mod actions and tags" hidden></div>
@@ -1053,16 +1109,17 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
     var line = $("folder-line");
     line.replaceChildren();
     if (!server) { line.textContent = hasToken ? "Connecting…" : "Not connected"; return; }
-    var leaf = server.modsDir.replace(/[\\\/]+$/, "").split(/[\\\/]/).pop();
-    $("eyebrow").textContent = (connected ? "Live · " : "Offline · ") + leaf;
-    var parts = [h("code", { title: server.modsDir }, server.modsDir)];
+    $("eyebrow").textContent = connected ? "Connected" : "Offline";
+    var parts = ["Mods folder ", h("code", { title: server.modsDir }, server.modsDir)];
     if (model) parts.push(" · " + model.byStatus.all + " jars · " + model.byStatus.disabled + " disabled");
     if (server.checkedAt) parts.push(" · checked " + clock(server.checkedAt));
     append(line, parts);
-    ["choose-folder", "open-folder", "refresh", "open-search", "play", "manage-tags"].forEach(function (id) { $(id).disabled = !connected; });
+    ["choose-folder", "open-folder", "refresh", "open-search", "play", "manage-tags", "inst-btn"].forEach(function (id) { $(id).disabled = !connected; });
     var prism = server.prism || {};
-    $("play-box").hidden = !(prism.installed && prism.instanceId);
-    $("play-hint").textContent = prism.instanceName ? "Starts " + prism.instanceName + " through Prism Launcher" : "";
+    $("play").disabled = !canPlay();
+    $("play").title = !prism.installed ? "The launcher isn't installed, so the game can't be started from here"
+      : prism.instanceId ? "Start " + prism.instanceName : "This mods folder isn't an instance. Pick one from the list on the left.";
+    renderInstanceButton();
     renderMrBar();
     renderServerChip();
     renderBisectBanner();
@@ -1912,6 +1969,318 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
       else fallback();
     } catch (e) { fallback(); }
   }
+
+  // ---------- Instances (the picker in the bottom bar) ----------
+
+  var inst = { data: null, error: null };
+
+  function canPlay() {
+    var prism = server && server.prism;
+    return !!(connected && prism && prism.installed && prism.instanceId);
+  }
+
+  function folderLabel(path) {
+    var parts = String(path || "").replace(/[\\\/]+$/, "").split(/[\\\/]/);
+    var leaf = parts.pop();
+    return leaf.toLowerCase() === "mods" && parts.length ? parts.pop() + "\\mods" : leaf;
+  }
+
+  function renderInstanceButton() {
+    var prism = (server && server.prism) || {};
+    var t = server && server.target;
+    $("inst-name").textContent = prism.instanceName || (server ? folderLabel(server.modsDir) : "Choose an instance");
+    var sub = [];
+    if (t) sub.push("Minecraft " + t.gameVersion, LOADER_NAMES[t.loader] || t.loader);
+    if (model) sub.push(count(model.byStatus.all, "mod", "mods"));
+    $("inst-sub").textContent = sub.join(" · ");
+    $("inst-icon").className = "block" + (prism.instanceId ? "" : " folder");
+    $("inst-btn").title = server ? "Change instance (now " + server.modsDir + ")" : "Choose an instance";
+  }
+
+  function openInstances() {
+    var pop = $("inst-pop");
+    if (!pop.hidden) { closeInstances(true); return; }
+    if (!menuEl.hidden) closeMenu();
+    pop.hidden = false;
+    $("inst-btn").setAttribute("aria-expanded", "true");
+    renderInstances();
+    loadInstances().then(function () {
+      if (pop.hidden) return;
+      renderInstances();
+      var current = pop.querySelector('.inst-item[aria-current="true"]') || pop.querySelector(".inst-item:not([disabled])");
+      if (current) current.focus();
+    });
+  }
+  function closeInstances(focusButton) {
+    var pop = $("inst-pop");
+    if (pop.hidden) return;
+    if (pop.contains(document.activeElement)) document.activeElement.blur();
+    pop.hidden = true;
+    $("inst-btn").setAttribute("aria-expanded", "false");
+    if (focusButton) $("inst-btn").focus();
+  }
+  function loadInstances() {
+    return api("GET", "/api/instances").then(function (res) { inst.data = res; inst.error = null; }, function (e) { inst.error = e.message; });
+  }
+  function instanceItem(it, isFolder) {
+    var noLoader = !isFolder && !it.loader;
+    var missing = isFolder && !it.exists;
+    var details = noLoader ? "Vanilla (no mod loader), so there are no mods to manage"
+      : missing ? "This folder isn't there any more"
+      : isFolder ? it.path
+      : ["Minecraft " + (it.minecraft || "?"), LOADER_NAMES[it.loader] || it.loader, count(it.mods, "mod", "mods")].join(" · ");
+    var main = h("button", { type: "button", class: "inst-item", "aria-current": it.current ? "true" : null, disabled: noLoader || missing || !connected, title: it.path,
+        onclick: function () { selectInstance(it); } },
+      h("span", { class: "block" + (isFolder ? " folder" : ""), "aria-hidden": "true" }),
+      h("span", { style: "min-width:0" }, h("span", { class: "n", style: "display:block" }, it.name), h("span", { class: "d", style: "display:block" }, details)),
+      it.current ? h("span", { class: "tick", "aria-label": "current" }, "✓") : h("span"));
+    if (isFolder) return main;
+    // Prism instances get a ⋯ button with their own actions.
+    var open = inst.expanded === it.id;
+    var row = h("div", { class: "inst-row" }, main,
+      h("button", { type: "button", class: "inst-more", "aria-expanded": String(open), "aria-label": "More for " + it.name, title: "Settings, duplicate, delete",
+        onclick: function () { inst.expanded = open ? null : it.id; renderInstances(); var again = $("inst-list").querySelector('.inst-more[aria-expanded="true"]'); if (again) again.focus(); } }, "⋯"));
+    if (open) {
+      row.append(h("div", { class: "inst-actions" },
+        btn("Open folder", function () { api("POST", "/api/instances/open", { id: it.id }).catch(function (e) { toast(e.message); }); }),
+        btn("Settings…", function () { closeInstances(false); instanceDialog("settings", it); }, "", { disabled: noLoader || !connected }),
+        btn("Duplicate…", function () { closeInstances(false); instanceDialog("new", it); }, "", { disabled: noLoader || !connected }),
+        btn("Delete…", function () { closeInstances(false); askDeleteInstance(it); }, "danger-outline", { disabled: !connected })));
+    }
+    return row;
+  }
+  function renderInstances() {
+    var list = $("inst-list");
+    list.replaceChildren();
+    var d = inst.data;
+    if (!d) { list.append(h("p", { class: "inst-empty" }, inst.error || "Looking for instances…")); return; }
+    if (d.instances.length) {
+      list.append(h("div", { class: "inst-group" }, "Your instances"));
+      d.instances.forEach(function (it) { list.append(instanceItem(it, false)); });
+    } else {
+      list.append(h("p", { class: "inst-empty" }, d.prismSetUp
+        ? "There are no instances yet. Use New instance to make one."
+        : "There are no instances on this PC yet. You can still pick any mods folder."));
+    }
+    if (d.recent.length) {
+      list.append(h("div", { class: "inst-group" }, "Other folders"));
+      d.recent.forEach(function (it) { list.append(instanceItem(it, true)); });
+    }
+    $("open-prism").hidden = !d.prismInstalled;
+    $("new-instance").disabled = !d.prismSetUp || !connected;
+  }
+
+  // ---- New instance, duplicate, settings, delete ----
+
+  // mode "new" (source = an instance to copy, or null) or "settings" (source = the instance to change).
+  function instanceDialog(mode, source) {
+    var settings = mode === "settings";
+    var form = h("form", { class: "inst-form", onsubmit: function (e) { e.preventDefault(); submit(); } });
+    var nameInput = h("input", { type: "text", maxlength: "80", autocomplete: "off", spellcheck: "false" });
+    nameInput.value = settings ? source.name : source ? source.name + " (copy)" : "";
+    var copySelect = h("select", { "aria-label": "Start from" });
+    copySelect.append(h("option", { value: "" }, "An empty instance"));
+    ((inst.data && inst.data.instances) || []).forEach(function (it) {
+      if (it.loader) copySelect.append(h("option", { value: it.id }, "A copy of " + it.name));
+    });
+    copySelect.value = !settings && source ? source.id : "";
+    var mcSelect = h("select", { "aria-label": "Minecraft version" });
+    var loaderSelect = h("select", { "aria-label": "Loader" });
+    ["neoforge", "fabric", "forge", "quilt"].forEach(function (l) { loaderSelect.append(h("option", { value: l }, LOADER_NAMES[l])); });
+    var versionSelect = h("select", { "aria-label": "Loader version" });
+    var memorySelect = h("select", { "aria-label": "Memory" });
+    var worlds = h("input", { type: "checkbox" });
+    var fixed = h("div", { class: "fixed" });
+    var note = h("p", { class: "hint", style: "margin:0" });
+    var error = h("p", { class: "tag-error", role: "alert", hidden: true });
+    var picked = function () {
+      var id = settings ? source.id : copySelect.value;
+      return ((inst.data && inst.data.instances) || []).filter(function (it) { return it.id === id; })[0] || null;
+    };
+
+    var mcProp = h("label", { class: "prop" }, h("b", null, "Minecraft version"), mcSelect);
+    var loaderProp = h("label", { class: "prop" }, h("b", null, "Loader"), loaderSelect);
+    var worldsProp = h("label", { class: "toggle" }, worlds, "Also copy the worlds (saves)");
+    form.append(
+      h("label", { class: "prop" }, h("b", null, "Name"), nameInput),
+      settings ? null : h("label", { class: "prop" }, h("b", null, "Start from"), copySelect),
+      fixed,
+      h("div", { class: "pair" }, mcProp, loaderProp),
+      h("div", { class: "pair" },
+        h("label", { class: "prop" }, h("b", null, "Loader version"), versionSelect),
+        h("label", { class: "prop" }, h("b", null, "Memory"), memorySelect, h("span", null, "How much RAM the game may use."))),
+      settings ? null : worldsProp,
+      note, error);
+
+    var go = btn(settings ? "Save" : "Create instance", function () { submit(); }, "primary");
+    openBig(settings ? source.name + " settings" : source ? "Duplicate " + source.name : "New instance",
+      settings ? "Changes apply the next time you play. A new loader version is downloaded then."
+        : "Minecraft and the loader are downloaded the first time you press Play.",
+      form, [btn("Cancel", closeBig), go]);
+    nameInput.focus();
+    nameInput.select();
+
+    var seq = 0;
+    function fillMemory(ramMb, currentMb) {
+      memorySelect.replaceChildren(h("option", { value: "0" }, "Default"));
+      var max = ramMb ? Math.floor((ramMb - 2048) / 1024) : 16;
+      [2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 32].forEach(function (gb) { if (gb <= max) memorySelect.append(h("option", { value: String(gb * 1024) }, gb + " GB")); });
+      if (currentMb && !memorySelect.querySelector('option[value="' + currentMb + '"]')) memorySelect.append(h("option", { value: String(currentMb) }, (currentMb / 1024) + " GB"));
+      memorySelect.value = String(currentMb || 0);
+    }
+    function loadVersions(keepVersion) {
+      var src = picked();
+      var mc = src ? src.minecraft : mcSelect.value || (server && server.target ? server.target.gameVersion : "");
+      var loader = src ? src.loader : loaderSelect.value;
+      var mySeq = ++seq;
+      versionSelect.replaceChildren(h("option", { value: "" }, "Loading…"));
+      versionSelect.disabled = true;
+      go.disabled = true;
+      return api("GET", "/api/instances/versions?minecraft=" + encodeURIComponent(mc) + "&loader=" + encodeURIComponent(loader)).then(function (res) {
+        if (mySeq !== seq) return;
+        if (!mcSelect.options.length) {
+          res.releases.forEach(function (v) { mcSelect.append(h("option", { value: v }, v)); });
+          mcSelect.value = mc;
+        }
+        versionSelect.replaceChildren();
+        res.loaderVersions.forEach(function (v) {
+          versionSelect.append(h("option", { value: v.version }, v.version + (v.recommended ? " (recommended)" : v.type && v.type !== "release" ? " (" + v.type + ")" : "")));
+        });
+        if (!res.loaderVersions.length) versionSelect.append(h("option", { value: "" }, LOADER_NAMES[loader] + " isn't available for " + mc));
+        // The installed version stays selectable even if it's older than the versions listed.
+        if (keepVersion && !Array.prototype.some.call(versionSelect.options, function (o) { return o.value === keepVersion; }))
+          versionSelect.append(h("option", { value: keepVersion }, keepVersion + " (installed)"));
+        versionSelect.value = keepVersion || res.suggested || "";
+        if (!versionSelect.value && versionSelect.options.length) versionSelect.selectedIndex = 0;
+        versionSelect.disabled = !res.loaderVersions.length;
+        go.disabled = !res.loaderVersions.length || !connected;
+        if (memorySelect.options.length === 0) fillMemory(res.ramMb, src ? src.memoryMb : 0);
+        note.textContent = res.prismRunning ? (settings
+          ? "The launcher is open. Close it before saving, or it will undo these changes."
+          : "The launcher is open. If the new instance doesn't show up there, restart it.") : "";
+      }, function (e) {
+        if (mySeq !== seq) return;
+        versionSelect.replaceChildren(h("option", { value: "" }, "Couldn't load versions"));
+        error.textContent = e.message;
+        error.hidden = false;
+      });
+    }
+    function syncFixed() {
+      var src = picked();
+      var locked = settings || !!src;
+      mcProp.hidden = locked;
+      loaderProp.hidden = locked;
+      fixed.hidden = !locked;
+      worldsProp.hidden = settings || !src;
+      if (src) fixed.textContent = "Minecraft " + src.minecraft + " · " + (LOADER_NAMES[src.loader] || src.loader) + (settings ? "" : ", the same as " + src.name) +
+        (settings ? ". To use another Minecraft version, make a new instance." : ". Its mods, configs, resource and shader packs and settings are copied.");
+      memorySelect.replaceChildren();
+    }
+    function submit() {
+      var name = nameInput.value.trim();
+      if (!name) { error.textContent = "Give the instance a name."; error.hidden = false; nameInput.focus(); return; }
+      error.hidden = true;
+      go.disabled = true;
+      go.textContent = settings ? "Saving…" : "Creating…";
+      var src = picked();
+      var body = settings
+        ? { id: source.id, name: name, memoryMb: Number(memorySelect.value) || 0, loaderVersion: versionSelect.value }
+        : { name: name, copyFrom: src ? src.id : null, minecraft: mcSelect.value, loader: loaderSelect.value, loaderVersion: versionSelect.value,
+            memoryMb: Number(memorySelect.value) || 0, copyWorlds: worlds.checked };
+      api("POST", settings ? "/api/instances/settings" : "/api/instances/create", body).then(function (res) {
+        closeBig();
+        if (settings) {
+          toast("Saved " + name + ": " + res.changes.join(", ") + ".");
+          inst.data = null;
+          return refresh(true);
+        }
+        toast("Created " + res.name + "." + (res.prismRunning ? " Restart the launcher if it doesn't show it yet." : " The game files are downloaded the first time you press Play."));
+        return folderChanged(res);
+      }, function (e) {
+        error.textContent = e.message;
+        error.hidden = false;
+        go.disabled = false;
+        go.textContent = settings ? "Save" : "Create instance";
+      });
+    }
+
+    copySelect.addEventListener("change", function () { syncFixed(); loadVersions(picked() ? picked().loaderVersion : null); });
+    mcSelect.addEventListener("change", function () { loadVersions(null); });
+    loaderSelect.addEventListener("change", function () { loadVersions(null); });
+    if (!settings && !source && server && server.target) loaderSelect.value = server.target.loader;
+    syncFixed();
+    loadVersions(picked() ? picked().loaderVersion : null);
+  }
+
+  function askDeleteInstance(it) {
+    api("GET", "/api/instances/delete-info?id=" + encodeURIComponent(it.id)).then(function (info) {
+      if (info.current) { toast(it.name + " is the instance being managed right now. Switch to another one first."); return; }
+      if (info.prismRunning) { toast("Close the launcher first, then delete the instance here."); return; }
+      if (info.gameRunning) { toast("Close the game first."); return; }
+      confirmDialog({
+        title: "Delete " + it.name + "?",
+        items: info.worlds.length ? info.worlds.map(function (w) { return "World: " + w; }) : [],
+        body: "The whole instance (" + formatBytes(info.size) + ") moves to the Recycle Bin" +
+          (info.worlds.length ? ", including " + count(info.worlds.length, "world", "worlds") + " listed above" : "") + ". You can restore it from there.",
+        ok: "Move to Recycle Bin",
+        onOk: function () {
+          api("POST", "/api/instances/delete", { id: it.id }).then(function () {
+            toast("Moved " + it.name + " to the Recycle Bin.");
+            inst.data = null;
+          }, function (e) { toast(e.message); });
+        }
+      });
+    }, function (e) { toast(e.message); });
+  }
+  function selectInstance(it) {
+    closeInstances(true);
+    if (it.current) return;
+    api("POST", "/api/instances/select", { path: it.path }).then(function (res) {
+      toast("Now managing " + it.name + " (Minecraft " + res.target.gameVersion + ", " + (LOADER_NAMES[res.target.loader] || res.target.loader) + ").");
+      return folderChanged(res);
+    }, function (e) { toast(e.message); });
+  }
+
+  // Everything that belonged to the previous mods folder is dropped, then the new one loads.
+  function folderChanged(res) {
+    selected = {};
+    anchorKey = null;
+    clearAll();
+    mr.data = null;
+    mr.error = null;
+    lastFilesSig = "";
+    check.data = null;
+    renderCheckBar();
+    snaps.data = null;
+    srv.sync = null;
+    search.hits = [];
+    inst.data = null;
+    if (res && res.target && server) server.target = res.target;
+    return refresh(true).then(function () {
+      if (currentView === "snapshots") loadSnapshots();
+      if (currentView === "cleanup") loadCleanup();
+      if (currentView === "server" && srv.sub === "sync") loadSync();
+    });
+  }
+
+  $("inst-btn").addEventListener("click", openInstances);
+  $("new-instance").addEventListener("click", function () { closeInstances(false); instanceDialog("new", null); });
+  $("open-prism").addEventListener("click", function () {
+    closeInstances(true);
+    api("POST", "/api/prism/open", {}).then(function () { toast("Opening the launcher."); }, function (e) { toast(e.message); });
+  });
+  $("inst-pop").addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeInstances(true); return; }
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    var items = Array.prototype.slice.call($("inst-pop").querySelectorAll("button:not([disabled])"));
+    if (!items.length) return;
+    e.preventDefault();
+    var i = items.indexOf(document.activeElement);
+    items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length].focus();
+  });
+  document.addEventListener("mousedown", function (e) {
+    if (!$("inst-pop").hidden && !$("inst-pop").contains(e.target) && !$("inst-btn").contains(e.target)) closeInstances(false);
+  }, true);
 
   // ---------- Small helpers for the newer sections ----------
 
@@ -3142,7 +3511,7 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
   function bisectActions(b) {
     var box = h("div", { class: "b-actions" });
     if (b.status === "testing") {
-      box.append(btn("▶ Play", function () { playChecked(true); }, "primary", { disabled: !connected || $("play-box").hidden }),
+      box.append(btn("▶ Play", function () { playChecked(true); }, "primary", { disabled: !canPlay() }),
         btn("The problem is still there", function () { answerBisect("broken"); }, "", { disabled: !connected }),
         btn("The problem is gone", function () { answerBisect("works"); }, "", { disabled: !connected }),
         btn("Stop and put everything back", function () { stopBisect(true, []); }, "danger-outline", { disabled: !connected }));
@@ -3422,15 +3791,15 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
     btn.disabled = true;
     var go = function () {
       api("POST", "/api/play").then(function (res) {
-        toast("Starting " + res.instanceName + " in Prism. A modded game takes a few minutes to load.");
+        toast("Starting " + res.instanceName + ". A modded game takes a few minutes to load.");
       }, function (e) { toast(e.message); }).then(function () {
-        setTimeout(function () { btn.disabled = !connected; }, 5000);
+        setTimeout(function () { btn.disabled = !canPlay(); }, 5000);
       });
     };
     if (skipCheck) { go(); return; }
     runCheck().then(function (res) {
       if (!res || !res.errors) { go(); return; }
-      btn.disabled = !connected;
+      btn.disabled = !canPlay();
       problemsDialog(res, {
         title: count(res.errors, "problem", "problems") + " will stop the game from starting",
         lead: "NeoForge refuses to load the game when these aren't fixed. Fix them here, or play anyway to see the game's own error screen.",
@@ -3528,16 +3897,14 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
   $("refresh").addEventListener("click", function () { refresh(true).then(function () { if (connected) toast("Refreshed"); }); });
   $("open-folder").addEventListener("click", function () { api("POST", "/api/open-folder").catch(function (e) { toast(e.message); }); });
   $("choose-folder").addEventListener("click", function () {
+    closeInstances();
     toast("Pick a folder in the window that just opened");
     api("POST", "/api/choose-folder").then(function (res) {
       if (res.changed) {
-        selected = {};
-        anchorKey = null;
-        clearAll();
         toast("Now managing " + res.modsDir);
-      } else {
-        $("toast").hidden = true;
+        return folderChanged(res);
       }
+      $("toast").hidden = true;
       return refresh(true);
     }, function (e) { toast(e.message); });
   });

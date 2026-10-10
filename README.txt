@@ -7,6 +7,22 @@ The window remembers its size and position.
 
 Sections (along the top): Mods, Server, Snapshots, Cleanup.
 
+Bottom bar (like the Minecraft Launcher)
+  Instance picker ... bottom left. Lists every instance with its Minecraft version, loader
+                      and mod count, plus other mods folders you've used. Choosing an instance also
+                      sets the Minecraft version and loader that Modrinth looks for.
+                      "Other mods folder..." picks any folder; "Open launcher" opens the launcher.
+  New instance... ... at the bottom of the list. Name, Minecraft version, loader (NeoForge, Fabric, Forge,
+                      Quilt), loader version and memory, starting empty or as a copy of another instance
+                      (mods, configs, resource and shader packs and settings; worlds only if you tick it).
+                      Minecraft and the loader are downloaded the first time you press Play.
+  ... on an instance  Open folder, Settings... (rename, memory, loader version), Duplicate..., Delete...
+                      (asks first, lists its worlds, moves the instance to the Recycle Bin). Close the
+                      launcher before changing or deleting an instance: while it's open it keeps its own copy
+                      of the settings and would undo the change. The instance being managed can't be deleted.
+  PLAY .............. bottom middle. Starts the chosen instance.
+  Server ............ bottom right. The server's status; click it for the Server page.
+
 Tabs
   Links (Modrinth, CurseForge, mod pages) open as tabs in the same window, next to the pinned
   "Mod manager" tab. Each tab has back / forward / reload, an address bar and "Open in my browser".
@@ -17,7 +33,7 @@ Tabs
   Any .jar you download in a tab goes straight into the current mods folder.
 
 Play and the pre-launch check
-  Play starts the game through Prism Launcher, but first checks the mods folder for the things that stop
+  Play starts the game, but first checks the mods folder for the things that stop
   NeoForge from starting: a required mod that's missing or turned off, the wrong version of a library,
   the same mod twice, mods for another Minecraft version, Fabric mods without Sinytra Connector.
   If it finds any, it lists them with one-click fixes (turn it on, copy it from the server, search
@@ -82,7 +98,6 @@ Managing mods
   Checkbox / click .. select mods: Ctrl+click adds one, Shift+click selects a range, Ctrl+A selects all shown
   Selection bar ..... enable, disable, delete, update, tag or copy everything selected
   Right-click ....... actions on the left, tags on the right (tick to add, untick to remove, or type a new tag)
-  Change folder ..... pick another mods folder; it's remembered next time
 
 Manage tags (button on the Topic tags panel)
   Add, rename or delete tags, and describe what each means. client / server are the side tags the app relies
@@ -94,6 +109,7 @@ Tags live in mod-tags.json in the mods folder, matched by jar filename. Every ta
 previous version as mod-tags.json.bak. Every change to files is written to actions.log in this folder.
 
 Good to know
+  - Instances and Play run through Prism Launcher, which needs to be installed.
   - Close Minecraft before changing mods. Jars that are in use are refused.
   - Only this PC can reach the app's internal server, and only the app's own page can make changes.
   - It only touches .jar and .jar.disabled files directly inside the mods folders it manages.
@@ -103,10 +119,11 @@ Files
   MinecraftModManager.exe                 The app (page embedded inside).
   Microsoft.Web.WebView2.*.dll,
   WebView2Loader.dll                      Microsoft's WebView2 parts for the app window. Keep them next to the exe.
-  MinecraftModManager.settings.json       Mods folder, server folder, Minecraft version, loader, window position.
+  MinecraftModManager.settings.json       Mods folder, other folders used, server folder, Minecraft version, loader, window position.
   actions.log                             History of every change to mods, tags, the server and snapshots.
   source\Program.cs                       Core: the internal web server, Modrinth, tags.
   source\Window.cs                        The window and its tabs.
+  source\Instances.cs                     The instance picker, and creating / changing / deleting instances.
   source\Server.cs                        Starting, stopping and talking to the Minecraft server.
   source\Sync.cs                          Comparing and syncing the game and the server.
   source\JarMeta.cs                       Reading jars and the pre-launch check.

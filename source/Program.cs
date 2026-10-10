@@ -99,6 +99,7 @@ namespace MinecraftModManager
                 if (args[i] == "--mods" && i + 1 < args.Length) folderArg = args[++i];
                 else if (args[i] == "--server" && i + 1 < args.Length) serverArg = args[++i];
                 else if (args[i] == "--data" && i + 1 < args.Length) dataArg = args[++i];
+                else if (args[i] == "--prism" && i + 1 < args.Length) prismDataOverride = Path.GetFullPath(args[++i]);
                 else if (args[i] == "--port" && i + 1 < args.Length) port = int.Parse(args[++i]);
                 else if (args[i] == "--no-window" || args[i] == "--no-browser") showWindow = false;
             }
@@ -140,6 +141,8 @@ namespace MinecraftModManager
                 modsDir = picked;
                 SaveSettings();
             }
+
+            RememberFolder(modsDir);
 
             listener = new HttpListener();
             listener.Prefixes.Add(origin + "/");
@@ -333,6 +336,15 @@ namespace MinecraftModManager
                         case "/api/cleanup":
                             result = CleanupScan();
                             break;
+                        case "/api/instances":
+                            result = ListInstances();
+                            break;
+                        case "/api/instances/versions":
+                            result = MetaVersions(req.QueryString["minecraft"], req.QueryString["loader"]);
+                            break;
+                        case "/api/instances/delete-info":
+                            result = InstanceDeleteInfo(req.QueryString["id"]);
+                            break;
                     }
                     if (result != null)
                     {
@@ -386,11 +398,14 @@ namespace MinecraftModManager
                         bool changed = picked != null && !string.Equals(picked, current, StringComparison.OrdinalIgnoreCase);
                         if (changed)
                         {
+                            RememberFolder(current);
                             modsDir = picked;
+                            FollowInstanceTarget(picked);
+                            RememberFolder(picked);
                             SaveSettings();
                             Log("Now managing " + picked);
                         }
-                        SendJson(ctx, 200, Obj("ok", true, "changed", changed, "modsDir", modsDir));
+                        SendJson(ctx, 200, Obj("ok", true, "changed", changed, "modsDir", modsDir, "target", TargetObj()));
                         return;
                     }
                     case "/api/open-folder":
@@ -435,6 +450,26 @@ namespace MinecraftModManager
                         return;
                     case "/api/modrinth/switch":
                         SendJson(ctx, 200, ModrinthSwitch(Str(body, "file"), Str(body, "versionId")));
+                        return;
+                    case "/api/instances/select":
+                        SendJson(ctx, 200, SelectInstance(Str(body, "path")));
+                        return;
+                    case "/api/instances/create":
+                        SendJson(ctx, 200, CreateInstance(body));
+                        return;
+                    case "/api/instances/settings":
+                        SendJson(ctx, 200, InstanceSettings(body));
+                        return;
+                    case "/api/instances/delete":
+                        SendJson(ctx, 200, DeleteInstance(Str(body, "id")));
+                        return;
+                    case "/api/instances/open":
+                        OpenInstanceFolder(Str(body, "id"));
+                        SendJson(ctx, 200, Obj("ok", true));
+                        return;
+                    case "/api/prism/open":
+                        OpenPrism();
+                        SendJson(ctx, 200, Obj("ok", true));
                         return;
                     case "/api/check/copy-from-server":
                         SendJson(ctx, 200, CopyFromServer(Str(body, "file")));
@@ -594,14 +629,14 @@ namespace MinecraftModManager
         static Dictionary<string, object> Play()
         {
             string prism = FindPrism();
-            if (prism == null) throw new UserError("Prism Launcher isn't installed, so the game can't be started from here.");
+            if (prism == null) throw new UserError("The launcher isn't installed, so the game can't be started from here.");
             string[] instance = PrismInstanceFor(modsDir);
-            if (instance == null) throw new UserError("This mods folder isn't part of a Prism instance, so there's nothing to launch. Use Change folder to pick one.");
+            if (instance == null) throw new UserError("This mods folder isn't part of an instance, so there's nothing to launch. Pick an instance in the bottom bar.");
             var start = new ProcessStartInfo(prism, "--launch \"" + instance[0] + "\"");
             start.UseShellExecute = false;
             start.WorkingDirectory = Path.GetDirectoryName(prism);
             Process.Start(start);
-            Log("Launched  " + instance[1] + " through Prism");
+            Log("Launched  " + instance[1]);
             return Obj("ok", true, "instanceName", instance[1]);
         }
 
@@ -1520,6 +1555,8 @@ namespace MinecraftModManager
                     if (Array.IndexOf(Loaders, savedLoader) >= 0) loader = savedLoader;
                     string server = Str(settings, "serverFolder");
                     if (!string.IsNullOrEmpty(server)) serverDir = server;
+                    foreach (object folder in A(Get(settings, "recentFolders")))
+                        if (folder is string) recentFolders.Add((string)folder);
                     savedWindow = D(Get(settings, "window"));
                 }
             }
@@ -1534,9 +1571,14 @@ namespace MinecraftModManager
             try
             {
                 File.WriteAllText(SettingsPath, new JavaScriptSerializer().Serialize(Obj("modsFolder", modsDir, "gameVersion", gameVersion, "loader", loader,
-                    "serverFolder", serverDir, "window", savedWindow)), new UTF8Encoding(false));
+                    "serverFolder", serverDir, "window", savedWindow, "recentFolders", RecentFoldersCopy())), new UTF8Encoding(false));
             }
             catch { }
+        }
+
+        static List<string> RecentFoldersCopy()
+        {
+            lock (recentFolders) return recentFolders.ToList();
         }
 
         static Dictionary<string, object> TargetObj()

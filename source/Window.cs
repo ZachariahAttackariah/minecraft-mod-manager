@@ -63,24 +63,13 @@ namespace MinecraftModManager
             public Color Strip, Tab, Hover, Ink, Muted, Line, Accent, Field;
         }
 
-        // The page's own colour tokens (see :root in mod-manager.template.html).
+        // The page's own colour tokens (see :root in mod-manager.template.html): the Minecraft Launcher's
+        // dark greys and green. The page is dark-only, so the window is too.
         static Palette ReadPalette()
         {
-            bool dark = false;
-            try
-            {
-                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"))
-                {
-                    object value = key == null ? null : key.GetValue("AppsUseLightTheme");
-                    dark = value is int && (int)value == 0;
-                }
-            }
-            catch { }
-            return dark
-                ? new Palette { Dark = true, Strip = Rgb(0x0b0f0e), Tab = Rgb(0x141917), Hover = Rgb(0x1b211f), Ink = Rgb(0xe5eae6), Muted = Rgb(0x98a49d), Line = Rgb(0x2c3632), Accent = Rgb(0x62b9ae), Field = Rgb(0x1b211f) }
-                : new Palette { Strip = Rgb(0xdfe3dc), Tab = Rgb(0xeceeea), Hover = Rgb(0xe6e9e3), Ink = Rgb(0x1b2220), Muted = Rgb(0x59635e), Line = Rgb(0xccd3cb), Accent = Rgb(0x1d6a63), Field = Rgb(0xf8f9f6) };
+            return new Palette { Dark = true, Strip = Rgb(0x1b1b1b), Tab = Rgb(0x262626), Hover = Rgb(0x313233), Ink = Rgb(0xffffff),
+                Muted = Rgb(0xb1b2b5), Line = Rgb(0x3e3f41), Accent = Rgb(0x3c8527), Field = Rgb(0x1b1b1b) };
         }
-
         static Color Rgb(int rgb) { return Color.FromArgb(255, (rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff); }
 
         sealed class BrowserTab
