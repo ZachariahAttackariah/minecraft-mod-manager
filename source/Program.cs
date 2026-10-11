@@ -670,6 +670,7 @@ namespace MinecraftModManager
             bool exists = Directory.Exists(dir);
             var files = new List<object>();
             string tagsText = null;
+            bool tagsLinked = false;
             if (exists)
             {
                 var jars = new DirectoryInfo(dir).GetFiles()
@@ -682,12 +683,16 @@ namespace MinecraftModManager
                     files.Add(Obj("name", file.Name, "size", file.Length, "modified", file.LastWriteTimeUtc.ToString("o"),
                         "modId", info[0], "displayName", info[1], "logo", main != null && main.Logo != null));
                 }
-                try { ImportLinkedTags(dir); } catch (Exception ex) { Log("Tags      couldn't read " + LinkedTagsFile + ": " + ex.Message); }
                 string tagsPath = Path.Combine(dir, "mod-tags.json");
-                if (File.Exists(tagsPath)) tagsText = File.ReadAllText(tagsPath, Encoding.UTF8);
+                if (HasLinkedTags(dir))
+                {
+                    try { tagsText = LinkedTagsText(dir); } catch { tagsText = null; }
+                    tagsLinked = true;
+                }
+                else if (File.Exists(tagsPath)) tagsText = File.ReadAllText(tagsPath, Encoding.UTF8);
             }
             string[] prism = PrismInstanceFor(dir);
-            return Obj("modsDir", dir, "folderExists", exists, "files", files, "tagsText", tagsText, "target", TargetObj(),
+            return Obj("modsDir", dir, "folderExists", exists, "files", files, "tagsText", tagsText, "tagsLinked", tagsLinked, "target", TargetObj(),
                 "prism", Obj("installed", FindPrism() != null, "instanceId", prism == null ? null : prism[0], "instanceName", prism == null ? null : prism[1]),
                 "server", Obj("configured", serverDir != null, "state", serverState, "players", PlayerCount()),
                 "bisect", BisectSummary());
@@ -1364,6 +1369,7 @@ namespace MinecraftModManager
         {
             if (keys.Count == 0) throw new UserError("No mods were selected.");
             if (add.Count == 0 && remove.Count == 0) throw new UserError("No tag changes were sent.");
+            RequireOwnTags(modsDir);
             foreach (string tag in add.Concat(remove))
             {
                 if (!TagName.IsMatch(tag))
@@ -1439,6 +1445,7 @@ namespace MinecraftModManager
 
         static Dictionary<string, object> CreateTag(string name, string description)
         {
+            RequireOwnTags(modsDir);
             CheckTagName(name);
             lock (FileLock)
             {
@@ -1457,6 +1464,7 @@ namespace MinecraftModManager
         static Dictionary<string, object> EditTag(string name, string newName, string description)
         {
             if (string.IsNullOrEmpty(name)) throw new UserError("No tag was chosen.");
+            RequireOwnTags(modsDir);
             newName = string.IsNullOrWhiteSpace(newName) ? name : newName.Trim();
             lock (FileLock)
             {
@@ -1496,6 +1504,7 @@ namespace MinecraftModManager
         static Dictionary<string, object> DeleteTag(string name)
         {
             if (string.IsNullOrEmpty(name)) throw new UserError("No tag was chosen.");
+            RequireOwnTags(modsDir);
             if (SideTags.Contains(name)) throw new UserError(name + " is a side tag the app relies on, so it can't be deleted.");
             lock (FileLock)
             {
@@ -1574,6 +1583,31 @@ namespace MinecraftModManager
 
         static void SaveTagsDoc(string path, TagsDoc doc)
         {
+            // Never in a folder whose tags belong to another tool (LinkedTags.cs): it would merge the file into its own.
+            if (HasLinkedTags(Path.GetDirectoryName(path))) return;
+            string text = TagsDocText(doc);
+            string temp = path + ".tmp";
+            File.WriteAllText(temp, text, new UTF8Encoding(false));
+            if (!File.Exists(path))
+            {
+                File.Move(temp, path);
+                return;
+            }
+            try
+            {
+                File.Replace(temp, path, path + ".bak");
+            }
+            catch (IOException)
+            {
+                // Some setups (antivirus, synced folders) refuse File.Replace; fall back to copy-then-overwrite.
+                File.Copy(path, path + ".bak", true);
+                File.Copy(temp, path, true);
+                File.Delete(temp);
+            }
+        }
+
+        static string TagsDocText(TagsDoc doc)
+        {
             var sb = new StringBuilder();
             sb.Append("{\n");
             sb.Append("  \"description\": ").Append(JsonString(doc.Description)).Append(",\n");
@@ -1596,25 +1630,7 @@ namespace MinecraftModManager
             foreach (KeyValuePair<string, object> extra in doc.Extra)
                 sb.Append(",\n  ").Append(JsonString(extra.Key)).Append(": ").Append(new JavaScriptSerializer().Serialize(extra.Value));
             sb.Append("\n}\n");
-
-            string temp = path + ".tmp";
-            File.WriteAllText(temp, sb.ToString(), new UTF8Encoding(false));
-            if (!File.Exists(path))
-            {
-                File.Move(temp, path);
-                return;
-            }
-            try
-            {
-                File.Replace(temp, path, path + ".bak");
-            }
-            catch (IOException)
-            {
-                // Some setups (antivirus, synced folders) refuse File.Replace; fall back to copy-then-overwrite.
-                File.Copy(path, path + ".bak", true);
-                File.Copy(temp, path, true);
-                File.Delete(temp);
-            }
+            return sb.ToString();
         }
 
         static string JsonString(string value)

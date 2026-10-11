@@ -1125,9 +1125,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       } catch (e) {
         tagsProblem = "mod-tags.json in this folder isn't valid JSON (" + e.message + "), so tags are hidden.";
       }
-    } else if (s.folderExists) {
+    } else if (s.folderExists && !s.tagsLinked) {
       tagsProblem = "This folder has no mod-tags.json yet. Right-click a mod and add a tag to create it.";
     }
+    // Tags read live from another launcher's .mod-tags.json: shown, but changed only in that launcher.
+    if (s.tagsLinked && !tagsProblem) tagsProblem = "These tags come from .mod-tags.json, another launcher's tag file. They update as it changes, and can only be edited in that launcher.";
     var defs = doc && doc.tags && typeof doc.tags === "object" && !Array.isArray(doc.tags) ? doc.tags : {};
     var entries = doc ? doc.mods : {};
     var order = Object.keys(defs);
