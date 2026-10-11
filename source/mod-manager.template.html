@@ -172,7 +172,7 @@ h1 { margin: 0; }
 .side-left { grid-area: left; }
 .side-right { grid-area: right; }
 .main-col { grid-area: main; min-width: 0; }
-.side-col { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; min-width: 0; scrollbar-width: thin; }
+.side-col { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; overscroll-behavior: contain; min-width: 0; scrollbar-width: thin; }
 .side-col .panel { padding: 14px; }
 .side-col .section-label { align-items: center; }
 .side-col .section-label .btn { padding: 6px 10px 7px; font-size: 12.5px; }
@@ -1294,6 +1294,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     renderToolbar(rows.length);
     renderSortHeads();
     renderList(rows);
+    queueFit();
     renderSelectAll(rows);
     renderSelectionBar();
   }
@@ -4744,6 +4745,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     closeMenu();
   }, true);
   window.addEventListener("resize", closeMenu);
+
+  // A sticky side panel (tags, side chart) is only as tall as the room between where it starts on screen
+  // and the bottom of the window, so its end is always visible and a long tag list scrolls on its own.
+  // Done straight away (two elements, so it's cheap), so the height never lags behind the scroll.
+  function queueFit() {
+    Array.prototype.forEach.call(document.querySelectorAll(".side-col"), function (el) {
+      if (getComputedStyle(el).position !== "sticky") { el.style.maxHeight = ""; return; }
+      var top = Math.max(12, el.getBoundingClientRect().top);
+      el.style.maxHeight = Math.max(160, window.innerHeight - top - 12) + "px";
+    });
+  }
+  window.addEventListener("scroll", queueFit, { passive: true });
+  window.addEventListener("resize", queueFit);
   window.addEventListener("blur", closeMenu);
   // Selecting a mod can show the selection bar above the list, and the page nudges its scroll to keep the
   // rows in place. That scroll arrives just after the menu opens, so it mustn't close it: only scrolls
