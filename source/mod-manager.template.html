@@ -2327,7 +2327,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   // ---------- Context menu (actions on the left, tags on the right) ----------
 
-  var menuEl = $("menu"), menuReturn = null, menuKeys = [], menuAt = { x: 0, y: 0 };
+  var menuEl = $("menu"), menuReturn = null, menuKeys = [], menuAt = { x: 0, y: 0 }, menuOpenedAt = 0;
   function menuItem(label, iconName, fn, cls) {
     return h("button", { type: "button", class: cls || null, onclick: function () { closeMenu(); fn(); } }, icon(iconName), h("span", null, label));
   }
@@ -2335,6 +2335,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function openMenu(keys, x, y, returnFocus) {
     menuKeys = keys.slice();
     menuReturn = returnFocus || null;
+    menuOpenedAt = Date.now();
     menuAt = { x: x, y: y };
     renderMenu();
     menuEl.hidden = false;
@@ -2421,7 +2422,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     // Rows may have re-rendered while the menu was open, so never leave focus inside the hidden menu.
     if (menuEl.contains(document.activeElement)) document.activeElement.blur();
     menuEl.hidden = true;
-    if (menuReturn && document.contains(menuReturn)) menuReturn.focus();
+    // preventScroll: moving focus back must not scroll the list out from under the pointer.
+    if (menuReturn && document.contains(menuReturn)) menuReturn.focus({ preventScroll: true });
     menuReturn = null;
   }
 
@@ -4673,10 +4675,22 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     else if (e.key === "Home") { e.preventDefault(); buttons[0].focus(); }
     else if (e.key === "End") { e.preventDefault(); buttons[buttons.length - 1].focus(); }
   });
-  document.addEventListener("mousedown", function (e) { if (!menuEl.hidden && !menuEl.contains(e.target)) closeMenu(); }, true);
+  // A right-click on another mod moves the menu there (the contextmenu handler reopens it), so one
+  // right-click selects that mod and shows its menu instead of only closing the old one.
+  document.addEventListener("mousedown", function (e) {
+    if (menuEl.hidden || menuEl.contains(e.target)) return;
+    if (e.button === 2 && !e.shiftKey && $("rows").contains(e.target) && rowFor(e.target)) return;
+    closeMenu();
+  }, true);
   window.addEventListener("resize", closeMenu);
   window.addEventListener("blur", closeMenu);
-  document.addEventListener("scroll", function (e) { if (!menuEl.contains(e.target)) closeMenu(); }, true);
+  // Selecting a mod can show the selection bar above the list, and the page nudges its scroll to keep the
+  // rows in place. That scroll arrives just after the menu opens, so it mustn't close it: only scrolls
+  // a moment later (the user's own) do.
+  document.addEventListener("scroll", function (e) {
+    if (menuEl.contains(e.target) || Date.now() - menuOpenedAt < 500) return;
+    closeMenu();
+  }, true);
 
   $("dlg-ok").addEventListener("click", function () { var fn = dialogConfirm; closeDialog(); if (fn) fn(); });
   $("dlg-cancel").addEventListener("click", closeDialog);
