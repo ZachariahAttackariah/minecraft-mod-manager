@@ -176,6 +176,13 @@ namespace MinecraftModManager
                         meta.Side = environment;
                         meta.SideReason = "its fabric.mod.json says environment \"" + environment + "\"";
                     }
+                    // Fabric's "depends" (id -> version spec): kept without a range, since Fabric's specs
+                    // aren't Maven ranges. Used by Detect to send libraries wherever their users go.
+                    string ownId = S(json, "id");
+                    Dictionary<string, object> depends = D(Get(json, "depends"));
+                    if (depends != null && ownId != null && top)
+                        foreach (string depId in depends.Keys)
+                            meta.Deps.Add(new DepInfo { Owner = ownId, Id = depId, Type = "required", Side = environment == "client" ? "CLIENT" : environment == "server" ? "SERVER" : "BOTH" });
                     string id = S(json, "id");
                     if (id != null) meta.Mods.Add(new ModInfo { Id = id, Version = S(json, "version"), Name = S(json, "name") ?? S(D(Get(json, "metadata")), "name") ?? id,
                         Logo = FabricIcon(Get(json, "icon") ?? Get(D(Get(json, "metadata")), "icon")) });

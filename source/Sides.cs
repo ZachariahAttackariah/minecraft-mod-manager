@@ -62,6 +62,12 @@ namespace MinecraftModManager
                          side == "client" && ss == "optional" ? " It works without the server having it, so it's only needed on the client." :
                          side == "both" && cs == "required" && ss == "optional" ? " It works on the client alone, but the server copy adds features, so it goes on both." : "");
                     serverOptional = cs == "required" && ss == "optional";
+                    // A library that's optional on one side goes on both: a spare copy is harmless, a missing one isn't.
+                    if (side != "both" && (cs == "optional" || ss == "optional") && A(Get(project, "categories")).Contains("library"))
+                    {
+                        side = "both";
+                        reason += " It's a library, so it goes on both to be safe.";
+                    }
                 }
                 else if (meta.NoServerNeeded)
                 {
@@ -98,7 +104,7 @@ namespace MinecraftModManager
         static int SideBits(string side) { return side == "client" ? 1 : side == "server" ? 2 : side == "both" ? 3 : 0; }
         static string SideName(int bits) { return bits == 1 ? "client" : bits == 2 ? "server" : bits == 3 ? "both" : null; }
 
-        static readonly HashSet<string> BuiltInIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "minecraft", "neoforge", "forge", "fabricloader", "java", "fml", "javafml" };
+        static readonly HashSet<string> BuiltInIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "minecraft", "neoforge", "forge", "fabricloader", "java", "fml", "javafml", "quilt_loader" };
 
         // A library goes wherever a mod that requires it goes. Modrinth often lists libraries and core
         // mods (Create, Geckolib, CreativeCore) as optional on a side their dependents need them on, so
