@@ -6,7 +6,7 @@
 <title>Minecraft Mod Manager</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Pixelify+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap">
 <style>
 /* Layout: one working column. Live folder header, summary (side split + topic tags), a sticky filter + selection bar, then a dense, selectable mod list with row actions that folds into cards on phones. */
 :root {
@@ -44,7 +44,7 @@
   --font-display: "Noto Sans", "Segoe UI", system-ui, sans-serif;
   --font-body: "Noto Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
-  --font-pixel: "Pixelify Sans", "Noto Sans", sans-serif;
+  --font-title: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
   --gutter: clamp(16px, 4vw, 32px);
   --bar-h: 0px; /* the old bottom bar is gone; kept for the toasts and sticky footers that leave room for it */
   color-scheme: dark;
@@ -61,7 +61,7 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
 
 .top { display: grid; gap: 0; margin-bottom: 14px; }
 .brand-row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 16px; }
-.brand-row .wordmark { margin-top: 10px; }
+.brand-row .wordmark { min-height: 52px; }
 .launch { display: grid; gap: 8px; justify-items: stretch; min-width: 0; max-width: 100%; }
 .launch-row { display: flex; align-items: stretch; justify-content: flex-end; gap: 8px; min-width: 0; }
 .launch .inst-btn { max-width: 340px; }
@@ -69,7 +69,7 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
 .launch .check-bar .btn { padding: 6px 10px 7px; font-size: 12.5px; }
 .launch .check-bar .grow { flex: 1; min-width: 0; }
 @media (max-width: 640px) { .launch { width: 100%; } .launch-row { justify-content: stretch; } .launch .inst-btn { flex: 1; max-width: none; } }
-.wordmark { margin: 0; display: flex; align-items: center; gap: 14px; font: 700 clamp(22px, 3vw, 28px)/1 var(--font-pixel); letter-spacing: 0.03em; text-transform: uppercase; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.45); }
+.wordmark { margin: 0; display: flex; align-items: center; font: 700 clamp(24px, 3vw, 31px)/1 var(--font-title); letter-spacing: -0.015em; }
 .block { flex: none; display: inline-block; width: 36px; height: 36px; border-radius: 3px; background: linear-gradient(180deg, #74b84b 0 30%, #4f8f34 30% 38%, #8b5d3b 38% 100%); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.18); }
 .block.folder { background: linear-gradient(180deg, #9a9a9a 0 30%, #7a7a7a 30% 100%); }
 .block.sm { width: 28px; height: 28px; }
@@ -587,7 +587,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 <div class="wrap">
   <header class="top">
     <div class="brand-row">
-      <h1 class="wordmark"><span class="block" aria-hidden="true"></span>Minecraft Mod Manager</h1>
+      <h1 class="wordmark">Minecraft Mod Manager</h1>
       <!-- Top right, like a launcher: which instance, PLAY, and the pre-launch check under them. -->
       <div class="launch">
         <div class="launch-row">
