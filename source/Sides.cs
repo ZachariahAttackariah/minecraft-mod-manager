@@ -15,7 +15,7 @@ namespace MinecraftModManager
 {
     static partial class Program
     {
-        static Dictionary<string, object> DetectSides()
+        static Dictionary<string, object> DetectSides(bool serverExtras)
         {
             string dir = modsDir;
             if (!Directory.Exists(dir)) throw new UserError(dir + " isn't there any more.");
@@ -48,18 +48,20 @@ namespace MinecraftModManager
                 Dictionary<string, object> project;
                 projects.TryGetValue(jar.Name, out project);
                 string side = null, source = null, reason = null;
-                bool sure = true;
+                bool sure = true, serverOptional = false;
                 if (meta.Side != null)
                 {
                     side = meta.Side; source = "mod file"; reason = "The jar says it's " + side + " only: " + meta.SideReason + ".";
                 }
-                else if (project != null && (side = ModrinthSide(S(project, "client_side"), S(project, "server_side"))) != null)
+                else if (project != null && (side = ModrinthSide(S(project, "client_side"), S(project, "server_side"), serverExtras)) != null)
                 {
                     source = "Modrinth";
                     string cs = SideWord(S(project, "client_side")), ss = SideWord(S(project, "server_side"));
                     reason = "Modrinth lists it as " + cs + " on the client and " + ss + " on the server." +
                         (side == "server" && cs == "optional" ? " It works without the client having it, so it's only needed on the server." :
-                         side == "client" && ss == "optional" ? " It works without the server having it, so it's only needed on the client." : "");
+                         side == "client" && ss == "optional" ? " It works without the server having it, so it's only needed on the client." :
+                         side == "both" && cs == "required" && ss == "optional" ? " It works on the client alone, but the server copy adds features, so it goes on both." : "");
+                    serverOptional = cs == "required" && ss == "optional";
                 }
                 else if (meta.NoServerNeeded)
                 {
@@ -77,12 +79,12 @@ namespace MinecraftModManager
                 }
                 ModInfo main = MainMod(meta);
                 found.Add(new SideGuess { File = jar.Name, Meta = meta, Name = project != null ? S(project, "title") : main != null ? main.Name : null,
-                    Sides = SideBits(side), Source = source, Sure = sure, Reason = reason });
+                    Sides = SideBits(side), Source = source, Sure = sure, Reason = reason, ServerOptional = serverOptional });
             }
             FollowDependencies(found);
             var mods = found.Select(g => (object)Obj("file", g.File, "key", NormalizeKey(g.File), "name", g.Name,
-                "side", SideName(g.Sides), "source", g.Source, "sure", g.Sure, "reason", g.Reason)).ToList();
-            return Obj("ok", true, "mods", mods, "modrinthProblem", modrinthProblem);
+                "side", SideName(g.Sides), "source", g.Source, "sure", g.Sure, "reason", g.Reason, "serverOptional", g.ServerOptional)).ToList();
+            return Obj("ok", true, "mods", mods, "serverExtras", serverExtras, "serverOptionalCount", found.Count(g => g.ServerOptional), "modrinthProblem", modrinthProblem);
         }
 
         sealed class SideGuess
@@ -90,7 +92,7 @@ namespace MinecraftModManager
             public string File, Name, Source, Reason;
             public JarMeta Meta;
             public int Sides; // 1 client, 2 server, 3 both, 0 unknown
-            public bool Sure;
+            public bool Sure, ServerOptional;
         }
 
         static int SideBits(string side) { return side == "client" ? 1 : side == "server" ? 2 : side == "both" ? 3 : 0; }
@@ -142,11 +144,14 @@ namespace MinecraftModManager
         // there", so a required side is in, and an optional one only when neither side is required
         // (works on either, so both). Checked against ~770 of Roma's hand-tagged mods: 98% the same,
         // where counting every optional side agreed 92%. New installs are tagged by the same rule.
-        static string ModrinthSide(string client, string server)
+        // serverExtras: a client mod whose server copy is optional (it adds features there: multiplayer
+        // sync, server-side data) goes on both. The user's choice in the Detect dialog, on by default.
+        static string ModrinthSide(string client, string server, bool serverExtras = false)
         {
             bool known = new[] { client, server }.Any(v => v == "required" || v == "optional" || v == "unsupported");
             if (!known) return null;
             bool cReq = client == "required", sReq = server == "required";
+            if (cReq && !sReq && serverExtras && server == "optional") return "both";
             if (cReq || sReq) return cReq && sReq ? "both" : cReq ? "client" : "server";
             bool c = client != "unsupported", s = server != "unsupported";
             return c && s ? "both" : c ? "client" : s ? "server" : null;

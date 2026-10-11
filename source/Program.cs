@@ -493,7 +493,7 @@ namespace MinecraftModManager
                         SendJson(ctx, 200, ModrinthScan(Bool(body, "force")));
                         return;
                     case "/api/sides/detect":
-                        SendJson(ctx, 200, DetectSides());
+                        SendJson(ctx, 200, DetectSides(!body.ContainsKey("serverExtras") || Bool(body, "serverExtras")));
                         return;
                     case "/api/check/remove-duplicates":
                         SendJson(ctx, 200, RemoveDuplicates(body));

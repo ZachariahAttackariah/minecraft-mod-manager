@@ -546,6 +546,9 @@ details.more > summary { cursor: pointer; font: 600 13.5px/1.3 var(--font-displa
 .dialog.big { width: min(760px, 100%); max-height: calc(100vh - 32px); grid-template-rows: auto auto minmax(0, 1fr) auto; }
 .dialog .scroll { overflow: auto; min-height: 0; margin: 0 -20px; padding: 0 20px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 /* Detect sides: results grouped by what applying would do. */
+.ds-option { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 2px 10px; align-items: start; margin: 12px 0 4px; padding: 10px 12px; font-size: 13.5px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
+.ds-option input { margin: 2px 0 0; accent-color: var(--accent); }
+.ds-option .sub { display: block; margin-top: 2px; font-size: 12.5px; color: var(--muted); }
 .ds-group { border-bottom: 1px solid var(--line); }
 .ds-group:last-child { border-bottom: 0; }
 .ds-group > summary { display: flex; align-items: baseline; gap: 8px; padding: 12px 0; font-weight: 600; cursor: pointer; }
@@ -3591,7 +3594,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       "Each jar is checked on its own first (some say they're client or server only), then on Modrinth. Nothing changes until you apply. Hover a mod to see why.",
       body, [btn("Cancel", closeBig), go]);
 
-    api("POST", "/api/sides/detect", {}).then(function (res) {
+    // Whether client mods whose server copy is optional (it adds features) go on both. Remembered here only.
+    var extras = true;
+    try { extras = localStorage.getItem("mmm.detect.serverExtras") !== "0"; } catch (e) {}
+    function load() {
+      picks = {};
+      label();
+      body.replaceChildren(h("p", { class: "search-empty" }, "Reading the jars and checking Modrinth…"));
+      api("POST", "/api/sides/detect", { serverExtras: extras }).then(show, function (e) {
+        body.replaceChildren(h("p", { class: "search-empty" }, "Couldn't detect sides (" + e.message + ")."));
+      });
+    }
+    load();
+    function show(res) {
       var groups = { add: [], guess: [], change: [], unknown: [], same: [] };
       res.mods.forEach(function (m) {
         var r = model.byKey[m.key];
@@ -3611,6 +3626,18 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       ];
       body.replaceChildren();
       if (res.modrinthProblem) body.append(h("p", { class: "hint", style: "margin:12px 0 0" }, res.modrinthProblem));
+      if (res.serverOptionalCount) {
+        var opt = h("input", { type: "checkbox", checked: extras ? true : null });
+        opt.addEventListener("change", function () {
+          extras = opt.checked;
+          try { localStorage.setItem("mmm.detect.serverExtras", extras ? "1" : "0"); } catch (e) {}
+          load();
+        });
+        body.append(h("label", { class: "ds-option" }, opt, h("span", null,
+          h("strong", null, "Put mods on the server too when it adds features"),
+          h("span", { class: "sub" }, count(res.serverOptionalCount, "client mod works", "client mods work") + " alone but gain features when the server has them too (multiplayer sync and the like). " +
+            (extras ? "They're marked both sides." : "They're marked client only.")))));
+      }
       GROUPS.forEach(function (g) {
         var items = groups[g.key];
         if (!items.length) return;
@@ -3642,9 +3669,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       });
       if (!body.children.length) body.append(h("p", { class: "search-empty" }, "There are no jars in this folder."));
       label();
-    }, function (e) {
-      body.replaceChildren(h("p", { class: "search-empty" }, "Couldn't detect sides (" + e.message + ")."));
-    });
+    }
   }
   $("detect-sides").addEventListener("click", detectSides);
 
