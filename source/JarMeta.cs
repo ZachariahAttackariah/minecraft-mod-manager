@@ -35,6 +35,7 @@ namespace MinecraftModManager
         public readonly List<ModInfo> Nested = new List<ModInfo>(); // mods bundled inside (jar-in-jar)
         public bool Broken;
         public string Side, SideReason; // "client" or "server" when the jar itself says it belongs on one side only
+        public bool NoServerNeeded;     // displayTest IGNORE_SERVER_VERSION: a hint at client-only, but server-side mods use it too
     }
 
     static partial class Program
@@ -111,12 +112,10 @@ namespace MinecraftModManager
                     {
                         string id = Val(v, "modId");
                         if (id == null) continue;
-                        // IGNORE_SERVER_VERSION is what client-only mods set, so servers without them still show as compatible.
-                        if (meta.Side == null && string.Equals(Val(v, "displayTest"), "IGNORE_SERVER_VERSION", StringComparison.OrdinalIgnoreCase))
-                        {
-                            meta.Side = "client";
-                            meta.SideReason = "it tells the game it doesn't need to be on the server";
-                        }
+                        // IGNORE_SERVER_VERSION only says the server needn't have it. Client-only mods set it, but so
+                        // do some server-side ones (Axes Are Weapons), so it's a hint, not an answer.
+                        if (string.Equals(Val(v, "displayTest"), "IGNORE_SERVER_VERSION", StringComparison.OrdinalIgnoreCase))
+                            meta.NoServerNeeded = true;
                         string version = Val(v, "version");
                         if (version != null && version.Contains("${file.jarVersion}")) version = jarVersion;
                         if (version != null && version.Contains("${")) version = null;

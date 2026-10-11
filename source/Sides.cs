@@ -1,7 +1,8 @@
 // Detecting where each jar installs (client only, server only or both) for the Detect button by the
-// side chart. A jar that says it belongs on one side only (a client-only displayTest, clientSideOnly, or
-// a Fabric environment) is taken at its word. Otherwise Modrinth's client / server flags decide. A mod
-// with neither is a guess: its file doesn't limit it to one side, so it's probably needed on both.
+// side chart. A jar that says it belongs on one side only (clientSideOnly, or a Fabric environment) is
+// taken at its word. Otherwise Modrinth's client / server flags decide. Without those it's a guess:
+// a jar whose displayTest says the server needn't have it is probably client only (only probably:
+// Axes Are Weapons, a server-side mod, says the same), anything else is probably needed on both.
 // Nothing is changed here; the page shows the results and applies the ones the user keeps as tags.
 
 using System;
@@ -55,6 +56,11 @@ namespace MinecraftModManager
                 {
                     source = "Modrinth";
                     reason = "Modrinth lists it as " + SideWord(S(project, "client_side")) + " on the client and " + SideWord(S(project, "server_side")) + " on the server.";
+                }
+                else if (meta.NoServerNeeded)
+                {
+                    side = "client"; source = "mod file"; sure = false;
+                    reason = "Not on Modrinth" + (project != null ? " with side info" : "") + ". The jar says the server doesn't need it, which usually means client only, but some server-side mods say the same.";
                 }
                 else if (!meta.Broken && (meta.Kind != "none" || meta.Nested.Count > 0))
                 {
