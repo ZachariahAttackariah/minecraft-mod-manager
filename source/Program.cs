@@ -100,6 +100,7 @@ namespace MinecraftModManager
                 else if (args[i] == "--server" && i + 1 < args.Length) serverArg = args[++i];
                 else if (args[i] == "--data" && i + 1 < args.Length) dataArg = args[++i];
                 else if (args[i] == "--prism" && i + 1 < args.Length) prismDataOverride = Path.GetFullPath(args[++i]);
+                else if (args[i] == "--server-installer" && i + 1 < args.Length) serverInstallerOverride = Path.GetFullPath(args[++i]);
                 else if (args[i] == "--port" && i + 1 < args.Length) port = int.Parse(args[++i]);
                 else if (args[i] == "--no-window" || args[i] == "--no-browser") showWindow = false;
             }
@@ -143,6 +144,7 @@ namespace MinecraftModManager
             }
 
             RememberFolder(modsDir);
+            if (serverDir != null) RememberServer(serverDir);
 
             listener = new HttpListener();
             listener.Prefixes.Add(origin + "/");
@@ -310,6 +312,9 @@ namespace MinecraftModManager
                     {
                         case "/api/server":
                             result = ServerStatus();
+                            break;
+                        case "/api/server/create-info":
+                            result = ServerCreateInfo();
                             break;
                         case "/api/server/console":
                         {
@@ -483,6 +488,15 @@ namespace MinecraftModManager
                         SendJson(ctx, 200, Obj("ok", true));
                         return;
 
+                    case "/api/server/create":
+                        SendJson(ctx, 200, CreateServer(body));
+                        return;
+                    case "/api/server/select":
+                        SendJson(ctx, 200, SelectServer(Str(body, "path")));
+                        return;
+                    case "/api/server/pick-parent":
+                        SendJson(ctx, 200, PickServerParent(Str(body, "current")));
+                        return;
                     case "/api/server/folder":
                         SendJson(ctx, 200, ChooseServerFolder());
                         return;
@@ -1557,6 +1571,8 @@ namespace MinecraftModManager
                     if (!string.IsNullOrEmpty(server)) serverDir = server;
                     foreach (object folder in A(Get(settings, "recentFolders")))
                         if (folder is string) recentFolders.Add((string)folder);
+                    foreach (object folder in A(Get(settings, "servers")))
+                        if (folder is string) knownServers.Add((string)folder);
                     savedWindow = D(Get(settings, "window"));
                 }
             }
@@ -1571,7 +1587,7 @@ namespace MinecraftModManager
             try
             {
                 File.WriteAllText(SettingsPath, new JavaScriptSerializer().Serialize(Obj("modsFolder", modsDir, "gameVersion", gameVersion, "loader", loader,
-                    "serverFolder", serverDir, "window", savedWindow, "recentFolders", RecentFoldersCopy())), new UTF8Encoding(false));
+                    "serverFolder", serverDir, "window", savedWindow, "recentFolders", RecentFoldersCopy(), "servers", KnownServersCopy())), new UTF8Encoding(false));
             }
             catch { }
         }

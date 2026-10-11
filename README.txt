@@ -49,6 +49,14 @@ Updates
   Untick any mod you'd rather keep. Updating several mods takes a snapshot first.
 
 Server (for hosting friends on this PC)
+  Servers ........... the dropdown at the top lists every server the app knows; pick one to switch (while
+                      it's stopped). "Add existing folder..." adds a server you already have.
+  Create server... .. makes a new server from one of your instances: name, location (by default
+                      Minecraft Servers in your user folder), memory and port. It downloads the loader's
+                      official server installer (NeoForge and Forge are checked against their published
+                      checksums), runs it with the progress in the console, then copies the instance's
+                      mods tagged "server" and its configs (not client-only ones). eula.txt is only written
+                      if you tick "I accept Minecraft's EULA".
   Status ............ running / stopped, memory, uptime, who's online, and how friends connect.
   Start / Stop ...... Start runs the same pre-launch check on the server's mods first. Stop sends "stop", so
                       the world saves. Force stop only appears while it's stopping, for when it's stuck.
@@ -125,6 +133,7 @@ Files
   source\Window.cs                        The window and its tabs.
   source\Instances.cs                     The instance picker, and creating / changing / deleting instances.
   source\Server.cs                        Starting, stopping and talking to the Minecraft server.
+  source\ServerCreate.cs                  Creating servers and switching between them.
   source\Sync.cs                          Comparing and syncing the game and the server.
   source\JarMeta.cs                       Reading jars and the pre-launch check.
   source\Details.cs                       Mod details, versions and changelogs.

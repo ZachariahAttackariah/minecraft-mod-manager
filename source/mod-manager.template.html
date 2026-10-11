@@ -2893,16 +2893,26 @@ body { padding-bottom: var(--bar-h); }
     var i = srv.info;
     if (!i) { card.append(h("p", { class: "hint" }, srv.error || "Loading…")); return; }
     if (!i.configured || !i.exists) {
+      // A server that has gone missing still gets the picker, to switch to another one.
+      if (i.configured && (i.servers || []).length > 1) card.append(serverPicker(i));
       card.append(h("h2", null, "Host a server for your friends"),
-        h("p", { class: "lead" }, i.configured ? "The server folder " + i.folder + " isn't there any more." : "Choose your server's folder (the one with run.bat and server.properties). The app starts it, shows its console, and keeps its mods in step with your game."),
-        h("div", { class: "row-actions" }, btn("Choose server folder…", chooseServerFolder, "primary")));
+        h("p", { class: "lead" }, i.configured ? "The server folder " + i.folder + " isn't there any more." : "Create a new server from one of your instances, or use a server you already have. The app starts it, shows its console, and keeps its mods in step with your game."),
+        h("div", { class: "row-actions" }, btn("Create server…", createServerDialog, "primary", { disabled: !connected }),
+          btn("Use an existing server folder…", chooseServerFolder, "", { disabled: !connected })));
+      return;
+    }
+    if (i.creating) {
+      card.append(serverPicker(i), h("div", { class: "status-head" },
+        h("span", { class: "big" }, h("span", { class: "dot starting" }), "Creating the server…"),
+        h("span", { class: "hint" }, "The installer's progress shows in the console below.")),
+        h("div", { class: "row-actions" }, btn("Open server folder", function () { api("POST", "/api/server/open-folder", {}).catch(function (e) { toast(e.message); }); })));
       return;
     }
     var state = i.state, bad = crashed(i);
     var label = { running: "Running", starting: "Starting…", stopping: "Stopping…", stopped: bad ? "Crashed" : "Stopped" }[state];
     var detail = state === "running" || state === "starting" ? "for " + uptime(i.startedAt) + (i.memory ? " · using " + formatBytes(i.memory) + " of memory" : "")
       : state === "stopped" && i.stoppedAt ? (i.exitNote || "Stopped") + " at " + clock(new Date(i.stoppedAt)) : "";
-    card.append(h("div", { class: "status-head" },
+    card.append(serverPicker(i), h("div", { class: "status-head" },
       h("span", { class: "big" }, h("span", { class: "dot " + (bad ? "crashed" : state) }), "Server " + label.toLowerCase()),
       h("span", { class: "hint" }, detail)));
 
@@ -2917,7 +2927,6 @@ body { padding-bottom: var(--bar-h); }
     actions.append(btn("Check server mods", function () {
       api("GET", "/api/check?side=server").then(function (res) { problemsDialog(res, {}); }, function (e) { toast(e.message); });
     }));
-    actions.append(btn("Change folder…", chooseServerFolder, "", { disabled: state !== "stopped" }));
     card.append(actions);
 
     if (!i.eula) {
@@ -2960,6 +2969,127 @@ body { padding-bottom: var(--bar-h); }
     add("Online now", state === "running" ? (i.players.length ? i.players.join(", ") : "nobody") : null);
     add("Java", i.java);
     card.append(h("div", { class: "status-grid" }, join, h("div", null, h("h2", { style: "font-size:15px" }, "Details"), kv)));
+  }
+
+  // The row at the top of the server card: which server, plus Create / Add existing.
+  function serverPicker(i) {
+    var servers = i.servers || [];
+    var locked = !connected || i.creating || (i.state && i.state !== "stopped");
+    var row = h("div", { class: "row-actions", style: "margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line)" });
+    if (servers.length) {
+      var select = h("select", { "aria-label": "Server", disabled: locked, title: locked ? "Stop the server to switch to another one" : "Switch server",
+        style: "min-width:220px;padding:8px 10px;font:600 14px/1.2 var(--font-body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:3px" });
+      servers.forEach(function (s) {
+        select.append(h("option", { value: s.path }, s.name + (s.neoforge ? "  (NeoForge " + s.neoforge + ")" : "") + (s.exists ? "" : "  (missing)")));
+        if (s.current) select.value = s.path;
+      });
+      select.addEventListener("change", function () { switchServer(select.value); });
+      row.append(h("span", { class: "get-label" }, "Server"), select);
+    }
+    row.append(btn("Create server…", createServerDialog, "", { disabled: !connected || i.creating }),
+      btn("Add existing folder…", chooseServerFolder, "", { disabled: locked }));
+    return row;
+  }
+
+  function serverPageReset() {
+    srv.sync = null;
+    srv.settingsBuilt = false;
+    srv.lines = [];
+    srv.seq = 0;
+    $("console-out").replaceChildren();
+  }
+
+  function switchServer(path) {
+    api("POST", "/api/server/select", { path: path }).then(function (res) {
+      toast("Now using the server in " + res.folder);
+      serverPageReset();
+      return refreshServer().then(function () { setSub(srv.sub); });
+    }, function (e) { toast(e.message); refreshServer(); });
+  }
+
+  function createServerDialog() {
+    var form = h("form", { class: "inst-form", onsubmit: function (e) { e.preventDefault(); submit(); } });
+    var nameInput = h("input", { type: "text", maxlength: "60", autocomplete: "off", spellcheck: "false" });
+    var instanceSelect = h("select", { "aria-label": "Based on" });
+    var where = h("div", { class: "fixed" }, "…");
+    var parent = null;
+    var memorySelect = h("select", { "aria-label": "Memory" });
+    var portInput = h("input", { type: "number", min: "1024", max: "65535" });
+    portInput.value = "25565";
+    var copyMods = h("input", { type: "checkbox", checked: true });
+    var eula = h("input", { type: "checkbox" });
+    var error = h("p", { class: "tag-error", role: "alert", hidden: true });
+    var instances = [];
+    var showWhere = function () {
+      var folder = (nameInput.value.trim() || "New Server").replace(/[<>:"\/\\|?*]/g, "");
+      where.textContent = "Folder: " + (parent || "…") + "\\" + folder;
+    };
+    form.append(
+      h("label", { class: "prop" }, h("b", null, "Name"), nameInput, h("span", null, "Also shown under the server in the multiplayer list.")),
+      h("label", { class: "prop" }, h("b", null, "Based on"), instanceSelect,
+        h("span", null, "The server gets this instance's Minecraft version and loader, and (below) its server-side mods and configs.")),
+      h("div", { class: "prop" }, h("b", null, "Location"), where,
+        h("span", null, btn("Change location…", function () {
+          api("POST", "/api/server/pick-parent", { current: parent }).then(function (res) { if (res.folder) { parent = res.folder; showWhere(); } }, function (e) { toast(e.message); });
+        }))),
+      h("div", { class: "pair" },
+        h("label", { class: "prop" }, h("b", null, "Memory"), memorySelect),
+        h("label", { class: "prop" }, h("b", null, "Port"), portInput, h("span", null, "25565 is Minecraft's usual port."))),
+      h("label", { class: "toggle" }, copyMods, "Copy the instance's server-side mods and configs"),
+      h("div", { class: "prop" }, h("label", { class: "toggle" }, eula, "I accept Minecraft's EULA"),
+        h("span", null, "The server won't start without it. ", h("button", { type: "button", class: "linkish", onclick: function () { openTab("https://aka.ms/MinecraftEULA"); } }, "Read the EULA"))),
+      h("p", { class: "hint", style: "margin:0" }, "Downloads the loader's official server installer (a few MB) and runs it, which then downloads Minecraft's server files. It takes a minute or two; the progress shows in the console."),
+      error);
+    var go = btn("Create server", function () { submit(); }, "primary", { disabled: true });
+    openBig("Create server", "", form, [btn("Cancel", closeBig), go]);
+    nameInput.addEventListener("input", showWhere);
+
+    Promise.all([api("GET", "/api/instances"), api("GET", "/api/server/create-info")]).then(function (both) {
+      instances = both[0].instances.filter(function (it) { return it.loader && it.loader !== "quilt"; });
+      instances.forEach(function (it) {
+        instanceSelect.append(h("option", { value: it.id }, it.name + " (Minecraft " + it.minecraft + ", " + (LOADER_NAMES[it.loader] || it.loader) + ")"));
+        if (it.current) instanceSelect.value = it.id;
+      });
+      if (!instances.length) {
+        error.textContent = "There's no instance with NeoForge, Forge or Fabric to base a server on. Make one with New instance first.";
+        error.hidden = false;
+        return;
+      }
+      var current = instances.filter(function (it) { return it.id === instanceSelect.value; })[0] || instances[0];
+      nameInput.value = current.name + " Server";
+      parent = both[1].root;
+      var max = both[1].ramMb ? Math.floor((both[1].ramMb - 2048) / 1024) : 16;
+      [2, 3, 4, 6, 8, 10, 12, 16].forEach(function (gb) { if (gb <= max) memorySelect.append(h("option", { value: String(gb * 1024) }, gb + " GB")); });
+      memorySelect.value = String(Math.min(6, max) * 1024);
+      if (!memorySelect.value && memorySelect.options.length) memorySelect.selectedIndex = memorySelect.options.length - 1;
+      if (!both[1].java) { error.textContent = "Java wasn't found. Install Java 21 (for example Eclipse Temurin) first."; error.hidden = false; }
+      showWhere();
+      go.disabled = !connected;
+      nameInput.focus();
+      nameInput.select();
+    }, function (e) { error.textContent = e.message; error.hidden = false; });
+
+    function submit() {
+      var name = nameInput.value.trim();
+      if (!name) { error.textContent = "Give the server a name."; error.hidden = false; nameInput.focus(); return; }
+      error.hidden = true;
+      go.disabled = true;
+      go.textContent = "Starting…";
+      api("POST", "/api/server/create", { name: name, instanceId: instanceSelect.value, parent: parent, memoryMb: Number(memorySelect.value) || 0,
+          port: Number(portInput.value) || 25565, copyMods: copyMods.checked, acceptEula: eula.checked }).then(function (res) {
+        closeBig();
+        toast("Creating the server in " + res.folder + ". Watch the console for progress.");
+        serverPageReset();
+        setView("server");
+        setSub("console");
+        return refreshServer().then(startConsole);
+      }, function (e) {
+        error.textContent = e.message;
+        error.hidden = false;
+        go.disabled = false;
+        go.textContent = "Create server";
+      });
+    }
   }
 
   function chooseServerFolder() {

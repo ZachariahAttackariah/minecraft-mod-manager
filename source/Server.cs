@@ -83,6 +83,8 @@ namespace MinecraftModManager
                     "stoppedAt", serverProcess == null && serverStoppedAt != DateTime.MinValue ? serverStoppedAt.ToUniversalTime().ToString("o") : null,
                     "exitNote", serverExitNote, "crashReport", serverCrashReport, "memory", memory);
             }
+            status["creating"] = serverCreating;
+            status["servers"] = ServerList();
             if (dir == null) { status["configured"] = false; return status; }
             status["configured"] = true;
             bool exists = Directory.Exists(dir);
@@ -133,7 +135,7 @@ namespace MinecraftModManager
 
         static Dictionary<string, object> ChooseServerFolder()
         {
-            if (ServerBusy()) throw new UserError("Stop the server before choosing another folder.");
+            if (ServerBusy() || serverCreating) throw new UserError("Stop the server before choosing another folder.");
             string picked = null;
             string current = serverDir;
             ui.Send(delegate { picked = PickFolder(current, "Choose the server folder (the one with run.bat and server.properties)"); }, null);
@@ -142,6 +144,7 @@ namespace MinecraftModManager
                 || Directory.Exists(Path.Combine(picked, "libraries"));
             if (!looksRight) throw new UserError(picked + " doesn't look like a server folder (no run.bat, server.properties or libraries folder).");
             serverDir = picked;
+            RememberServer(picked);
             SaveSettings();
             Log("Server    folder is now " + picked);
             return Obj("ok", true, "changed", true, "folder", picked);
@@ -479,6 +482,7 @@ namespace MinecraftModManager
             lock (ServerLock)
             {
                 if (serverProcess != null) throw new UserError("The server is already " + (serverState == "stopping" ? "stopping." : "running."));
+                if (serverCreating) throw new UserError("The server is still being created. Wait for it to finish.");
                 if (!EulaAccepted(dir)) throw new UserError("eula", "The server needs you to accept Minecraft's EULA before it can start.");
                 if (ExternalServerRunning(dir, null)) throw new UserError("A server is already running from this folder (it wasn't started from here). Stop it in its own window first.");
                 int port = ServerPort(dir);

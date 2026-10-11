@@ -33,6 +33,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Online players and connection info.
   - A `server.properties` editor.
   - Asks before closing the window while the server runs, then stops it so the world saves.
+- **Create server:** makes a new NeoForge, Forge or Fabric server from an instance. It runs the loader's official installer (NeoForge and Forge installers are checked against their published SHA-1), then copies the instance's server-side mods and configs and sets memory, port and name. The EULA is only accepted if the user ticks it. A dropdown switches between known servers.
 - **Sync from the game:** compares the game's mods (using their client/server tags) with the server's, and compares config files setting by setting. Nothing changes until you press Apply, and never while the server is running.
 - **Snapshots**
   - Remembers every jar in the folder and whether it's on or off.
@@ -80,6 +81,7 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/Window.cs` | The window and its tabs |
 | `source/Instances.cs` | The instance picker, and creating, changing and deleting Prism instances |
 | `source/Server.cs` | Starting, stopping and talking to the Minecraft server |
+| `source/ServerCreate.cs` | Creating servers, and switching between them |
 | `source/Sync.cs` | Comparing and syncing the game and the server |
 | `source/JarMeta.cs` | Reading jar metadata, and the pre-launch check |
 | `source/Details.cs` | Mod details, versions and changelogs |
