@@ -142,6 +142,22 @@ namespace MinecraftModManager
                         });
                     }
                 }
+                // Modrinth's generated datapack jars write their mod as one inline table:
+                // mods = [ { modId = '...', version = '...', displayName = '...' } ]
+                if (meta.Mods.Count == 0)
+                {
+                    Match inline = Regex.Match(toml, @"(?s)\bmods\s*=\s*\[\s*\{(.*?)\}");
+                    if (inline.Success)
+                    {
+                        Func<string, string> field = k =>
+                        {
+                            Match f = Regex.Match(inline.Groups[1].Value, @"\b" + k + @"\s*=\s*[""']([^""']*)[""']");
+                            return f.Success && f.Groups[1].Value.Length > 0 ? f.Groups[1].Value : null;
+                        };
+                        string id = field("modId");
+                        if (id != null) meta.Mods.Add(new ModInfo { Id = id, Version = field("version"), Name = field("displayName") ?? id, Description = field("description"), Logo = field("logoFile") });
+                    }
+                }
                 return;
             }
 

@@ -260,7 +260,7 @@ h1 { margin: 0; }
 .check:disabled { opacity: 0.4; cursor: default; }
 
 .list { margin-top: 6px; }
-.list-head, .row { display: grid; grid-template-columns: 22px minmax(0, 1.25fr) 64px minmax(0, 1fr) 70px; gap: 14px; align-items: center; padding: 9px 12px; }
+.list-head, .row { display: grid; grid-template-columns: 22px minmax(0, 1.25fr) 64px minmax(0, 1fr) 100px; gap: 14px; align-items: center; padding: 9px 12px; }
 .list-head { padding-block: 12px 8px; font: 600 11.5px/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
 .list-head .r { text-align: right; }
 .row { border-bottom: 1px solid var(--line); cursor: default; }
@@ -274,6 +274,8 @@ h1 { margin: 0; }
 .mod-icon { flex: none; width: 36px; height: 36px; border-radius: 6px; object-fit: contain; background: var(--sunken); }
 .mod-icon.letter { display: grid; place-items: center; font: 700 15px/1 var(--font-title); color: var(--muted); }
 .row.is-disabled .mod-icon, .row.is-missing .mod-icon { opacity: 0.45; filter: grayscale(1); }
+.icon-wrap { position: relative; flex: none; display: inline-flex; }
+.off-tag { position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%); padding: 1px 4px; font: 700 9.5px/1.2 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); background: var(--btn); border: 1px solid var(--bg); border-radius: 3px; box-shadow: 0 1px 2px var(--bevel-lo); white-space: nowrap; }
 .mod-name { font-weight: 600; font-size: 14.5px; color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
 a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 2px; }
 .file-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 2px; }
@@ -301,7 +303,8 @@ button.chip[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 32%, 
 .act { display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; color: var(--muted); background: none; border: 1px solid transparent; border-radius: 5px; cursor: pointer; opacity: 0.45; }
 .row:hover .act, .row:focus-within .act, .row.is-selected .act, .act.enable { opacity: 1; }
 .act:hover { color: var(--ink); background: var(--sunken); border-color: var(--line); }
-.act.enable { color: var(--accent-fg); }
+.act.enable, .act.upd { color: var(--accent-fg); }
+.act.upd { opacity: 1; }
 .act.delete:hover { color: var(--danger-fg); }
 .act:disabled { cursor: default; opacity: 0.3; }
 @media (hover: none) { .act { opacity: 1; } }
@@ -973,7 +976,6 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   var SIDE_TAGS = ["client", "server"];
   var TAG_COLORS = { client: "--c-client", server: "--c-server", worldgen: "--c-worldgen", horses: "--c-horses", enchanting: "--c-enchanting" };
-  var EXTRA_COLORS = ["--c-x1", "--c-x2", "--c-x3", "--c-x4"];
   var TAG_NAME = /^[a-z0-9][a-z0-9_-]{0,31}$/;
   var SIDES = [
     { key: "client", label: "Client only" },
@@ -1032,11 +1034,18 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
     return svg;
   }
+  // Every other tag gets its own colour: hues a golden angle apart in tag-list order (so neighbours
+  // never look alike), alternating lighter and deeper, all light enough to read on the dark theme.
   function colorOf(tag) {
     if (TAG_COLORS[tag]) return "var(" + TAG_COLORS[tag] + ")";
-    var n = 0;
-    for (var i = 0; i < tag.length; i++) n = (n * 31 + tag.charCodeAt(i)) >>> 0;
-    return "var(" + EXTRA_COLORS[n % EXTRA_COLORS.length] + ")";
+    var i = model && model.topics ? model.topics.indexOf(tag) : -1;
+    if (i < 0) {
+      var n = 0;
+      for (var k = 0; k < tag.length; k++) n = (n * 31 + tag.charCodeAt(k)) >>> 0;
+      i = n % 64;
+    }
+    var hue = (i * 137.508 + 185) % 360;
+    return "hsl(" + hue.toFixed(1) + " " + (i % 3 === 2 ? 50 : 66) + "% " + (i % 2 ? 61 : 71) + "%)";
   }
   function prettify(file) {
     var base = file.replace(/\.jar(\.disabled)?$/i, "");
@@ -1450,12 +1459,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         ? h("span", { class: "mod-name" }, r.name)
         : h("button", { type: "button", class: "mod-name", "data-action": "details", title: "Details, versions and changelogs" }, r.name);
       var badges = [];
-      if (r.status === "disabled") badges.push(h("span", { class: "badge", title: "Renamed to .jar.disabled, so the game skips it" }, "disabled"));
       if (r.status === "missing") badges.push(h("span", { class: "badge missing", title: "Listed in mod-tags.json, but the jar isn't in the folder" }, "not in folder"));
       if (!r.tracked && r.status !== "missing") badges.push(h("span", { class: "badge untracked", title: "This jar has no entry in mod-tags.json" }, "not in mod-tags.json"));
-      if (r.update) badges.push(h("button", { type: "button", class: "badge update", "data-action": "update", disabled: !!busy[r.key] || !connected,
-        title: "Update from " + (r.mr ? r.mr.versionNumber : "this version") + " to " + r.update.versionNumber + " (Modrinth" + (r.update.type && r.update.type !== "release" ? ", " + r.update.type : "") + ")" },
-        "update → " + r.update.versionNumber));
       var chips = r.topics.length
         ? r.topics.map(function (t) {
             var on = state.tags.indexOf(t) >= 0;
@@ -1467,6 +1472,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (r.status !== "missing") {
         var isBusy = !!busy[r.key];
         var enable = r.status === "disabled";
+        // An available update is a button beside the others, so it never adds a line to the row.
+        if (r.update) actions.append(h("button", { type: "button", class: "act upd", "data-action": "update", disabled: isBusy || !connected,
+          title: "Update from " + (r.mr ? r.mr.versionNumber : "this version") + " to " + r.update.versionNumber + " (Modrinth" + (r.update.type && r.update.type !== "release" ? ", " + r.update.type : "") + ")",
+          "aria-label": "Update " + r.name + " to " + r.update.versionNumber }, icon("up")));
         actions.append(
           h("button", { type: "button", class: "act" + (enable ? " enable" : ""), "data-action": "toggle", disabled: isBusy || !connected,
             title: enable ? "Enable" : "Disable", "aria-label": (enable ? "Enable " : "Disable ") + r.name }, icon("power")),
@@ -1477,7 +1486,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           role: "row", "aria-selected": sel ? "true" : "false", "data-key": r.key, "aria-busy": busy[r.key] ? "true" : null },
         h("div", { class: "c-check", role: "cell" },
           h("button", { type: "button", class: "check", role: "checkbox", "aria-checked": sel ? "true" : "false", "aria-label": "Select " + r.name })),
-        h("div", { class: "c-name", role: "cell" }, modIcon(r), h("div", { class: "c-name-text" }, name, h("div", { class: "file-line" }, h("span", { class: "file" }, r.file), badges))),
+        // "Off" sits on the icon, so a turned-off mod's row is no taller than the others.
+        h("div", { class: "c-name", role: "cell" }, h("span", { class: "icon-wrap" }, modIcon(r),
+            r.status === "disabled" ? h("span", { class: "off-tag", title: "Turned off: renamed to .jar.disabled, so the game skips it" }, "off") : null),
+          h("div", { class: "c-name-text" }, name, h("div", { class: "file-line" }, h("span", { class: "file" }, r.file), badges))),
         h("div", { class: "c-slots", role: "cell" }, h("span", { class: "slots" }, slot("C", "client", r), slot("S", "server", r))),
         h("div", { class: "c-chips chips", role: "cell" }, chips),
         actions));

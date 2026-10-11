@@ -43,6 +43,11 @@ Mods page
   Each mod shows its icon (Modrinth's, else the logo inside the jar). On a mod's row, click a tag to filter
   by it (click again to stop). C and S show where it installs; change them from the right-click menu.
   Click the Mod or Side column heading to sort by name or by side (click again to reverse).
+  A turned-off mod shows OFF on its icon, and an available update is the green arrow among the row's
+  actions, so neither makes the row taller. Every tag gets its own colour.
+  Tags from another tool: if the folder also has a .mod-tags.json keyed by mod id (another launcher's
+  tag file), it's read whenever it changes and copied into mod-tags.json, matched to jars by mod id,
+  with tag names made valid ("To Do" becomes to-do). Its tags win for the mods it lists; it's never written to.
 
 Tabs
   Links (Modrinth, CurseForge, mod pages) open as tabs in the same window, next to the pinned

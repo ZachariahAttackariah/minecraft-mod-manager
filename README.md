@@ -12,7 +12,8 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Select several mods at once, file-manager style.
   - Tag mods (client / server, plus your own tags), stored in `mod-tags.json` next to the jars. Click a tag on a row to filter by it; sort the list by name or by side.
   - Detect sides: works out client only, server only or both for every jar, from the jar's own metadata (a client-only `displayTest`, `clientSideOnly`, or a Fabric `environment`) and then Modrinth's client / server flags. Results are listed for review before any tag changes, with Undo after.
-  - Each mod shows its icon: Modrinth's when Modrinth knows the jar, else the logo inside the jar.
+  - Each mod shows its icon: Modrinth's when Modrinth knows the jar, else the logo inside the jar. Turned-off mods show OFF on the icon; updates are an arrow among the row's actions.
+  - Another tool's `.mod-tags.json` (keyed by mod id) in the same folder is picked up live: whenever it changes, its tags are copied into `mod-tags.json`, matched to jars by mod id.
 - **Modrinth**
   - Recognises installed jars by their SHA-1 hash.
   - Checks for updates and shows every changelog between your version and the new one before updating.

@@ -682,6 +682,7 @@ namespace MinecraftModManager
                     files.Add(Obj("name", file.Name, "size", file.Length, "modified", file.LastWriteTimeUtc.ToString("o"),
                         "modId", info[0], "displayName", info[1], "logo", main != null && main.Logo != null));
                 }
+                try { ImportLinkedTags(dir); } catch (Exception ex) { Log("Tags      couldn't read " + LinkedTagsFile + ": " + ex.Message); }
                 string tagsPath = Path.Combine(dir, "mod-tags.json");
                 if (File.Exists(tagsPath)) tagsText = File.ReadAllText(tagsPath, Encoding.UTF8);
             }
