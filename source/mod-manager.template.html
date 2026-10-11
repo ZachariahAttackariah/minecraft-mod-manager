@@ -186,12 +186,14 @@ h1 { margin: 0; }
      landed halfway down a long list. Now the first row is only as tall as the side chart, and the tags
      panel sits right under it and stays in view while the list scrolls. */
   .mods-layout { grid-template-columns: minmax(200px, 240px) minmax(0, 1fr); grid-template-areas: "left main" "right main"; grid-template-rows: auto 1fr; }
-  .side-col { position: static; max-height: none; }
-  .side-right { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; }
+  /* Both panels follow the list: each spans the list's full height so it can stick, the side chart at
+     the top and the tags under it (fitSidePanels sets the tags panel's offset to the chart's height). */
+  .side-left, .side-right { grid-column: 1; grid-row: 1 / 3; align-self: start; }
+  .side-left { z-index: 1; }
 }
 @media (max-width: 860px) {
   .mods-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "left" "right" "main"; grid-template-rows: none; }
-  .side-right { position: static; max-height: none; }
+  .side-left, .side-right { grid-column: auto; grid-row: auto; position: static; max-height: none; }
   .side-col .tag-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
   .side-col .side-legend { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
 }
@@ -4750,6 +4752,15 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // and the bottom of the window, so its end is always visible and a long tag list scrolls on its own.
   // Done straight away (two elements, so it's cheap), so the height never lags behind the scroll.
   function queueFit() {
+    // Two-column layout: the tags panel shares the side chart's grid area, so it's pushed down by the
+    // chart's height and sticks just below it.
+    var L = document.querySelector(".side-left"), R = document.querySelector(".side-right");
+    if (L && R) {
+      var stacked = window.matchMedia("(max-width: 1180px) and (min-width: 861px)").matches;
+      var off = stacked ? L.offsetHeight + 16 : 0;
+      R.style.marginTop = stacked ? off + "px" : "";
+      R.style.top = stacked ? (12 + off) + "px" : "";
+    }
     Array.prototype.forEach.call(document.querySelectorAll(".side-col"), function (el) {
       if (getComputedStyle(el).position !== "sticky") { el.style.maxHeight = ""; return; }
       var top = Math.max(12, el.getBoundingClientRect().top);
