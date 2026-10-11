@@ -28,14 +28,21 @@ Top right (like the Minecraft Launcher)
   PLAY .............. starts the chosen instance.
   Pre-launch check .. under PLAY: Check mods (see below), the result, and "Show and fix".
   Server ............ at the right end of the section tabs: the server's status; click it for the Server page.
-  Under the tabs: "Open mods folder", "Open instance folder" (the folder the mods folder is in: configs,
-  saves, packs) and Refresh.
+  Under the tabs: the mods folder (click it to open it; hover for the full path), its jar count, then
+  "Open instance folder" (the folder the mods folder is in: configs, saves, packs) and Refresh.
 
 Mods page
+  One bar above the list: getting mods (Search Modrinth, the Modrinth and CurseForge websites) on the left,
+  and the Minecraft version Modrinth looks for, the update count and Update all / Check for updates on the right.
   The list is in the middle, with "Where each jar installs" (client / server) on the left and the tags
   on the right; click either to filter the list. Hover over a tag to see what it means.
+  Detect (by "Where each jar installs") works out client only, server only or both for every jar: first
+  from the jar itself (some say they're client or server only), then from Modrinth's client / server info.
+  It lists what it found before anything changes: new side tags are ticked, best guesses and changes to
+  sides you already set are not. Apply has Undo in the message.
   Each mod shows its icon (Modrinth's, else the logo inside the jar). On a mod's row, click a tag to filter
-  by it (click again to stop), and click C or S to switch that mod's client / server tag (Undo in the message).
+  by it (click again to stop). C and S show where it installs; change them from the right-click menu.
+  Click the Mod or Side column heading to sort by name or by side (click again to reverse).
 
 Tabs
   Links (Modrinth, CurseForge, mod pages) open as tabs in the same window, next to the pinned

@@ -77,25 +77,41 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .live-dot.on { background: var(--c-worldgen); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-worldgen) 22%, transparent); }
 h1 { margin: 0; }
-.folder-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 12px; font-size: 13px; color: var(--muted); }
-.folder-bar code { color: var(--ink); overflow-wrap: anywhere; }
-.folder-actions { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-.get-mods { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; }
-.get-label { font: 600 12px/1.2 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+/* The folder strip under the tabs: a short path that opens the folder (full path on hover), quiet stats, quiet buttons. */
+.folder-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+.folder-path { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; padding: 4px 6px; margin-left: -6px; font: 500 13px/1.3 var(--font-body); color: var(--muted); background: none; border: 0; border-radius: 3px; cursor: pointer; }
+.folder-path:hover:not(:disabled) { color: var(--ink); background: var(--surface); }
+.folder-path:disabled { cursor: default; }
+.folder-path svg { flex: none; }
+.folder-path .crumbs { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 6px; min-width: 0; }
+.folder-path .crumb { overflow-wrap: anywhere; }
+.folder-path .crumb.lead { font-weight: 600; color: var(--ink); }
+.folder-path .sep { opacity: 0.55; }
+.folder-stats { font-variant-numeric: tabular-nums; }
+.folder-actions { display: inline-flex; flex-wrap: wrap; gap: 2px; margin-left: auto; }
+.btn.quiet { padding: 6px 9px 7px; font-size: 12.5px; font-weight: 500; color: var(--muted); background: none; box-shadow: none; }
+.btn.quiet:hover:not(:disabled) { color: var(--ink); background: var(--surface); }
+.get-label { font: 600 12.5px/1.2 var(--font-body); color: var(--muted); }
+/* Mods page: getting mods and keeping them updated, in one bar. */
+.mods-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding: 10px 12px; font-size: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+.mb-group { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+.mb-group .btn svg { opacity: 0.7; }
+.mb-updates { flex: 1 1 560px; padding-left: 20px; border-left: 1px solid var(--line); }
+@media (max-width: 1240px) { .mb-updates { flex-basis: 100%; padding: 10px 0 0; border-left: 0; border-top: 1px solid var(--line); } }
 
 .btn.play { justify-content: center; min-width: min(200px, 34vw); height: 52px; padding: 0 26px; font: 800 20px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: #fff; background: var(--accent); border-radius: 3px; box-shadow: inset 0 -4px 0 var(--accent-deep), inset 0 2px 0 rgba(255, 255, 255, 0.2); }
 .btn.play:hover { background: var(--accent-hover); }
 .btn.play:disabled { background: var(--btn); box-shadow: inset 0 -4px 0 var(--bevel-lo); color: var(--muted); opacity: 1; }
 
-.mr-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 8px; padding: 8px 10px; font-size: 13.5px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
 .target { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .target-btn { padding: 4px 8px; font: 600 13px/1.2 var(--font-mono); color: var(--ink); background: var(--bg); border: 1px dashed var(--muted); border-radius: 4px; cursor: pointer; }
 .target-btn:hover { border-style: solid; border-color: var(--accent); }
 .target-form { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .target-form input, .target-form select { padding: 6px 8px; font: 500 13px/1.2 var(--font-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; }
 .target-form input { width: 7.5em; }
-.mr-status { color: var(--muted); }
+.mr-status { flex: 1 1 220px; min-width: 0; color: var(--muted); }
 .mr-status strong { color: var(--ink); font-weight: 600; }
+.mr-status strong.upd { color: var(--accent-fg); }
 .mr-actions { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
 .badge.update { --c: var(--accent); border-style: solid; background: color-mix(in srgb, var(--accent) 12%, transparent); cursor: pointer; }
 .badge.update:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
@@ -277,9 +293,9 @@ a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--acce
 button.chip { cursor: pointer; }
 button.chip:hover { border-color: var(--c); }
 button.chip[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 32%, transparent); border-color: var(--c); }
-button.slot { padding: 0; border: 0; cursor: pointer; }
-button.slot:hover:not(:disabled) { outline: 2px solid color-mix(in srgb, var(--c) 70%, transparent); outline-offset: 1px; }
-button.slot:disabled { cursor: default; }
+.sort-head { display: inline-flex; align-items: center; gap: 5px; padding: 0; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.sort-head:hover, .sort-head[aria-pressed="true"] { color: var(--ink); }
+.sort-head .arrow { font-size: 9px; opacity: 0.8; }
 
 .c-actions { display: flex; justify-content: flex-end; gap: 4px; }
 .act { display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; color: var(--muted); background: none; border: 1px solid transparent; border-radius: 5px; cursor: pointer; opacity: 0.45; }
@@ -518,6 +534,23 @@ details.more > summary { cursor: pointer; font: 600 13.5px/1.3 var(--font-displa
 /* Changelog + problems dialogs */
 .dialog.big { width: min(760px, 100%); max-height: calc(100vh - 32px); grid-template-rows: auto auto minmax(0, 1fr) auto; }
 .dialog .scroll { overflow: auto; min-height: 0; margin: 0 -20px; padding: 0 20px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+/* Detect sides: results grouped by what applying would do. */
+.ds-group { border-bottom: 1px solid var(--line); }
+.ds-group:last-child { border-bottom: 0; }
+.ds-group > summary { display: flex; align-items: baseline; gap: 8px; padding: 12px 0; font-weight: 600; cursor: pointer; }
+.ds-group > summary .n { font: 500 12.5px/1 var(--font-mono); color: var(--muted); }
+.ds-tools { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: -4px 0 8px; font-size: 13px; color: var(--muted); }
+.ds-tools .linkish { font-size: 13px; }
+.ds-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; padding: 7px 2px; border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent); font-size: 13.5px; cursor: pointer; }
+.ds-row:hover { background: color-mix(in srgb, var(--bg) 50%, transparent); }
+.ds-row.info { cursor: default; }
+.ds-row input { margin: 0; accent-color: var(--accent); }
+.ds-name { min-width: 0; }
+.ds-name .sub { display: block; font: 400 12px/1.3 var(--font-mono); color: var(--muted); overflow-wrap: anywhere; }
+.ds-side { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 8px; font-size: 12.5px; color: var(--muted); }
+.ds-chip { display: inline-flex; align-items: center; gap: 5px; color: var(--ink); white-space: nowrap; }
+.ds-side .src { font: 400 11.5px/1 var(--font-mono); }
+@media (max-width: 560px) { .ds-row { grid-template-columns: 18px minmax(0, 1fr); } .ds-side { grid-column: 2; justify-content: flex-start; } }
 .cl-mod { padding: 12px 0; border-bottom: 1px solid var(--line); }
 .cl-mod:last-child { border-bottom: 0; }
 .cl-mod .head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
@@ -626,11 +659,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       </span>
     </nav>
     <div class="folder-bar">
-      <span id="folder-line">Connecting…</span>
+      <button class="folder-path" type="button" id="open-folder" title="Open the mods folder">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M1.75 4.25v8a1 1 0 0 0 1 1h10.5a1 1 0 0 0 1-1v-6.5a1 1 0 0 0-1-1H8L6.5 3.25H2.75a1 1 0 0 0-1 1z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        <span class="crumbs" id="folder-line">Connecting…</span>
+      </button>
+      <span class="folder-stats" id="folder-stats"></span>
       <span class="folder-actions">
-        <button class="btn" type="button" id="open-folder">Open mods folder</button>
-        <button class="btn" type="button" id="open-game-folder">Open instance folder</button>
-        <button class="btn" type="button" id="refresh">Refresh</button>
+        <button class="btn quiet" type="button" id="open-game-folder">Open instance folder</button>
+        <button class="btn quiet" type="button" id="refresh">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Refresh
+        </button>
       </span>
     </div>
     <div class="banner" id="bisect-banner" role="region" aria-label="Finding a problem mod" hidden></div>
@@ -639,14 +678,15 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   <div class="notice" id="notice" role="alert" hidden></div>
 
   <section class="view" id="view-mods" aria-label="Mods">
-    <div class="get-mods">
+    <div class="mods-bar">
+    <div class="mb-group">
       <span class="get-label">Get mods</span>
       <button class="btn primary" type="button" id="open-search">Search Modrinth</button>
-      <button class="btn" type="button" data-browse="https://modrinth.com/mods">Modrinth website</button>
-      <button class="btn" type="button" data-browse="https://www.curseforge.com/minecraft/search?class=mc-mods">CurseForge website</button>
-      <span class="hint" id="get-hint">Websites open in a built-in browser. Any .jar you download there goes straight into this mods folder.</span>
+      <!-- Their tooltip (set below) says where downloads go. -->
+      <button class="btn" type="button" data-browse="https://modrinth.com/mods">Modrinth <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4.5 2H2.5a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5V7.5M7 2h3v3M10 2 5.5 6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button class="btn" type="button" data-browse="https://www.curseforge.com/minecraft/search?class=mc-mods">CurseForge <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4.5 2H2.5a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5V7.5M7 2h3v3M10 2 5.5 6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     </div>
-    <div class="mr-bar">
+    <div class="mb-group mb-updates">
       <span class="target">
         <span class="get-label">Minecraft</span>
         <button class="target-btn" type="button" id="target-btn" title="Change the Minecraft version and loader used for Modrinth">…</button>
@@ -668,13 +708,14 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <button class="btn" type="button" id="mr-check">Check for updates</button>
       </span>
     </div>
-    <div style="height:18px"></div>
+    </div>
+    <div style="height:16px"></div>
 
   <!-- The mod list with its filters on either side: where jars install on the left, tags on the right. -->
   <div class="mods-layout">
   <aside class="side-col side-left" aria-label="Where each jar installs">
     <div class="panel">
-      <h2 class="section-label"><span>Where each jar installs</span></h2>
+      <h2 class="section-label"><span>Where each jar installs</span><button class="btn" type="button" id="detect-sides" title="Work out client only, server only or both for every jar, from the jars themselves and Modrinth. You review the changes first.">Detect</button></h2>
       <div class="side-chart" id="side-chart"></div>
       <div class="side-legend" id="side-legend"></div>
       <p class="hint" style="margin:10px 0 0">Click to filter the list.</p>
@@ -705,8 +746,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   <div class="list" role="table" aria-label="Mods" aria-multiselectable="true">
     <div class="list-head" role="row">
       <span role="columnheader"><button class="check" type="button" id="select-all" role="checkbox" aria-checked="false" aria-label="Select all shown mods"></button></span>
-      <span role="columnheader">Mod</span>
-      <span role="columnheader" class="h-hide">Side</span>
+      <span role="columnheader" id="sort-name-col"><button class="sort-head" type="button" id="sort-name" title="Sort by name">Mod <span class="arrow" aria-hidden="true"></span></button></span>
+      <span role="columnheader" class="h-hide" id="sort-side-col"><button class="sort-head" type="button" id="sort-side" title="Sort by side: client only, both, server only, then no side tag">Side <span class="arrow" aria-hidden="true"></span></button></span>
       <span role="columnheader" class="h-hide">Tags</span>
       <span role="columnheader" class="r h-hide">Actions</span>
     </div>
@@ -1044,7 +1085,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   var tagBusy = false;
   var mr = { data: null, loading: false, error: null, again: null }; // Modrinth scan
   var lastFilesSig = "";
-  var state = { q: "", side: "all", status: "all", tags: [], match: "all", untagged: false };
+  var state = { q: "", side: "all", status: "all", tags: [], match: "all", untagged: false, sort: "name", sortDir: 1 };
   var selected = {};
   var anchorKey = null;
 
@@ -1152,7 +1193,28 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (state.q && r.haystack.indexOf(state.q) < 0) return false;
     return true;
   }
-  function visible() { return model ? model.rows.filter(matches) : []; }
+  // model.rows is already by name, so a stable sort by side keeps names in order within each side.
+  var SIDE_ORDER = { client: 0, both: 1, server: 2, none: 3 };
+  function visible() {
+    if (!model) return [];
+    var rows = model.rows.filter(matches), dir = state.sortDir;
+    if (state.sort === "side") rows.sort(function (a, b) { return (SIDE_ORDER[a.side] - SIDE_ORDER[b.side]) * dir; });
+    else if (dir < 0) rows.reverse();
+    return rows;
+  }
+  function setSort(key) {
+    if (state.sort === key) state.sortDir = -state.sortDir;
+    else { state.sort = key; state.sortDir = 1; }
+    render();
+  }
+  function renderSortHeads() {
+    [["name", "sort-name"], ["side", "sort-side"]].forEach(function (p) {
+      var on = state.sort === p[0], b = $(p[1]);
+      b.setAttribute("aria-pressed", String(on));
+      b.querySelector(".arrow").textContent = on ? (state.sortDir > 0 ? "▲" : "▼") : "";
+      $(p[1] + "-col").setAttribute("aria-sort", on ? (state.sortDir > 0 ? "ascending" : "descending") : "none");
+    });
+  }
   function rowsFor(keys) { return keys.map(function (k) { return model && model.byKey[k]; }).filter(Boolean); }
 
   // ---------- Selection ----------
@@ -1198,6 +1260,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     renderHeader();
     renderSummary();
     renderToolbar(rows.length);
+    renderSortHeads();
     renderList(rows);
     renderSelectAll(rows);
     renderSelectionBar();
@@ -1205,15 +1268,24 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   function renderHeader() {
     $("live-dot").className = "live-dot" + (connected ? " on" : "");
-    var line = $("folder-line");
+    var line = $("folder-line"), stats = $("folder-stats");
     line.replaceChildren();
+    stats.replaceChildren();
     if (!server) { line.textContent = hasToken ? "Connecting…" : "Not connected"; return; }
     $("eyebrow").textContent = connected ? "Connected" : "Offline";
-    var parts = ["Mods folder ", h("code", { title: server.modsDir }, server.modsDir)];
-    if (model) parts.push(" · " + model.byStatus.all + " jars · " + model.byStatus.disabled + " disabled");
-    if (server.checkedAt) parts.push(" · checked " + clock(server.checkedAt));
-    append(line, parts);
-    ["choose-folder", "open-folder", "open-game-folder", "refresh", "open-search", "play", "manage-tags", "inst-btn"].forEach(function (id) { $(id).disabled = !connected; });
+    // The last three folders ("Pack › minecraft › mods") say which folder this is; the full path is on hover.
+    var segs = server.modsDir.split(/[\\/]+/).filter(Boolean), shown = segs.slice(-3);
+    shown.forEach(function (s, i) {
+      if (i) line.append(h("span", { class: "sep", "aria-hidden": "true" }, "›"));
+      line.append(h("span", { class: "crumb" + (i === 0 ? " lead" : "") }, s));
+    });
+    $("open-folder").title = "Open the mods folder\n" + server.modsDir;
+    $("open-folder").setAttribute("aria-label", "Open the mods folder, " + server.modsDir);
+    var bits = [];
+    if (model) bits.push(count(model.byStatus.all, "jar", "jars"), model.byStatus.disabled + " disabled");
+    if (server.checkedAt) bits.push("checked " + clock(server.checkedAt));
+    stats.textContent = bits.join(" · ");
+    ["choose-folder", "open-folder", "open-game-folder", "refresh", "open-search", "play", "manage-tags", "detect-sides", "inst-btn"].forEach(function (id) { $(id).disabled = !connected; });
     var prism = server.prism || {};
     $("open-game-folder").textContent = prism.instanceId ? "Open instance folder" : "Open game folder";
     $("open-game-folder").title = "The folder the mods folder is in (configs, saves, packs and so on)";
@@ -1241,8 +1313,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       append(st, "Modrinth: " + mr.error);
     } else if (mr.data) {
       var checked = mr.data.checkedAt ? new Date(mr.data.checkedAt) : null;
-      append(st, [h("strong", null, mr.data.identified + " of " + mr.data.total), " jars found on Modrinth · ",
-        mr.data.updates ? h("strong", null, count(mr.data.updates, "update", "updates") + " available") : "everything up to date",
+      append(st, [mr.data.updates ? h("strong", { class: "upd" }, count(mr.data.updates, "update", "updates") + " available") : "Everything up to date",
+        " · ", h("strong", null, mr.data.identified + " of " + mr.data.total), " jars found on Modrinth",
         mr.loading ? " · checking…" : checked ? " · checked " + clock(checked) : ""]);
     } else {
       append(st, mr.loading ? "Checking Modrinth…" : "");
@@ -1250,7 +1322,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var n = model ? model.byStatus.updates : 0;
     var all = $("mr-update-all");
     all.hidden = !n;
-    all.textContent = "Update all " + n;
+    all.textContent = "Update all";
+    all.title = "Update " + count(n, "mod", "mods");
     all.disabled = !connected || mr.loading;
     $("mr-check").disabled = !connected || mr.loading;
   }
@@ -1346,19 +1419,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       text, h("span", { class: "x", "aria-hidden": "true" }, "×"));
   }
 
+  // Shows where a jar installs; changing it is in the right-click menu (or Detect in the side panel).
   function slot(letter, tag, r) {
     var on = r.tags.indexOf(tag) >= 0;
     var who = tag === "client" ? "Client" : "Server";
-    return h("button", { type: "button", class: "slot " + (on ? "on" : "off"), style: "--c:" + colorOf(tag), "data-action": "side", "data-tag": tag,
-      disabled: r.status === "missing" || !!busy[r.key] || tagBusy || !connected, "aria-pressed": String(on),
-      title: who + (on ? ": install. Click if it isn't needed on the " + tag + "." : ": not needed. Click if it should go on the " + tag + "."),
-      "aria-label": who + (on ? " yes" : " no") + ", click to change" }, letter);
-  }
-
-  // Switches a side tag on one mod, with Undo in the message.
-  function toggleSideTag(r, tag) {
-    var on = r.tags.indexOf(tag) >= 0;
-    applyTags([r], on ? [] : [tag], on ? [tag] : [], null, function () { applyTags([r], on ? [tag] : [], on ? [] : [tag]); });
+    return h("span", { class: "slot " + (on ? "on" : "off"), style: "--c:" + colorOf(tag),
+      title: who + (on ? ": install" : ": not needed"), "aria-label": who + (on ? " yes" : " no") }, letter);
   }
 
   // Modrinth's icon when Modrinth knows the jar, else the logo the jar carries, else its first letter.
@@ -3415,6 +3481,108 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
   }
 
+  // ---------- Detecting sides ----------
+
+  // Sets side tags: { key: "client" | "server" | "both" | "none" }, one request per side. Resolves true when all went through.
+  var SIDE_TAG_CHANGES = { client: [["client"], ["server"]], server: [["server"], ["client"]], both: [["client", "server"], []], none: [[], ["client", "server"]] };
+  function setSides(sides) {
+    var groups = {};
+    Object.keys(sides).forEach(function (k) { (groups[sides[k]] = groups[sides[k]] || []).push(k); });
+    tagBusy = true;
+    var chain = Promise.resolve();
+    Object.keys(groups).forEach(function (side) {
+      chain = chain.then(function () { return api("POST", "/api/tags", { keys: groups[side], add: SIDE_TAG_CHANGES[side][0], remove: SIDE_TAG_CHANGES[side][1] }); });
+    });
+    return chain.then(function () { return true; }, function (e) { toast(e.message); return false; })
+      .then(function (ok) { tagBusy = false; return refresh(true).then(function () { return ok; }); });
+  }
+
+  function sideChip(side) {
+    var s = SIDES.filter(function (x) { return x.key === side; })[0];
+    return h("span", { class: "ds-chip" }, h("span", { class: "swatch " + side }), s ? s.label : side);
+  }
+
+  function detectSides() {
+    if (!model || !connected) return;
+    var picks = {}; // key -> detected side, for the ticked rows
+    var body = h("div", null, h("p", { class: "search-empty" }, "Reading the jars and checking Modrinth…"));
+    var go = btn("Apply", function () {
+      var chosen = {}, before = {};
+      Object.keys(picks).forEach(function (k) { chosen[k] = picks[k]; before[k] = model.byKey[k] ? model.byKey[k].side : "none"; });
+      var n = Object.keys(chosen).length;
+      closeBig();
+      setSides(chosen).then(function (ok) {
+        if (ok) toast("Set the side on " + count(n, "mod", "mods"), "Undo", function () {
+          setSides(before).then(function (back) { if (back) toast("Put the sides back"); });
+        });
+      });
+    }, "primary", { disabled: true });
+    var label = function () {
+      var n = Object.keys(picks).length;
+      go.textContent = n ? "Apply " + n : "Apply";
+      go.disabled = !n;
+    };
+    openBig("Detect client and server sides",
+      "Each jar is checked on its own first (some say they're client or server only), then on Modrinth. Nothing changes until you apply. Hover a mod to see why.",
+      body, [btn("Cancel", closeBig), go]);
+
+    api("POST", "/api/sides/detect", {}).then(function (res) {
+      var groups = { add: [], guess: [], change: [], unknown: [], same: [] };
+      res.mods.forEach(function (m) {
+        var r = model.byKey[m.key];
+        var cur = r ? r.side : "none";
+        var item = { m: m, cur: cur, name: r ? r.name : m.name || m.file };
+        if (!m.side) groups.unknown.push(item);
+        else if (m.side === cur) groups.same.push(item);
+        else if (cur !== "none") groups.change.push(item);
+        else groups[m.sure ? "add" : "guess"].push(item);
+      });
+      var GROUPS = [
+        { key: "add", title: "New side tags", lead: "These have no side tag yet.", tick: true, open: true },
+        { key: "guess", title: "Best guesses", lead: "Not on Modrinth, and the jar doesn't say. Mods like these are usually needed on both sides, but check before ticking.", open: true },
+        { key: "change", title: "Different from your tags", lead: "Your tags stay as they are unless you tick these.", open: true },
+        { key: "unknown", title: "Couldn't tell", lead: "No side info anywhere. Set these yourself from the right-click menu.", info: true },
+        { key: "same", title: "Already right", lead: "Your tags already match.", info: true }
+      ];
+      body.replaceChildren();
+      if (res.modrinthProblem) body.append(h("p", { class: "hint", style: "margin:12px 0 0" }, res.modrinthProblem));
+      GROUPS.forEach(function (g) {
+        var items = groups[g.key];
+        if (!items.length) return;
+        var boxes = [];
+        var rows = items.map(function (it) {
+          var m = it.m;
+          var cb = g.info ? h("span") : h("input", { type: "checkbox", checked: !!g.tick, "aria-label": it.name + ": " + m.side });
+          if (!g.info) {
+            boxes.push({ cb: cb, key: m.key, side: m.side });
+            if (g.tick) picks[m.key] = m.side;
+            cb.addEventListener("change", function () { if (cb.checked) picks[m.key] = m.side; else delete picks[m.key]; label(); });
+          }
+          var side = h("span", { class: "ds-side" });
+          if (g.key === "change") side.append(sideChip(it.cur), "→");
+          if (m.side) side.append(sideChip(m.side));
+          if (m.source) side.append(h("span", { class: "src" }, m.source === "Modrinth" ? "Modrinth" : "jar"));
+          return h(g.info ? "div" : "label", { class: "ds-row" + (g.info ? " info" : ""), title: m.reason },
+            cb, h("span", { class: "ds-name" }, it.name, h("span", { class: "sub" }, m.file)), side);
+        });
+        var setAll = function (on) {
+          boxes.forEach(function (b) { b.cb.checked = on; if (on) picks[b.key] = b.side; else delete picks[b.key]; });
+          label();
+        };
+        var tools = h("div", { class: "ds-tools" }, h("span", null, g.lead));
+        if (!g.info) tools.append(h("button", { type: "button", class: "linkish", onclick: function () { setAll(true); } }, "Tick all"),
+          h("button", { type: "button", class: "linkish", onclick: function () { setAll(false); } }, "Untick all"));
+        body.append(h("details", { class: "ds-group", open: g.open ? true : null },
+          h("summary", null, g.title, h("span", { class: "n" }, String(items.length))), tools, rows));
+      });
+      if (!body.children.length) body.append(h("p", { class: "search-empty" }, "There are no jars in this folder."));
+      label();
+    }, function (e) {
+      body.replaceChildren(h("p", { class: "search-empty" }, "Couldn't detect sides (" + e.message + ")."));
+    });
+  }
+  $("detect-sides").addEventListener("click", detectSides);
+
   // ---------- Server ----------
 
   var srv = { info: null, error: null, sub: "console", lines: [], seq: 0, polling: false, filter: "all", find: "", history: [], histPos: -1,
@@ -4368,7 +4536,6 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       else if (kind === "update") updateMods([hit.row]);
       else if (kind === "details") openDetails(hit.row);
       else if (kind === "filter-tag") toggleTag(action.getAttribute("data-tag"));
-      else if (kind === "side") toggleSideTag(hit.row, action.getAttribute("data-tag"));
       else if (kind === "delete") askDelete([hit.row]);
       return;
     }
@@ -4594,6 +4761,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   });
   $("copy-close").addEventListener("click", function () { $("copy-fallback").hidden = true; });
 
+  $("sort-name").addEventListener("click", function () { setSort("name"); });
+  $("sort-side").addEventListener("click", function () { setSort("side"); });
   $("refresh").addEventListener("click", function () { refresh(true).then(function () { if (connected) toast("Refreshed"); }); });
   $("open-folder").addEventListener("click", function () { api("POST", "/api/open-folder").catch(function (e) { toast(e.message); }); });
   $("open-game-folder").addEventListener("click", function () { api("POST", "/api/open-game-folder").catch(function (e) { toast(e.message); }); });
@@ -4623,6 +4792,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   var host = window.chrome && window.chrome.webview ? window.chrome.webview : null;
   Array.prototype.forEach.call(document.querySelectorAll("[data-browse]"), function (btn) {
     btn.addEventListener("click", function () { window.open(btn.getAttribute("data-browse"), "_blank", "noopener"); });
+    btn.title = host ? "Opens in a built-in browser. Any .jar you download there goes straight into this mods folder."
+      : "Opens in a new browser tab. Downloads go to your Downloads folder; move jars into the mods folder yourself.";
   });
   if (host) {
     $("quit").hidden = true; // closing the window quits
@@ -4634,8 +4805,6 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       else if (msg === "confirm-quit") confirmQuit();
       else if (msg.indexOf("status:") === 0) toast(msg.slice(7));
     });
-  } else {
-    $("get-hint").textContent = "Opens in a new browser tab. Downloads go to your Downloads folder; move jars into the mods folder yourself.";
   }
 
   // Stay current when the launcher or Explorer changes the folder.

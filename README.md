@@ -10,7 +10,8 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Turn mods on and off. Disabling renames `X.jar` to `X.jar.disabled`, the same as launchers do.
   - Delete mods to the Recycle Bin.
   - Select several mods at once, file-manager style.
-  - Tag mods (client / server, plus your own tags), stored in `mod-tags.json` next to the jars. Tags and the client / server marks on each row are clickable (filter by a tag, switch a side).
+  - Tag mods (client / server, plus your own tags), stored in `mod-tags.json` next to the jars. Click a tag on a row to filter by it; sort the list by name or by side.
+  - Detect sides: works out client only, server only or both for every jar, from the jar's own metadata (a client-only `displayTest`, `clientSideOnly`, or a Fabric `environment`) and then Modrinth's client / server flags. Results are listed for review before any tag changes, with Undo after.
   - Each mod shows its icon: Modrinth's when Modrinth knows the jar, else the logo inside the jar.
 - **Modrinth**
   - Recognises installed jars by their SHA-1 hash.

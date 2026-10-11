@@ -491,6 +491,9 @@ namespace MinecraftModManager
                     case "/api/modrinth/scan":
                         SendJson(ctx, 200, ModrinthScan(Bool(body, "force")));
                         return;
+                    case "/api/sides/detect":
+                        SendJson(ctx, 200, DetectSides());
+                        return;
                     case "/api/modrinth/install":
                         SendJson(ctx, 200, ModrinthInstall(Str(body, "projectId")));
                         return;
