@@ -522,6 +522,15 @@ body { padding-bottom: var(--bar-h); }
 .inst-form .fixed { padding: 8px 10px; font-size: 13.5px; background: var(--sunken); border-radius: 3px; }
 .inst-form .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
 @media (max-width: 560px) { .inst-form .pair { grid-template-columns: minmax(0, 1fr); } }
+.inst-form .share-box { display: grid; gap: 10px; min-width: 0; margin: 0; padding: 8px 12px 12px; border: 1px solid var(--line); border-radius: 4px; }
+.inst-form .share-box legend { padding: 0 6px; font-weight: 700; font-size: 13.5px; color: var(--ink); }
+.inst-form .share-box .prop { margin-left: 24px; }
+textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5px/1.45 var(--font-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; resize: vertical; }
+.shared-form { display: grid; gap: 16px; padding: 4px 0 8px; }
+.shared-form section { display: grid; gap: 8px; }
+.shared-form h3 { margin: 0; font-size: 14px; }
+.shared-form .who { font-size: 12.5px; color: var(--muted); }
+.shared-form .share-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .inst-foot { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border-top: 1px solid var(--line); }
 @media (max-width: 720px) {
   .playbar { grid-template-columns: minmax(0, 1fr) auto; }
@@ -568,7 +577,7 @@ body { padding-bottom: var(--bar-h); }
         <span class="get-label">Minecraft</span>
         <button class="target-btn" type="button" id="target-btn" title="Change the Minecraft version and loader used for Modrinth">…</button>
         <form class="target-form" id="target-form" hidden>
-          <input id="target-version" type="text" inputmode="decimal" aria-label="Minecraft version" placeholder="1.21.1" maxlength="10" autocomplete="off">
+          <select id="target-version" aria-label="Minecraft version"></select>
           <select id="target-loader" aria-label="Mod loader">
             <option value="neoforge">NeoForge</option>
             <option value="forge">Forge</option>
@@ -725,6 +734,7 @@ body { padding-bottom: var(--bar-h); }
   <div class="inst-list" id="inst-list"></div>
   <div class="inst-foot">
     <button class="btn primary" type="button" id="new-instance">New instance…</button>
+    <button class="btn" type="button" id="shared-settings">Shared settings…</button>
     <button class="btn" type="button" id="choose-folder">Other mods folder…</button>
     <button class="btn" type="button" id="open-prism">Open launcher</button>
   </div>
@@ -1120,6 +1130,7 @@ body { padding-bottom: var(--bar-h); }
     $("play").title = !prism.installed ? "The launcher isn't installed, so the game can't be started from here"
       : prism.instanceId ? "Start " + prism.instanceName : "This mods folder isn't an instance. Pick one from the list on the left.";
     renderInstanceButton();
+    if (!check.loading) renderCheckBar();
     renderMrBar();
     renderServerChip();
     renderBisectBanner();
@@ -1399,7 +1410,8 @@ body { padding-bottom: var(--bar-h); }
       if (filesSig !== lastFilesSig && s.folderExists) {
         lastFilesSig = filesSig;
         runScan(false);
-        runCheck();
+        // The pre-launch check only runs when asked; a result from before this change would be stale.
+        if (check.data) { check.data = null; renderCheckBar(); }
       }
       if (!s.folderExists) showNotice(["The mods folder ", h("code", null, s.modsDir), " doesn't exist any more. Use Change folder to pick another one."]);
       else if (model.tagsProblem) showNotice(model.tagsProblem, "info");
@@ -2068,6 +2080,7 @@ body { padding-bottom: var(--bar-h); }
     }
     $("open-prism").hidden = !d.prismInstalled;
     $("new-instance").disabled = !d.prismSetUp || !connected;
+    $("shared-settings").hidden = !d.prismSetUp;
   }
 
   // ---- New instance, duplicate, settings, delete ----
@@ -2092,6 +2105,7 @@ body { padding-bottom: var(--bar-h); }
     var worlds = h("input", { type: "checkbox" });
     var fixed = h("div", { class: "fixed" });
     var note = h("p", { class: "hint", style: "margin:0" });
+    var warn = h("p", { class: "warnbox", style: "margin:0", hidden: true });
     var error = h("p", { class: "tag-error", role: "alert", hidden: true });
     var picked = function () {
       var id = settings ? source.id : copySelect.value;
@@ -2101,7 +2115,38 @@ body { padding-bottom: var(--bar-h); }
     var mcProp = h("label", { class: "prop" }, h("b", null, "Minecraft version"), mcSelect);
     var loaderProp = h("label", { class: "prop" }, h("b", null, "Loader"), loaderSelect);
     var worldsProp = h("label", { class: "toggle" }, worlds, "Also copy the worlds (saves)");
-    form.append(
+
+    // What this instance shares with the others. A new instance shares everything; a copy starts
+    // out like the instance it's copied from.
+    var shareJava = h("input", { type: "checkbox" });
+    var shareShaders = h("input", { type: "checkbox" });
+    var sharePacks = h("input", { type: "checkbox" });
+    var shareOptions = h("input", { type: "checkbox" });
+    var ownArgs = h("textarea", { class: "args", rows: "2", spellcheck: "false", maxlength: "4000", placeholder: "For example -XX:+UseZGC -XX:+ZGenerational", "aria-label": "This instance's own Java arguments" });
+    var ownArgsProp = h("label", { class: "prop" }, h("b", null, "This instance's own Java arguments"), ownArgs,
+      h("span", null, "Set the memory above, so leave out -Xmx and -Xms."));
+    function setSharing(s) {
+      s = s || { java: true, javaArgs: "", shaderpacks: true, resourcepacks: true, options: true };
+      shareJava.checked = !!s.java;
+      ownArgs.value = s.javaArgs || "";
+      shareShaders.checked = !!s.shaderpacks;
+      sharePacks.checked = !!s.resourcepacks;
+      shareOptions.checked = !!s.options;
+      ownArgsProp.hidden = shareJava.checked;
+    }
+    shareJava.addEventListener("change", function () { ownArgsProp.hidden = shareJava.checked; if (!shareJava.checked) ownArgs.focus(); });
+    var shareBox = h("fieldset", { class: "share-box" },
+      h("legend", null, "Shared with your other instances"),
+      h("label", { class: "toggle" }, shareJava, "Java arguments"),
+      ownArgsProp,
+      h("label", { class: "toggle" }, shareShaders, "Shader packs"),
+      h("label", { class: "toggle" }, sharePacks, "Resource packs"),
+      h("label", { class: "toggle" }, shareOptions, "Game settings (video, sound, controls, key binds)"),
+      h("p", { class: "hint", style: "margin:0;line-height:1.4" }, "Ticked items are the same in every instance that ticks them. " +
+        "Ticking packs moves this instance's packs into the shared folder, and unticking gives it a copy of its own, so nothing is lost. " +
+        "Edit the shared Java arguments under Shared settings in the instance list."));
+    setSharing(source ? source.sharing : null);
+    form.append.apply(form, [
       h("label", { class: "prop" }, h("b", null, "Name"), nameInput),
       settings ? null : h("label", { class: "prop" }, h("b", null, "Start from"), copySelect),
       fixed,
@@ -2110,7 +2155,8 @@ body { padding-bottom: var(--bar-h); }
         h("label", { class: "prop" }, h("b", null, "Loader version"), versionSelect),
         h("label", { class: "prop" }, h("b", null, "Memory"), memorySelect, h("span", null, "How much RAM the game may use."))),
       settings ? null : worldsProp,
-      note, error);
+      shareBox,
+      warn, note, error].filter(Boolean));
 
     var go = btn(settings ? "Save" : "Create instance", function () { submit(); }, "primary");
     openBig(settings ? source.name + " settings" : source ? "Duplicate " + source.name : "New instance",
@@ -2128,10 +2174,21 @@ body { padding-bottom: var(--bar-h); }
       if (currentMb && !memorySelect.querySelector('option[value="' + currentMb + '"]')) memorySelect.append(h("option", { value: String(currentMb) }, (currentMb / 1024) + " GB"));
       memorySelect.value = String(currentMb || 0);
     }
+    // A copy keeps its source's Minecraft version and loader; a new or existing instance uses the dropdowns.
+    function sameAsSource() { return settings && mcSelect.value === source.minecraft && loaderSelect.value === source.loader; }
+    function updateWarning() {
+      var changing = settings && mcSelect.options.length && !sameAsSource();
+      warn.hidden = !changing;
+      if (changing) warn.textContent = "Switching to Minecraft " + mcSelect.value + " with " + (LOADER_NAMES[loaderSelect.value] || loaderSelect.value) +
+        ": most mods are made for one version and loader, so many of the " + count(source.mods, "mod", "mods") + " here won't load until they're swapped for matching versions. " +
+        "The mods stay in the folder. Afterwards, Check mods shows what doesn't fit and Modrinth can find matching versions.";
+    }
     function loadVersions(keepVersion) {
       var src = picked();
-      var mc = src ? src.minecraft : mcSelect.value || (server && server.target ? server.target.gameVersion : "");
-      var loader = src ? src.loader : loaderSelect.value;
+      var copySrc = settings ? null : src;
+      var mc = copySrc ? copySrc.minecraft : mcSelect.value || (settings ? source.minecraft : server && server.target ? server.target.gameVersion : "");
+      var loader = copySrc ? copySrc.loader : loaderSelect.value;
+      updateWarning();
       var mySeq = ++seq;
       versionSelect.replaceChildren(h("option", { value: "" }, "Loading…"));
       versionSelect.disabled = true;
@@ -2140,7 +2197,9 @@ body { padding-bottom: var(--bar-h); }
         if (mySeq !== seq) return;
         if (!mcSelect.options.length) {
           res.releases.forEach(function (v) { mcSelect.append(h("option", { value: v }, v)); });
+          if (mc && res.releases.indexOf(mc) < 0) mcSelect.append(h("option", { value: mc }, mc));
           mcSelect.value = mc;
+          updateWarning();
         }
         versionSelect.replaceChildren();
         res.loaderVersions.forEach(function (v) {
@@ -2156,7 +2215,7 @@ body { padding-bottom: var(--bar-h); }
         go.disabled = !res.loaderVersions.length || !connected;
         if (memorySelect.options.length === 0) fillMemory(res.ramMb, src ? src.memoryMb : 0);
         note.textContent = res.prismRunning ? (settings
-          ? "The launcher is open. Close it before saving, or it will undo these changes."
+          ? "The launcher is open. Close it before changing the name, version, memory or Java arguments, or it will undo them. Sharing packs and game settings works either way."
           : "The launcher is open. If the new instance doesn't show up there, restart it.") : "";
       }, function (e) {
         if (mySeq !== seq) return;
@@ -2167,13 +2226,13 @@ body { padding-bottom: var(--bar-h); }
     }
     function syncFixed() {
       var src = picked();
-      var locked = settings || !!src;
+      var locked = !settings && !!src;
       mcProp.hidden = locked;
       loaderProp.hidden = locked;
       fixed.hidden = !locked;
       worldsProp.hidden = settings || !src;
-      if (src) fixed.textContent = "Minecraft " + src.minecraft + " · " + (LOADER_NAMES[src.loader] || src.loader) + (settings ? "" : ", the same as " + src.name) +
-        (settings ? ". To use another Minecraft version, make a new instance." : ". Its mods, configs, resource and shader packs and settings are copied.");
+      if (locked) fixed.textContent = "Minecraft " + src.minecraft + " · " + (LOADER_NAMES[src.loader] || src.loader) + ", the same as " + src.name +
+        ". Its mods, configs, resource and shader packs and settings are copied.";
       memorySelect.replaceChildren();
     }
     function submit() {
@@ -2183,18 +2242,27 @@ body { padding-bottom: var(--bar-h); }
       go.disabled = true;
       go.textContent = settings ? "Saving…" : "Creating…";
       var src = picked();
+      var sharing = { java: shareJava.checked, javaArgs: ownArgs.value, shaderpacks: shareShaders.checked, resourcepacks: sharePacks.checked, options: shareOptions.checked };
       var body = settings
-        ? { id: source.id, name: name, memoryMb: Number(memorySelect.value) || 0, loaderVersion: versionSelect.value }
+        ? { id: source.id, name: name, memoryMb: Number(memorySelect.value) || 0, loaderVersion: versionSelect.value, minecraft: mcSelect.value || source.minecraft, loader: loaderSelect.value, sharing: sharing }
         : { name: name, copyFrom: src ? src.id : null, minecraft: mcSelect.value, loader: loaderSelect.value, loaderVersion: versionSelect.value,
-            memoryMb: Number(memorySelect.value) || 0, copyWorlds: worlds.checked };
+            memoryMb: Number(memorySelect.value) || 0, copyWorlds: worlds.checked, sharing: sharing };
       api("POST", settings ? "/api/instances/settings" : "/api/instances/create", body).then(function (res) {
         closeBig();
         if (settings) {
-          toast("Saved " + name + ": " + res.changes.join(", ") + ".");
+          toast("Saved " + name + ": " + res.changes.join(", ") + "." + (res.versionChanged ? " Press Check mods to see which mods don't fit the new version." : ""));
           inst.data = null;
+          if (res.versionChanged && source.current) {
+            // Modrinth lookups now follow the new version, and earlier results no longer apply.
+            if (server) server.target = res.target;
+            mr.data = null;
+            lastFilesSig = "";
+            check.data = null;
+          }
           return refresh(true);
         }
-        toast("Created " + res.name + "." + (res.prismRunning ? " Restart the launcher if it doesn't show it yet." : " The game files are downloaded the first time you press Play."));
+        toast("Created " + res.name + "." + (res.prismRunning ? " Restart the launcher if it doesn't show it yet." : " The game files are downloaded the first time you press Play.") +
+          (res.problems && res.problems.length ? " " + res.problems.join(" ") : ""));
         return folderChanged(res);
       }, function (e) {
         error.textContent = e.message;
@@ -2204,10 +2272,11 @@ body { padding-bottom: var(--bar-h); }
       });
     }
 
-    copySelect.addEventListener("change", function () { syncFixed(); loadVersions(picked() ? picked().loaderVersion : null); });
-    mcSelect.addEventListener("change", function () { loadVersions(null); });
-    loaderSelect.addEventListener("change", function () { loadVersions(null); });
-    if (!settings && !source && server && server.target) loaderSelect.value = server.target.loader;
+    copySelect.addEventListener("change", function () { syncFixed(); setSharing(picked() ? picked().sharing : null); loadVersions(picked() ? picked().loaderVersion : null); });
+    mcSelect.addEventListener("change", function () { loadVersions(sameAsSource() ? source.loaderVersion : null); });
+    loaderSelect.addEventListener("change", function () { loadVersions(sameAsSource() ? source.loaderVersion : null); });
+    if (settings) loaderSelect.value = source.loader;
+    else if (!source && server && server.target) loaderSelect.value = server.target.loader;
     syncFixed();
     loadVersions(picked() ? picked().loaderVersion : null);
   }
@@ -2263,8 +2332,73 @@ body { padding-bottom: var(--bar-h); }
     });
   }
 
+  // The settings instances can share: the Java arguments are edited here; the shared pack folders
+  // and game settings fill up from the instances that tick them in their own Settings.
+  function sharedSettingsDialog() {
+    var form = h("div", { class: "shared-form" }, h("p", { class: "hint" }, "Loading…"));
+    var args = h("textarea", { class: "args", rows: "3", spellcheck: "false", maxlength: "4000", placeholder: "No extra arguments", "aria-label": "Shared Java arguments" });
+    var error = h("p", { class: "tag-error", role: "alert", hidden: true });
+    var original = "";
+    var save = btn("Save", submit, "primary", { disabled: true });
+    function changed() { return args.value.replace(/\s+/g, " ").trim() !== original; }
+    args.addEventListener("input", function () { save.disabled = !changed() || !connected; });
+    openBig("Shared settings", "What your instances can share. Each instance picks what it shares in its own Settings (⋯ next to it in the list).",
+      form, [btn("Close", closeBig), save]);
+
+    api("GET", "/api/sharing").then(function (d) {
+      original = d.javaArgs.replace(/\s+/g, " ").trim();
+      args.value = d.javaArgs;
+      function sharing(key) { return d.instances.filter(function (i) { return i[key]; }).map(function (i) { return i.name; }); }
+      function who(key, what) {
+        var on = sharing(key);
+        return on.length ? "Shared by " + on.join(", ") + "." : "No instance shares its " + what + " yet.";
+      }
+      var own = d.instances.filter(function (i) { return !i.java; });
+      var startFrom = d.instances.filter(function (i) { return !i.java && i.javaArgs; }).slice(0, 4);
+      function folder(kind, title, what) {
+        var f = d.folders[kind];
+        return h("section", null, h("h3", null, title),
+          h("div", { class: "who" }, count(f.count, "pack", "packs") + " in the shared folder. " + who(kind, what)),
+          h("div", { class: "share-row" }, btn("Open folder", function () { api("POST", "/api/sharing/open", { kind: kind }).catch(function (e) { toast(e.message); }); })));
+      }
+      form.replaceChildren(
+        h("section", null, h("h3", null, "Java arguments"),
+          args,
+          h("div", { class: "who" }, (sharing("java").length ? "Used by " + sharing("java").join(", ") + "." : "No instance uses them yet.") +
+            (own.length ? " " + own.map(function (i) { return i.name; }).join(", ") + (own.length === 1 ? " uses its own." : " use their own.") : "") +
+            " Memory is set for each instance, so leave out -Xmx and -Xms."),
+          startFrom.length ? h("div", { class: "share-row" }, h("span", { class: "who" }, "Start from:"),
+            startFrom.map(function (i) { return btn(i.name, function () { args.value = i.javaArgs; args.dispatchEvent(new Event("input")); args.focus(); }); })) : null,
+          d.prismRunning ? h("p", { class: "warnbox", style: "margin:0" }, "The launcher is open. Close it before saving these, or it will undo them.") : null),
+        folder("shaderpacks", "Shader packs", "shader packs"),
+        folder("resourcepacks", "Resource packs", "resource packs"),
+        h("section", null, h("h3", null, "Game settings"),
+          h("div", { class: "who" }, "Video, sound, controls and key binds (options.txt). " + who("options", "game settings") +
+            " A change made in one game reaches the others the next time you press Play here. Key binds for mods an instance doesn't have are kept for the ones that do.")),
+        error);
+    }, function (e) { form.replaceChildren(h("p", { class: "tag-error", role: "alert" }, e.message)); });
+
+    function submit() {
+      if (!changed()) return;
+      error.hidden = true;
+      save.disabled = true;
+      save.textContent = "Saving…";
+      api("POST", "/api/sharing/java", { javaArgs: args.value }).then(function (res) {
+        closeBig();
+        inst.data = null;
+        toast(res.javaArgs ? "Saved the shared Java arguments." : "Cleared the shared Java arguments.");
+      }, function (e) {
+        error.textContent = e.message;
+        error.hidden = false;
+        save.disabled = false;
+        save.textContent = "Save";
+      });
+    }
+  }
+
   $("inst-btn").addEventListener("click", openInstances);
   $("new-instance").addEventListener("click", function () { closeInstances(false); instanceDialog("new", null); });
+  $("shared-settings").addEventListener("click", function () { closeInstances(false); sharedSettingsDialog(); });
   $("open-prism").addEventListener("click", function () {
     closeInstances(true);
     api("POST", "/api/prism/open", {}).then(function () { toast("Opening the launcher."); }, function (e) { toast(e.message); });
@@ -2378,19 +2512,40 @@ body { padding-bottom: var(--bar-h); }
     return check.loading;
   }
 
-  function renderCheckBar() {
+  // The check runs only when the button is pressed.
+  function manualCheck() {
+    renderCheckBar(true);
+    runCheck().then(function (res) {
+      if (!res) { toast("The check couldn't run. Try again."); return; }
+      if (res.errors || res.warnings) problemsDialog(res, {});
+    });
+  }
+
+  function renderCheckBar(running) {
     var bar = $("check-bar"), d = check.data;
     bar.replaceChildren();
-    if (!d) { bar.hidden = true; return; }
-    bar.hidden = false;
+    bar.hidden = !hasToken;
+    if (running || check.loading) {
+      bar.className = "check-bar";
+      append(bar, [h("strong", null, "Checking mods…"), " Reading every jar for missing or clashing mods."]);
+      return;
+    }
+    if (!d) {
+      bar.className = "check-bar";
+      append(bar, [h("strong", null, "Pre-launch check"), " Looks for missing, turned-off or clashing mods and wrong versions before you play.",
+        btn("Check mods", manualCheck, "primary", { disabled: !connected })]);
+      return;
+    }
     bar.className = "check-bar" + (d.errors ? " bad" : d.warnings ? " warn" : "");
     if (!d.errors && !d.warnings) {
-      append(bar, [h("strong", null, "Ready to play."), " The pre-launch check found nothing missing or clashing (" + d.enabled + " jars on, Minecraft " + d.minecraft + (d.neoforge ? ", NeoForge " + d.neoforge : "") + ")."]);
+      append(bar, [h("strong", null, "Ready to play."), " Nothing missing or clashing (" + d.enabled + " jars on, Minecraft " + d.minecraft + (d.neoforge ? ", NeoForge " + d.neoforge : "") + ").",
+        btn("Check again", manualCheck, "", { disabled: !connected })]);
       return;
     }
     append(bar, [h("strong", null, d.errors ? count(d.errors, "problem", "problems") + " will stop the game from starting" : count(d.warnings, "warning", "warnings")),
       d.errors && d.warnings ? " (and " + count(d.warnings, "warning", "warnings") + ")" : "",
-      btn("Show and fix", function () { problemsDialog(d, {}); }, "primary")]);
+      btn("Show and fix", function () { problemsDialog(d, {}); }, "primary"),
+      btn("Check again", manualCheck, "", { disabled: !connected })]);
   }
 
   // opts: { title, lead, actionLabel, readyLabel, action } — action is offered as "do it anyway".
@@ -3105,19 +3260,8 @@ body { padding-bottom: var(--bar-h); }
     }, function (e) { toast(e.message); });
   }
 
-  function startServerChecked(skipCheck) {
-    if (skipCheck) { doStartServer(); return; }
-    api("GET", "/api/check?side=server").then(function (res) {
-      if (!res.errors) { doStartServer(); return; }
-      problemsDialog(res, {
-        title: count(res.errors, "problem", "problems") + " will stop the server from starting",
-        lead: "NeoForge refuses to start the server when these aren't fixed.",
-        actionLabel: "Start anyway",
-        readyLabel: "Start server",
-        action: doStartServer
-      });
-    }, function (e) { toast(e.message); });
-  }
+  // Starts straight away; "Check server mods" on the card runs the check when wanted.
+  function startServerChecked() { doStartServer(); }
   function doStartServer() {
     api("POST", "/api/server/start", {}).then(function (s) {
       srv.info = s;
@@ -3915,27 +4059,15 @@ body { padding-bottom: var(--bar-h); }
   });
   $("empty-clear").addEventListener("click", clearAll);
 
-  $("play").addEventListener("click", function () { playChecked(false); });
-  function playChecked(skipCheck) {
+  // Play launches straight away; the pre-launch check is the "Check mods" button.
+  $("play").addEventListener("click", function () { playChecked(); });
+  function playChecked() {
     var btn = $("play");
     btn.disabled = true;
-    var go = function () {
-      api("POST", "/api/play").then(function (res) {
-        toast("Starting " + res.instanceName + ". A modded game takes a few minutes to load.");
-      }, function (e) { toast(e.message); }).then(function () {
-        setTimeout(function () { btn.disabled = !canPlay(); }, 5000);
-      });
-    };
-    if (skipCheck) { go(); return; }
-    runCheck().then(function (res) {
-      if (!res || !res.errors) { go(); return; }
-      btn.disabled = !canPlay();
-      problemsDialog(res, {
-        title: count(res.errors, "problem", "problems") + " will stop the game from starting",
-        lead: "NeoForge refuses to load the game when these aren't fixed. Fix them here, or play anyway to see the game's own error screen.",
-        actionLabel: "Play anyway",
-        action: function () { playChecked(true); }
-      });
+    api("POST", "/api/play").then(function (res) {
+      toast("Starting " + res.instanceName + ". A modded game takes a few minutes to load.");
+    }, function (e) { toast(e.message); }).then(function () {
+      setTimeout(function () { btn.disabled = !canPlay(); }, 5000);
     });
   }
   // Tag management panel.
@@ -3996,9 +4128,29 @@ body { padding-bottom: var(--bar-h); }
     $("target-form").hidden = true;
     $("target-btn").hidden = false;
   }
+  // The version list is every Minecraft release, loaded the first time the picker opens.
+  var releasesLoaded = false;
+  function fillTargetVersions(current) {
+    var select = $("target-version");
+    var ensure = function () {
+      if (!Array.prototype.some.call(select.options, function (o) { return o.value === current; })) select.append(h("option", { value: current }, current));
+      select.value = current;
+    };
+    if (releasesLoaded) { ensure(); return; }
+    select.replaceChildren(h("option", { value: current }, current));
+    select.value = current;
+    api("GET", "/api/instances/versions").then(function (res) {
+      releasesLoaded = true;
+      var keep = select.value;
+      select.replaceChildren();
+      res.releases.forEach(function (v) { select.append(h("option", { value: v }, v)); });
+      current = keep;
+      ensure();
+    }, function () { /* the current version stays the only choice */ });
+  }
   $("target-btn").addEventListener("click", function () {
     if (!server || !server.target) return;
-    $("target-version").value = server.target.gameVersion;
+    fillTargetVersions(server.target.gameVersion);
     $("target-loader").value = server.target.loader;
     $("target-btn").hidden = true;
     $("target-form").hidden = false;

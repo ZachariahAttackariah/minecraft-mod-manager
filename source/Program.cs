@@ -144,6 +144,7 @@ namespace MinecraftModManager
             }
 
             RememberFolder(modsDir);
+            FollowInstanceTarget(modsDir); // in case the instance's version was changed in the launcher since
             if (serverDir != null) RememberServer(serverDir);
 
             listener = new HttpListener();
@@ -174,6 +175,10 @@ namespace MinecraftModManager
             });
             showWatcher.IsBackground = true;
             showWatcher.Start();
+
+            // Settings changed in a game since last time reach the other sharing instances, even ones
+            // started from the launcher itself.
+            ThreadPool.QueueUserWorkItem(delegate { TrySyncGameSettings(); });
 
             if (showWindow)
             {
@@ -350,6 +355,9 @@ namespace MinecraftModManager
                         case "/api/instances/delete-info":
                             result = InstanceDeleteInfo(req.QueryString["id"]);
                             break;
+                        case "/api/sharing":
+                            result = SharingInfo();
+                            break;
                     }
                     if (result != null)
                     {
@@ -470,6 +478,13 @@ namespace MinecraftModManager
                         return;
                     case "/api/instances/open":
                         OpenInstanceFolder(Str(body, "id"));
+                        SendJson(ctx, 200, Obj("ok", true));
+                        return;
+                    case "/api/sharing/java":
+                        SendJson(ctx, 200, SetSharedJavaArgs(Str(body, "javaArgs")));
+                        return;
+                    case "/api/sharing/open":
+                        OpenSharedFolder(Str(body, "kind"));
                         SendJson(ctx, 200, Obj("ok", true));
                         return;
                     case "/api/prism/open":
@@ -631,7 +646,7 @@ namespace MinecraftModManager
                 if (instance == null || instance.Parent == null || !instance.Parent.Name.Equals("instances", StringComparison.OrdinalIgnoreCase)) return null;
                 string cfg = Path.Combine(instance.FullName, "instance.cfg");
                 if (!File.Exists(cfg)) return null;
-                string name = File.ReadAllLines(cfg).Where(l => l.StartsWith("name=")).Select(l => l.Substring(5).Trim()).FirstOrDefault();
+                string name = File.ReadAllLines(cfg).Where(l => l.StartsWith("name=")).Select(l => IniUnescape(l.Substring(5))).FirstOrDefault();
                 return new[] { instance.Name, string.IsNullOrEmpty(name) ? instance.Name : name };
             }
             catch (Exception)
@@ -646,6 +661,7 @@ namespace MinecraftModManager
             if (prism == null) throw new UserError("The launcher isn't installed, so the game can't be started from here.");
             string[] instance = PrismInstanceFor(modsDir);
             if (instance == null) throw new UserError("This mods folder isn't part of an instance, so there's nothing to launch. Pick an instance in the bottom bar.");
+            TrySyncGameSettings(); // shared game settings changed in another instance come along
             var start = new ProcessStartInfo(prism, "--launch \"" + instance[0] + "\"");
             start.UseShellExecute = false;
             start.WorkingDirectory = Path.GetDirectoryName(prism);

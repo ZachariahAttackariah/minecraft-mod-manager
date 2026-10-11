@@ -203,6 +203,73 @@ namespace MinecraftModManager
                 base.OnHandleCreated(e);
                 windowHandle = Handle;
                 ApplyTitleBarColours();
+                // Recalculate the frame now that WM_NCCALCSIZE folds the title bar into the window.
+                SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+            }
+
+            protected override void OnResize(EventArgs e)
+            {
+                base.OnResize(e);
+                if (strip != null) strip.Invalidate(); // the maximize button's glyph follows the window state
+            }
+
+            protected override void OnActivated(EventArgs e) { base.OnActivated(e); if (strip != null) strip.Invalidate(); }
+            protected override void OnDeactivate(EventArgs e) { base.OnDeactivate(e); if (strip != null) strip.Invalidate(); }
+
+            // Firefox-style: no separate title bar. The tab strip sits at the very top of the window,
+            // its empty space drags the window (double-click maximizes, right-click shows the window menu,
+            // snapping still works), and Windows still draws the border, shadow and resize edges.
+            protected override void WndProc(ref Message m)
+            {
+                if (m.Msg == WM_NCCALCSIZE && m.WParam != IntPtr.Zero && !IsIconic(Handle))
+                {
+                    var calc = (NCCALCSIZE_PARAMS)Marshal.PtrToStructure(m.LParam, typeof(NCCALCSIZE_PARAMS));
+                    int top = calc.rgrc0.Top;
+                    base.WndProc(ref m);
+                    calc = (NCCALCSIZE_PARAMS)Marshal.PtrToStructure(m.LParam, typeof(NCCALCSIZE_PARAMS));
+                    // Keep the side and bottom borders, drop the caption. A maximized window hangs over the
+                    // screen edge by its frame width, so its top moves in by that much to stay visible.
+                    calc.rgrc0.Top = top + (IsZoomed(Handle) ? GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) : 0);
+                    Marshal.StructureToPtr(calc, m.LParam, false);
+                    m.Result = IntPtr.Zero;
+                    return;
+                }
+                if (m.Msg == WM_NCHITTEST)
+                {
+                    base.WndProc(ref m);
+                    if ((int)m.Result != HTCLIENT || strip == null) return;
+                    Point screen = PointFromLParam(m.LParam);
+                    Point pt = PointToClient(screen);
+                    int edge = Px(6);
+                    if (WindowState == FormWindowState.Normal && pt.Y < edge)
+                        m.Result = (IntPtr)(pt.X < edge * 2 ? HTTOPLEFT : pt.X > ClientSize.Width - edge * 2 ? HTTOPRIGHT : HTTOP);
+                    else if (strip.Bounds.Contains(pt) && strip.IsDragArea(strip.PointToClient(screen)))
+                        m.Result = (IntPtr)HTCAPTION;
+                    return;
+                }
+                if (m.Msg == WM_WINDOWPOSCHANGED)
+                {
+                    // WinForms already reports the new state here, so track Windows' own state instead.
+                    bool was = maxOrMin;
+                    maxOrMin = IsZoomed(Handle) || IsIconic(Handle);
+                    bool outer = leavingMaxOrMin;
+                    leavingMaxOrMin = outer || was && !maxOrMin;
+                    try { base.WndProc(ref m); }
+                    finally { leavingMaxOrMin = outer; }
+                    return;
+                }
+                base.WndProc(ref m);
+            }
+
+            bool maxOrMin, leavingMaxOrMin;
+
+            // Coming back from maximized or minimized, Windows has already put the window back where it was.
+            // WinForms then re-applies the old client size plus a standard title bar, which this window
+            // doesn't have, so without this it would grow by a title bar's height every time.
+            protected override void SetBoundsCore(int x, int y, int width, int height, BoundsSpecified specified)
+            {
+                if (leavingMaxOrMin && WindowState == FormWindowState.Normal) return;
+                base.SetBoundsCore(x, y, width, height, specified);
             }
 
             async void OnLoad(object sender, EventArgs e)
@@ -587,6 +654,10 @@ namespace MinecraftModManager
                 int hover = -1;
                 bool hoverClose, hoverPlus;
                 string tipText = "";
+                // The window's own minimize / maximize / close buttons, drawn at the right end of the strip
+                // because the strip replaces the title bar (see AppWindow.WndProc).
+                readonly Rectangle[] caption = new Rectangle[3]; // 0 minimize, 1 maximize/restore, 2 close
+                int hoverCaption = -1, pressedCaption = -1;
 
                 public TabStrip(AppWindow owner)
                 {
@@ -604,7 +675,10 @@ namespace MinecraftModManager
                     int plusWidth = Px(34);
                     int pinned = Px(168);
                     int webCount = w.tabs.Count - 1;
-                    int room = Width - x - pinned - plusWidth - Px(16);
+                    int buttonWidth = Px(46);
+                    for (int i = 0; i < 3; i++) caption[i] = new Rectangle(Width - buttonWidth * (3 - i), 0, buttonWidth, Height);
+                    // Keep some empty strip before the window buttons, so there's always somewhere to drag the window.
+                    int room = caption[0].Left - x - pinned - plusWidth - Px(56);
                     int each = webCount == 0 ? 0 : Math.Max(Px(56), Math.Min(Px(230), room / webCount));
                     foreach (BrowserTab tab in w.tabs)
                     {
@@ -634,6 +708,73 @@ namespace MinecraftModManager
                         g.DrawLine(pen, cx - r, cy, cx + r, cy);
                         g.DrawLine(pen, cx, cy - r, cx, cy + r);
                     }
+                    DrawCaptionButtons(g, p);
+                }
+
+                void DrawCaptionButtons(Graphics g, Palette p)
+                {
+                    g.SmoothingMode = SmoothingMode.None;
+                    bool maximized = w.WindowState == FormWindowState.Maximized;
+                    for (int i = 0; i < 3; i++)
+                    {
+                        Rectangle r = caption[i];
+                        bool hot = hoverCaption == i, down = pressedCaption == i && hot;
+                        Color glyph = w.ContainsFocus || hot ? p.Ink : p.Muted;
+                        if (hot)
+                        {
+                            Color fill = i == 2 ? (down ? Rgb(0x94160e) : Rgb(0xc42b1c)) : (down ? p.Line : p.Hover);
+                            using (var b = new SolidBrush(fill)) g.FillRectangle(b, r);
+                            if (i == 2) glyph = Color.White;
+                        }
+                        int s = Px(10), cx = r.X + r.Width / 2, cy = r.Y + r.Height / 2;
+                        using (var pen = new Pen(glyph, Math.Max(1, Px(1))))
+                        {
+                            if (i == 0) g.DrawLine(pen, cx - s / 2, cy, cx + s / 2, cy);
+                            else if (i == 1 && !maximized) g.DrawRectangle(pen, cx - s / 2, cy - s / 2, s, s);
+                            else if (i == 1)
+                            {
+                                int d = Px(2);
+                                g.DrawRectangle(pen, cx - s / 2, cy - s / 2 + d, s - d, s - d);
+                                g.DrawLine(pen, cx - s / 2 + d, cy - s / 2, cx + s / 2, cy - s / 2);
+                                g.DrawLine(pen, cx + s / 2, cy - s / 2, cx + s / 2, cy + s / 2 - d);
+                            }
+                            else
+                            {
+                                g.SmoothingMode = SmoothingMode.AntiAlias;
+                                g.DrawLine(pen, cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2);
+                                g.DrawLine(pen, cx + s / 2, cy - s / 2, cx - s / 2, cy + s / 2);
+                            }
+                        }
+                    }
+                }
+
+                int HitCaption(Point pt)
+                {
+                    ArrangeTabs(); // hit tests can come before the next paint, e.g. right after a resize
+                    for (int i = 0; i < 3; i++) if (caption[i].Contains(pt)) return i;
+                    return -1;
+                }
+
+                // Empty strip (not a tab, not +, not a window button) moves the window like a title bar.
+                public bool IsDragArea(Point pt)
+                {
+                    return ClientRectangle.Contains(pt) && HitTab(pt) < 0 && !plus.Contains(pt) && HitCaption(pt) < 0;
+                }
+
+                protected override void WndProc(ref Message m)
+                {
+                    // Hand drag areas (and the top resize edge) to the window, which answers HTCAPTION / HTTOP.
+                    if (m.Msg == WM_NCHITTEST)
+                    {
+                        Point pt = PointToClient(PointFromLParam(m.LParam));
+                        bool topEdge = w.WindowState == FormWindowState.Normal && pt.Y < Px(6) && HitCaption(pt) < 0;
+                        if (IsDragArea(pt) || topEdge)
+                        {
+                            m.Result = (IntPtr)HTTRANSPARENT;
+                            return;
+                        }
+                    }
+                    base.WndProc(ref m);
                 }
 
                 void DrawTab(Graphics g, Palette p, BrowserTab tab, int index)
@@ -719,6 +860,7 @@ namespace MinecraftModManager
 
                 int HitTab(Point pt)
                 {
+                    ArrangeTabs();
                     for (int i = 0; i < w.tabs.Count; i++) if (w.tabs[i].Bounds.Contains(pt)) return i;
                     return -1;
                 }
@@ -728,14 +870,17 @@ namespace MinecraftModManager
                     int h = HitTab(e.Location);
                     bool hc = h >= 0 && w.tabs[h].Close.Contains(e.Location);
                     bool hp = plus.Contains(e.Location);
-                    if (h != hover || hc != hoverClose || hp != hoverPlus)
+                    int cb = HitCaption(e.Location);
+                    if (h != hover || hc != hoverClose || hp != hoverPlus || cb != hoverCaption)
                     {
                         hover = h;
                         hoverClose = hc;
                         hoverPlus = hp;
+                        hoverCaption = cb;
                         Invalidate();
                     }
-                    string text = hp ? "New tab (Ctrl+T)" : hc ? "Close tab (Ctrl+W)" : h < 0 ? "" : w.tabs[h].IsManager ? "Minecraft Mod Manager" : w.tabs[h].Title + "\n" + w.tabs[h].Url;
+                    string text = cb == 0 ? "Minimize" : cb == 1 ? (w.WindowState == FormWindowState.Maximized ? "Restore down" : "Maximize") : cb == 2 ? "Close"
+                        : hp ? "New tab (Ctrl+T)" : hc ? "Close tab (Ctrl+W)" : h < 0 ? "" : w.tabs[h].IsManager ? "Minecraft Mod Manager" : w.tabs[h].Title + "\n" + w.tabs[h].Url;
                     if (text != tipText)
                     {
                         tipText = text;
@@ -746,13 +891,32 @@ namespace MinecraftModManager
                 protected override void OnMouseLeave(EventArgs e)
                 {
                     hover = -1;
+                    hoverCaption = -1;
                     hoverClose = hoverPlus = false;
                     Invalidate();
+                }
+
+                protected override void OnMouseUp(MouseEventArgs e)
+                {
+                    int cb = HitCaption(e.Location);
+                    int was = pressedCaption;
+                    pressedCaption = -1;
+                    Invalidate();
+                    if (e.Button != MouseButtons.Left || cb < 0 || cb != was) return;
+                    if (cb == 0) w.WindowState = FormWindowState.Minimized;
+                    else if (cb == 1) w.WindowState = w.WindowState == FormWindowState.Maximized ? FormWindowState.Normal : FormWindowState.Maximized;
+                    else w.Close();
                 }
 
                 protected override void OnMouseDown(MouseEventArgs e)
                 {
                     int h = HitTab(e.Location);
+                    int cb = HitCaption(e.Location);
+                    if (cb >= 0)
+                    {
+                        if (e.Button == MouseButtons.Left) { pressedCaption = cb; Invalidate(); }
+                        return;
+                    }
                     if (e.Button == MouseButtons.Left)
                     {
                         if (plus.Contains(e.Location)) w.OpenTab(NewTabUrl);
@@ -799,5 +963,35 @@ namespace MinecraftModManager
 
         [DllImport("dwmapi.dll")]
         static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+        // ---- Win32 for the custom title bar ----
+        const int WM_NCCALCSIZE = 0x0083, WM_NCHITTEST = 0x0084, WM_WINDOWPOSCHANGED = 0x0047;
+        const int HTTRANSPARENT = -1, HTCLIENT = 1, HTCAPTION = 2, HTTOP = 12, HTTOPLEFT = 13, HTTOPRIGHT = 14;
+        const int SM_CYFRAME = 33, SM_CXPADDEDBORDER = 92;
+        const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOZORDER = 0x4, SWP_FRAMECHANGED = 0x20;
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct RECT { public int Left, Top, Right, Bottom; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct NCCALCSIZE_PARAMS { public RECT rgrc0, rgrc1, rgrc2; public IntPtr lppos; }
+
+        static Point PointFromLParam(IntPtr lParam)
+        {
+            long v = lParam.ToInt64();
+            return new Point(unchecked((short)(v & 0xffff)), unchecked((short)((v >> 16) & 0xffff)));
+        }
+
+        [DllImport("user32.dll")]
+        static extern int GetSystemMetrics(int index);
+
+        [DllImport("user32.dll")]
+        static extern bool IsZoomed(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        static extern bool IsIconic(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
     }
 }

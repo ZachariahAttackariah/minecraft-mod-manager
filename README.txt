@@ -3,7 +3,8 @@ Minecraft Mod Manager
 
 Double-click MinecraftModManager.exe. It opens in its own window.
 Close the window to quit. Opening the exe again while it's running just brings the window to the front.
-The window remembers its size and position.
+The window remembers its size and position. Like Firefox, the tabs sit in the window's title bar:
+drag the empty part of it to move the window, double-click it to maximize.
 
 Sections (along the top): Mods, Server, Snapshots, Cleanup.
 
@@ -11,15 +12,19 @@ Bottom bar (like the Minecraft Launcher)
   Instance picker ... bottom left. Lists every instance with its Minecraft version, loader
                       and mod count, plus other mods folders you've used. Choosing an instance also
                       sets the Minecraft version and loader that Modrinth looks for.
-                      "Other mods folder..." picks any folder; "Open launcher" opens the launcher.
+                      "Shared settings..." is what instances can share (see below). "Other mods folder..."
+                      picks any folder; "Open launcher" opens the launcher.
   New instance... ... at the bottom of the list. Name, Minecraft version, loader (NeoForge, Fabric, Forge,
-                      Quilt), loader version and memory, starting empty or as a copy of another instance
+                      Quilt), loader version, memory and what it shares, starting empty or as a copy of another instance
                       (mods, configs, resource and shader packs and settings; worlds only if you tick it).
                       Minecraft and the loader are downloaded the first time you press Play.
-  ... on an instance  Open folder, Settings... (rename, memory, loader version), Duplicate..., Delete...
-                      (asks first, lists its worlds, moves the instance to the Recycle Bin). Close the
-                      launcher before changing or deleting an instance: while it's open it keeps its own copy
-                      of the settings and would undo the change. The instance being managed can't be deleted.
+  ... on an instance  Open folder, Settings... (rename, Minecraft version, loader, loader version, memory,
+                      what it shares), Duplicate..., Delete... (asks first, lists its worlds, moves the
+                      instance to the Recycle Bin). Close the launcher before changing or deleting an instance:
+                      while it's open it keeps its own copy of the settings and would undo the change (sharing
+                      packs and game settings works either way). The instance being managed can't be deleted.
+                      Switching an instance to another Minecraft version or loader leaves its mods folder as it
+                      is; press Check mods afterwards to see which mods don't fit, and Modrinth can find matches.
   PLAY .............. bottom middle. Starts the chosen instance.
   Server ............ bottom right. The server's status; click it for the Server page.
 
@@ -32,12 +37,29 @@ Tabs
   Ctrl+Shift+T reopen the last closed tab, Ctrl+L or F6 address bar.
   Any .jar you download in a tab goes straight into the current mods folder.
 
+Sharing between instances
+  Shared settings... in the instance list shows what's shared. Each instance ticks what it shares in its
+  own Settings; a new instance shares everything unless you untick it, and a copy shares what its source does.
+  Java arguments .... one set for every instance that ticks it. An instance that doesn't keeps its own arguments
+                      (edited in its Settings). Memory stays per instance, so -Xmx / -Xms aren't accepted.
+                      These are the launcher's global Java arguments, so close the launcher before saving them.
+  Shader packs,
+  Resource packs .... one shared folder each. Ticking moves the instance's packs into it (a pack that's already
+                      there is dropped, a different pack with the same name gets the instance's name added) and
+                      links the instance's folder to it. Unticking gives the instance its own folder again, with
+                      a copy of the shared packs. Deleting an instance never touches the shared packs.
+  Game settings ..... video, sound, controls and key binds (options.txt). A change made in one game reaches the
+                      others each time you press Play here (and when the app starts). Key binds for mods an
+                      instance doesn't have are kept for the instances that have them. Which resource packs are
+                      turned on only travels between instances that share resource packs.
+  The shared files are in %LOCALAPPDATA%\MinecraftModManager\shared.
+
 Play and the pre-launch check
-  Play starts the game, but first checks the mods folder for the things that stop
-  NeoForge from starting: a required mod that's missing or turned off, the wrong version of a library,
-  the same mod twice, mods for another Minecraft version, Fabric mods without Sinytra Connector.
-  If it finds any, it lists them with one-click fixes (turn it on, copy it from the server, search
-  Modrinth) and lets you play anyway. The bar under the Modrinth status shows the result at all times.
+  Play starts the game straight away. The pre-launch check only runs when you press Check mods (in the bar
+  under the Modrinth status). It looks for the things that stop NeoForge from starting: a required mod
+  that's missing or turned off, the wrong version of a library, the same mod twice, mods for another
+  Minecraft version, Fabric mods without Sinytra Connector. Anything it finds is listed with one-click
+  fixes (turn it on, copy it from the server, search Modrinth).
 
 Mod details
   Click a mod's name (or right-click > Details...) for: Modrinth's description and links, every Modrinth
@@ -58,7 +80,7 @@ Server (for hosting friends on this PC)
                       mods tagged "server" and its configs (not client-only ones). eula.txt is only written
                       if you tick "I accept Minecraft's EULA".
   Status ............ running / stopped, memory, uptime, who's online, and how friends connect.
-  Start / Stop ...... Start runs the same pre-launch check on the server's mods first. Stop sends "stop", so
+  Start / Stop ...... Stop sends "stop", so
                       the world saves. Force stop only appears while it's stopping, for when it's stuck.
                       Nothing ever starts the server except the Start button.
   Console ........... everything the server prints, live. Filter to warnings & errors or players & chat,
@@ -130,8 +152,9 @@ Files
   MinecraftModManager.settings.json       Mods folder, other folders used, server folder, Minecraft version, loader, window position.
   actions.log                             History of every change to mods, tags, the server and snapshots.
   source\Program.cs                       Core: the internal web server, Modrinth, tags.
-  source\Window.cs                        The window and its tabs.
+  source\Window.cs                        The window, its tabs and the title bar they sit in.
   source\Instances.cs                     The instance picker, and creating / changing / deleting instances.
+  source\Sharing.cs                       Sharing Java arguments, shader / resource packs and game settings.
   source\Server.cs                        Starting, stopping and talking to the Minecraft server.
   source\ServerCreate.cs                  Creating servers and switching between them.
   source\Sync.cs                          Comparing and syncing the game and the server.

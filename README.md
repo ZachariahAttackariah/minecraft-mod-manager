@@ -17,7 +17,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Lets you switch to any older or newer version.
   - Searches and installs mods, together with the mods they require.
   - Checks every download against Modrinth's checksum.
-- **Pre-launch check:** before Play (and before starting the server), the app reads every jar's `neoforge.mods.toml` / `mods.toml` / `fabric.mod.json`. It reports what would stop NeoForge from loading, with one-click fixes:
+- **Pre-launch check:** on demand (the Check mods button), the app reads every jar's `neoforge.mods.toml` / `mods.toml` / `fabric.mod.json`. It reports what would stop NeoForge from loading, with one-click fixes:
   - required mods that are missing or turned off;
   - library versions outside the required range;
   - the same mod twice;
@@ -41,12 +41,16 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Taken automatically before bulk changes.
 - **Find a problem mod:** a guided search that turns off half the suspects each round. Libraries stay on while something that's still on needs them, and everything is put back at the end.
 - **Disk cleanup:** old logs, crash reports, Java crash dumps, debug output and Distant Horizons LOD data, all moved to the Recycle Bin.
-- **Tabs:** links open as tabs in the same window. A `.jar` downloaded in any tab goes straight into the mods folder.
+- **Tabs:** links open as tabs in the same window, and the tab strip doubles as the title bar (Firefox-style, with the window's own snap, resize and maximize behaviour). A `.jar` downloaded in any tab goes straight into the mods folder.
 - **Instances and Play:** a launcher-style bottom bar has an instance picker on the left and a big PLAY button in the middle.
   - The picker lists every [Prism Launcher](https://prismlauncher.org/) instance with its Minecraft version, loader and mod count, plus other mods folders you've used.
   - Choosing an instance also sets the Minecraft version and loader used for Modrinth lookups.
   - PLAY launches the chosen instance through Prism.
-  - Instances can be created (empty, or as a copy of another), duplicated, renamed, given more or less memory, moved to another loader version, and deleted (to the Recycle Bin). They are written in Prism's own format, and Prism downloads the game files on first launch.
+  - Instances can be created (empty, or as a copy of another), duplicated, renamed, given more or less memory, switched to another Minecraft version, loader (NeoForge, Fabric, Forge, Quilt) or loader version, and deleted (to the Recycle Bin). They are written in Prism's own format, and Prism downloads the game files on first launch.
+- **Sharing between instances:** each instance opts in or out of each part separately.
+  - Java arguments: one shared set (Prism's global JVM arguments); an instance that opts out keeps its own.
+  - Shader packs and resource packs: one shared folder each, linked into every sharing instance with a directory junction. Opting in merges the instance's packs into the shared folder without losing any; opting out gives it its own copy.
+  - Game settings (`options.txt`): merged into a shared copy and handed back out on every Play. Keys an instance doesn't know (another version's options, key binds of mods it doesn't have) are kept for the instances that use them.
 
 ## CurseForge
 
@@ -78,8 +82,9 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | Path | What it is |
 | --- | --- |
 | `source/Program.cs` | Core: the local web server, Modrinth, tags |
-| `source/Window.cs` | The window and its tabs |
+| `source/Window.cs` | The window, its tabs, and the custom title bar they sit in |
 | `source/Instances.cs` | The instance picker, and creating, changing and deleting Prism instances |
+| `source/Sharing.cs` | Shared Java arguments, shader / resource packs and game settings between instances |
 | `source/Server.cs` | Starting, stopping and talking to the Minecraft server |
 | `source/ServerCreate.cs` | Creating servers, and switching between them |
 | `source/Sync.cs` | Comparing and syncing the game and the server |

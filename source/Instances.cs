@@ -31,9 +31,14 @@ namespace MinecraftModManager
 
         static string prismDataOverride; // --prism <folder>, for testing against a copy of Prism's data folder
 
+        static string PrismDataDir()
+        {
+            return prismDataOverride ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PrismLauncher");
+        }
+
         static string PrismInstancesDir()
         {
-            string data = prismDataOverride ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PrismLauncher");
+            string data = PrismDataDir();
             if (!Directory.Exists(data)) return null;
             string configured = null;
             try
@@ -89,7 +94,7 @@ namespace MinecraftModManager
                     foreach (string line in File.ReadAllLines(cfg))
                     {
                         int eq = line.IndexOf('=');
-                        if (eq > 0) values[line.Substring(0, eq).Trim()] = line.Substring(eq + 1).Trim();
+                        if (eq > 0) values[line.Substring(0, eq).Trim()] = IniUnescape(line.Substring(eq + 1));
                     }
                 }
                 catch { continue; }
@@ -132,8 +137,10 @@ namespace MinecraftModManager
         {
             string current = modsDir;
             List<InstanceInfo> prism = PrismInstances();
+            SharingState sharing = LoadSharingState();
             var instances = prism.Select(i => (object)Obj("id", i.Id, "name", i.Name, "path", i.Mods, "minecraft", i.Minecraft, "loader", i.Loader,
-                "loaderVersion", i.LoaderVersion, "mods", i.ModCount, "lastPlayed", i.LastPlayed, "memoryMb", i.MemoryMb, "current", SamePath(i.Mods, current))).ToList();
+                "loaderVersion", i.LoaderVersion, "mods", i.ModCount, "lastPlayed", i.LastPlayed, "memoryMb", i.MemoryMb, "current", SamePath(i.Mods, current),
+                "sharing", InstanceSharingObj(i, sharing))).ToList();
             List<string> folders;
             lock (recentFolders) folders = recentFolders.ToList();
             if (!folders.Any(f => SamePath(f, current))) folders.Insert(0, current);
@@ -354,6 +361,8 @@ namespace MinecraftModManager
             int memoryMb = IntValue(body, "memoryMb");
             if (memoryMb != 0) CheckMemory(memoryMb);
             if (source != null && InstanceGameRunning(source)) throw new UserError("Close " + source.Name + " (the game) before copying it.");
+            Dictionary<string, object> sharing = D(Get(body, "sharing"));
+            if (sharing != null) CleanJavaArgs(Str(sharing, "javaArgs"));
 
             string folder = NewInstanceFolder(root, name);
             string dir = Path.Combine(root, folder);
@@ -362,7 +371,7 @@ namespace MinecraftModManager
             try
             {
                 Directory.CreateDirectory(Path.Combine(temp, "minecraft", "mods"));
-                var cfg = new List<string> { "[General]", "ConfigVersion=1.3", "InstanceType=OneSix", "name=" + name, "iconKey=default" };
+                var cfg = new List<string> { "[General]", "ConfigVersion=1.3", "InstanceType=OneSix", "name=" + IniEscape(name), "iconKey=default" };
                 if (source != null)
                 {
                     foreach (string line in File.ReadAllLines(Path.Combine(InstanceDir(source), "instance.cfg")))
@@ -375,8 +384,9 @@ namespace MinecraftModManager
                     }
                     CopyGameFolder(Path.GetDirectoryName(source.Mods), Path.Combine(temp, "minecraft"), Bool(body, "copyWorlds"));
                 }
-                cfg.Add("notes=Created in Minecraft Mod Manager on " + DateTime.Now.ToString("yyyy-MM-dd") + (source != null ? " as a copy of " + source.Name : "") + ".");
+                cfg.Add("notes=" + IniEscape("Created in Minecraft Mod Manager on " + DateTime.Now.ToString("yyyy-MM-dd") + (source != null ? " as a copy of " + source.Name : "") + "."));
                 SetMemoryLines(cfg, memoryMb);
+                if (sharing != null) SetInstanceJava(cfg, Bool(sharing, "java"), Str(sharing, "javaArgs") ?? IniGet(cfg, "JvmArgs"));
                 File.WriteAllLines(Path.Combine(temp, "instance.cfg"), cfg, new System.Text.UTF8Encoding(false));
                 File.WriteAllText(Path.Combine(temp, "mmc-pack.json"), ComponentsJson(minecraft, loaderName, loaderVersion), new System.Text.UTF8Encoding(false));
                 Directory.Move(temp, dir);
@@ -386,10 +396,29 @@ namespace MinecraftModManager
                 if (Directory.Exists(temp)) try { Directory.Delete(temp, true); } catch { }
             }
             Log("Instance  created " + name + " (Minecraft " + minecraft + ", " + LoaderName(loaderName) + " " + loaderVersion + ")" + (source != null ? " as a copy of " + source.Name : ""));
+            var problems = new List<object>();
+            InstanceInfo created = PrismInstances().FirstOrDefault(i => i.Id == folder);
+            if (created != null)
+            {
+                // Linked pack folders aren't copied (see CopyGameFolder): the copy shares them too, or gets
+                // its own copy of the shared packs.
+                foreach (string kind in SharedFolders)
+                {
+                    try
+                    {
+                        if (sharing != null && Bool(sharing, kind)) ShareFolder(created, kind);
+                        else if (source != null && SharesFolder(source, kind)) CopyTree(Path.Combine(SharedDir(), kind), Path.Combine(GameDirOf(created), kind));
+                    }
+                    catch (Exception ex) { problems.Add("The " + PackLabel(kind) + " couldn't be shared: " + ex.Message); }
+                }
+                try { if (sharing != null && Bool(sharing, "options")) ShareGameSettings(created, true); }
+                catch (Exception ex) { problems.Add("The game settings couldn't be shared: " + ex.Message); }
+            }
             string mods = Path.Combine(dir, "minecraft", "mods");
             Dictionary<string, object> selected = SelectInstance(mods);
             selected["name"] = name;
             selected["prismRunning"] = PrismRunning();
+            selected["problems"] = problems;
             return selected;
         }
 
@@ -410,7 +439,7 @@ namespace MinecraftModManager
             foreach (string sub in Directory.GetDirectories(from))
             {
                 string name = Path.GetFileName(sub);
-                if (SkipWhenCopying.Contains(name, StringComparer.OrdinalIgnoreCase)) continue;
+                if (SkipWhenCopying.Contains(name, StringComparer.OrdinalIgnoreCase) || IsLink(sub)) continue;
                 if (!worlds && name.Equals("saves", StringComparison.OrdinalIgnoreCase)) continue;
                 CopyGameFolder(sub, Path.Combine(to, name), true);
             }
@@ -444,7 +473,6 @@ namespace MinecraftModManager
         static Dictionary<string, object> InstanceSettings(Dictionary<string, object> body)
         {
             InstanceInfo info = FindInstance(Str(body, "id"));
-            RequirePrismClosed();
             if (InstanceGameRunning(info)) throw new UserError("Close the game first.");
             string dir = InstanceDir(info);
             string cfgPath = Path.Combine(dir, "instance.cfg");
@@ -457,7 +485,7 @@ namespace MinecraftModManager
             {
                 cfg.RemoveAll(l => l.StartsWith("name="));
                 int at = cfg.FindIndex(l => l.StartsWith("InstanceType="));
-                cfg.Insert(at < 0 ? Math.Min(1, cfg.Count) : at + 1, "name=" + name);
+                cfg.Insert(at < 0 ? Math.Min(1, cfg.Count) : at + 1, "name=" + IniEscape(name));
                 changes.Add("renamed to " + name);
             }
             if (body.ContainsKey("memoryMb"))
@@ -471,12 +499,41 @@ namespace MinecraftModManager
                     changes.Add(memoryMb == 0 ? "memory: default" : "memory: " + (memoryMb / 1024.0).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + " GB");
                 }
             }
+            Dictionary<string, object> sharing = D(Get(body, "sharing"));
+            if (sharing != null && sharing.ContainsKey("java"))
+            {
+                string java = SetInstanceJava(cfg, Bool(sharing, "java"), Str(sharing, "javaArgs"));
+                if (java != null) changes.Add(java);
+            }
+
             string loaderVersion = Str(body, "loaderVersion");
-            if (!string.IsNullOrEmpty(loaderVersion) && loaderVersion != info.LoaderVersion)
+            string minecraft = Str(body, "minecraft");
+            string loaderName = Str(body, "loader");
+            if (string.IsNullOrEmpty(minecraft)) minecraft = info.Minecraft;
+            if (string.IsNullOrEmpty(loaderName)) loaderName = info.Loader;
+            bool versionChanged = false;
+            string packJson = null;
+            string packPath = Path.Combine(dir, "mmc-pack.json");
+            if (minecraft != info.Minecraft || loaderName != info.Loader)
+            {
+                // Another Minecraft version or loader: the instance's components are rewritten from scratch.
+                if (!LoaderUid.ContainsKey(loaderName ?? "")) throw new UserError("Pick NeoForge, Fabric, Forge or Quilt.");
+                if (!MetaIndex("net.minecraft").Any(v => S(v, "version") == minecraft && S(v, "type") == "release"))
+                    throw new UserError("Minecraft " + minecraft + " isn't a release version.");
+                List<Dictionary<string, object>> available = LoaderVersions(loaderName, minecraft);
+                if (available.Count == 0) throw new UserError(LoaderName(loaderName) + " isn't available for Minecraft " + minecraft + ".");
+                if (string.IsNullOrEmpty(loaderVersion) || !available.Any(v => S(v, "version") == loaderVersion)) loaderVersion = DefaultLoaderVersion(available);
+                packJson = ComponentsJson(minecraft, loaderName, loaderVersion);
+                if (minecraft != info.Minecraft) changes.Add("Minecraft " + info.Minecraft + " -> " + minecraft);
+                changes.Add(loaderName != info.Loader
+                    ? LoaderName(info.Loader) + " " + info.LoaderVersion + " -> " + LoaderName(loaderName) + " " + loaderVersion
+                    : LoaderName(loaderName) + " " + loaderVersion);
+                versionChanged = true;
+            }
+            else if (!string.IsNullOrEmpty(loaderVersion) && loaderVersion != info.LoaderVersion)
             {
                 if (!LoaderVersions(info.Loader, info.Minecraft).Any(v => S(v, "version") == loaderVersion))
                     throw new UserError(LoaderName(info.Loader) + " " + loaderVersion + " isn't a version for Minecraft " + info.Minecraft + ".");
-                string packPath = Path.Combine(dir, "mmc-pack.json");
                 var serializer = new JavaScriptSerializer();
                 var pack = serializer.DeserializeObject(File.ReadAllText(packPath)) as Dictionary<string, object>;
                 foreach (object c in A(Get(pack, "components")))
@@ -486,15 +543,38 @@ namespace MinecraftModManager
                     component["version"] = loaderVersion;
                     component["cachedVersion"] = loaderVersion;
                 }
-                File.Copy(packPath, packPath + ".bak", true);
-                File.WriteAllText(packPath, serializer.Serialize(pack), new System.Text.UTF8Encoding(false));
+                packJson = serializer.Serialize(pack);
                 changes.Add(LoaderName(info.Loader) + " " + info.LoaderVersion + " -> " + loaderVersion);
             }
-            if (changes.Count == 0) throw new UserError("Nothing was changed.");
-            File.Copy(cfgPath, cfgPath + ".bak", true);
-            File.WriteAllLines(cfgPath, cfg, new System.Text.UTF8Encoding(false));
+
+            // Everything above lives in the instance's own files, which the launcher would overwrite if it's open.
+            // Sharing packs and game settings doesn't touch those, so it works with the launcher open.
+            bool instanceFiles = changes.Count > 0;
+            var folderChanges = SharedFolders.Where(kind => sharing != null && sharing.ContainsKey(kind) && Bool(sharing, kind) != SharesFolder(info, kind)).ToList();
+            bool optionsChange = sharing != null && sharing.ContainsKey("options") && Bool(sharing, "options") != SharesGameSettings(info);
+            if (!instanceFiles && folderChanges.Count == 0 && !optionsChange) throw new UserError("Nothing was changed.");
+            if (instanceFiles) RequirePrismClosed();
+
+            foreach (string kind in folderChanges) changes.Add(ApplyFolderSharing(info, kind, Bool(sharing, kind)));
+            if (optionsChange) changes.Add(ShareGameSettings(info, Bool(sharing, "options")));
+            if (packJson != null)
+            {
+                File.Copy(packPath, packPath + ".bak", true);
+                File.WriteAllText(packPath, packJson, new System.Text.UTF8Encoding(false));
+            }
+            if (instanceFiles)
+            {
+                File.Copy(cfgPath, cfgPath + ".bak", true);
+                File.WriteAllLines(cfgPath, cfg, new System.Text.UTF8Encoding(false));
+            }
             Log("Instance  " + info.Name + ": " + string.Join(", ", changes));
-            return Obj("ok", true, "changes", changes);
+            // When it's the instance being managed, Modrinth lookups follow its new version and loader.
+            if (versionChanged && SamePath(info.Mods, modsDir))
+            {
+                FollowInstanceTarget(info.Mods);
+                SaveSettings();
+            }
+            return Obj("ok", true, "changes", changes, "versionChanged", versionChanged, "target", TargetObj());
         }
 
         static int InstanceMemoryMb(List<string> cfg)
@@ -512,8 +592,7 @@ namespace MinecraftModManager
             string saves = Path.Combine(Path.GetDirectoryName(info.Mods), "saves");
             var worlds = Directory.Exists(saves) ? new DirectoryInfo(saves).GetDirectories().Where(d => File.Exists(Path.Combine(d.FullName, "level.dat")))
                 .Select(d => (object)d.Name).ToList() : new List<object>();
-            long size = 0;
-            try { size = new DirectoryInfo(dir).EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length); } catch { }
+            long size = FolderSize(new DirectoryInfo(dir)); // shared packs aren't part of it
             return Obj("ok", true, "name", info.Name, "size", size, "worlds", worlds, "current", SamePath(info.Mods, modsDir),
                 "prismRunning", PrismRunning(), "gameRunning", InstanceGameRunning(info));
         }
@@ -525,7 +604,13 @@ namespace MinecraftModManager
             RequirePrismClosed();
             if (InstanceGameRunning(info)) throw new UserError("Close the game first.");
             string dir = InstanceDir(info);
-            if (!RecyclePaths(new[] { dir })) throw new UserError("Windows couldn't move the instance to the Recycle Bin (a file may be in use). Nothing was deleted.");
+            List<string> links = RemoveLinks(info); // the shared packs stay where they are
+            if (!RecyclePaths(new[] { dir }))
+            {
+                RestoreLinks(links);
+                throw new UserError("Windows couldn't move the instance to the Recycle Bin (a file may be in use). Nothing was deleted.");
+            }
+            if (SharesGameSettings(info)) ShareGameSettings(info, false);
             Log("Instance  deleted " + info.Name + " (moved to the Recycle Bin)");
             return Obj("ok", true, "name", info.Name);
         }
