@@ -522,6 +522,25 @@ body { padding-bottom: var(--bar-h); }
 .inst-form .fixed { padding: 8px 10px; font-size: 13.5px; background: var(--sunken); border-radius: 3px; }
 .inst-form .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
 @media (max-width: 560px) { .inst-form .pair { grid-template-columns: minmax(0, 1fr); } }
+.packs-where { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+.packs-where select { padding: 7px 9px; font: 400 13.5px/1.3 var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
+.packs-where code { font: 400 12px/1.4 var(--font-mono); color: var(--ink); overflow-wrap: anywhere; }
+.packs-status { display: grid; gap: 8px; margin: 12px 0 4px; }
+.packs-status:empty { display: none; }
+.packs-status .warnbox { margin: 0; }
+.pack-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+.pack-row:last-child { border-bottom: 0; }
+.pack-row.is-off .pack-icon, .pack-row.is-off .pack-name { opacity: 0.55; }
+.pack-icon { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; image-rendering: pixelated; background: var(--sunken); }
+.pack-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-weight: 600; overflow-wrap: anywhere; }
+.pack-desc { margin: 2px 0; font-size: 13px; line-height: 1.35; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pack-meta { font: 400 12px/1.4 var(--font-mono); color: var(--muted); overflow-wrap: anywhere; }
+.pack-state { display: flex; align-items: center; gap: 6px; }
+.pack-state .chip { --c: var(--accent); }
+.pack-actions { display: flex; align-items: center; gap: 4px; }
+.pack-actions .act { opacity: 0.7; }
+.packs-empty { padding: 22px 4px; color: var(--muted); font-size: 13.5px; }
+@media (max-width: 640px) { .pack-row { grid-template-columns: 40px minmax(0, 1fr); } .pack-state, .pack-actions { grid-column: 2; } }
 .inst-form .share-box { display: grid; gap: 10px; min-width: 0; margin: 0; padding: 8px 12px 12px; border: 1px solid var(--line); border-radius: 4px; }
 .inst-form .share-box legend { padding: 0 6px; font-weight: 700; font-size: 13.5px; color: var(--ink); }
 .inst-form .share-box .prop { margin-left: 24px; }
@@ -548,6 +567,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     </div>
     <nav class="view-nav" id="view-nav" aria-label="Sections">
       <button type="button" data-view="mods" aria-current="page">Mods</button>
+      <button type="button" data-view="packs">Packs</button>
       <button type="button" data-view="server">Server</button>
       <button type="button" data-view="snapshots">Snapshots</button>
       <button type="button" data-view="cleanup">Cleanup</button>
@@ -644,6 +664,27 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     <span>Disabling renames a jar to <code>.jar.disabled</code>. Deleting moves it to the Recycle Bin.</span>
     <button class="linkish" type="button" id="quit">Quit Minecraft Mod Manager</button>
   </p>
+  </section>
+
+  <section class="view" id="view-packs" aria-label="Packs" hidden>
+    <div class="seg-control subnav" id="pack-kinds" role="group" aria-label="Kind of pack">
+      <button type="button" data-kind="resourcepacks" aria-pressed="true">Resource packs</button>
+      <button type="button" data-kind="shaderpacks" aria-pressed="false">Shader packs</button>
+      <button type="button" data-kind="datapacks" aria-pressed="false">Data packs</button>
+    </div>
+    <div class="card">
+      <p class="lead" id="packs-lead"></p>
+      <div class="packs-where" id="packs-where"></div>
+      <div class="row-actions">
+        <button class="btn primary" type="button" id="packs-search">Search Modrinth</button>
+        <button class="btn" type="button" id="packs-add">Add files…</button>
+        <button class="btn" type="button" id="packs-open">Open folder</button>
+        <button class="btn" type="button" id="packs-check">Check for updates</button>
+        <button class="btn primary" type="button" id="packs-update-all" hidden>Update all</button>
+      </div>
+      <div class="packs-status" id="packs-status"></div>
+      <div id="packs-list"></div>
+    </div>
   </section>
 
   <section class="view" id="view-server" aria-label="Server" hidden>
@@ -1479,19 +1520,28 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
   }
 
-  var search = { hits: [], total: 0, offset: 0, loading: false, error: null, seq: 0 };
+  // The same drawer searches for mods or, from the Packs page, for one kind of pack.
+  var search = { kind: "mods", hits: [], total: 0, offset: 0, loading: false, error: null, seq: 0 };
   var installing = {};
+  var PACK_NOUNS = { resourcepacks: "resource packs", shaderpacks: "shader packs", datapacks: "data packs" };
+  var MODRINTH_PATH = { mods: "mod", resourcepacks: "resourcepack", shaderpacks: "shader", datapacks: "datapack" };
 
-  function openSearch() {
+  function openSearch(kind) {
     if (!connected) return;
-    $("search-target").textContent = "Showing mods for " + targetText() + ". Installing also adds the mods it needs.";
+    kind = typeof kind === "string" ? kind : "mods";
+    if (search.kind !== kind) { search.kind = kind; search.hits = []; search.total = 0; search.offset = 0; search.seq++; search.loading = false; }
+    $("search-title").textContent = kind === "mods" ? "Add mods from Modrinth" : "Add " + PACK_NOUNS[kind] + " from Modrinth";
+    $("search-target").textContent = kind === "mods" ? "Showing mods for " + targetText() + ". Installing also adds the mods it needs."
+      : kind === "shaderpacks" ? "Showing shader packs that work with Iris. Iris is installed too if it isn't yet."
+      : kind === "datapacks" ? "Showing data packs for Minecraft " + (server && server.target ? server.target.gameVersion : "") + ". They go into " + packPlaceLabel() + "."
+      : "Showing resource packs for Minecraft " + (server && server.target ? server.target.gameVersion : "") + ".";
     $("search-scrim").hidden = false;
     if (!search.hits.length && !search.loading) runSearch(true);
     $("search-q").focus();
   }
   function closeSearch() {
     $("search-scrim").hidden = true;
-    $("open-search").focus();
+    $(search.kind === "mods" ? "open-search" : "packs-search").focus();
   }
 
   function runSearch(reset) {
@@ -1503,7 +1553,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     search.loading = true;
     search.error = null;
     renderSearch();
-    api("GET", "/api/modrinth/search?q=" + encodeURIComponent(q) + "&offset=" + search.offset + "&sort=" + sort).then(function (res) {
+    var url = search.kind === "mods" ? "/api/modrinth/search?q=" + encodeURIComponent(q)
+      : "/api/packs/search?kind=" + search.kind + "&place=" + encodeURIComponent(packs.places[search.kind] || "") + "&q=" + encodeURIComponent(q);
+    api("GET", url + "&offset=" + search.offset + "&sort=" + sort).then(function (res) {
       if (seq !== search.seq) return;
       search.hits = search.hits.concat(res.hits);
       search.total = res.total || 0;
@@ -1539,7 +1591,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     search.hits.forEach(function (hit) { list.append(resultCard(hit)); });
     if (search.error) list.append(h("p", { class: "search-empty" }, search.error));
     else if (search.loading) list.append(h("p", { class: "search-empty" }, "Searching Modrinth…"));
-    else if (!search.hits.length) list.append(h("p", { class: "search-empty" }, "No mods found for " + targetText() + "."));
+    else if (!search.hits.length) list.append(h("p", { class: "search-empty" }, search.kind === "mods" ? "No mods found for " + targetText() + "." : "No " + PACK_NOUNS[search.kind] + " found."));
     $("search-more").hidden = search.loading || !!search.error || search.hits.length >= search.total;
     $("search-count").textContent = search.total ? "Showing " + search.hits.length + " of " + formatNum(search.total) : "";
   }
@@ -1549,16 +1601,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var sides = [];
     if (hit.clientSide !== "unsupported") sides.push("client");
     if (hit.serverSide !== "unsupported") sides.push("server");
+    var isMod = search.kind === "mods";
     return h("article", { class: "result" },
       hit.icon ? h("img", { class: "result-icon", src: hit.icon, alt: "", loading: "lazy" }) : h("span", { class: "result-icon" }),
       h("div", null,
         h("div", { class: "result-top" },
-          h("a", { class: "result-title", href: "https://modrinth.com/mod/" + encodeURIComponent(hit.slug), target: "_blank", rel: "noopener" }, hit.title),
+          h("a", { class: "result-title", href: "https://modrinth.com/" + MODRINTH_PATH[search.kind] + "/" + encodeURIComponent(hit.slug), target: "_blank", rel: "noopener" }, hit.title),
           hit.author ? h("span", { class: "result-author" }, "by " + hit.author) : null),
         h("p", { class: "result-desc" }, hit.description || ""),
-        h("div", { class: "result-meta" }, formatNum(hit.downloads) + " downloads · " + (sides.join(" + ") || "side unknown") + (hit.updated ? " · updated " + ago(hit.updated) : ""))),
+        h("div", { class: "result-meta" }, formatNum(hit.downloads) + " downloads" + (isMod ? " · " + (sides.join(" + ") || "side unknown") : "") + (hit.updated ? " · updated " + ago(hit.updated) : ""))),
       h("button", { type: "button", class: "btn" + (hit.installed ? "" : " primary"), disabled: hit.installed || busyNow || !connected,
-          "aria-label": (hit.installed ? "Installed: " : "Install ") + hit.title, onclick: function () { installMod(hit); } },
+          "aria-label": (hit.installed ? "Installed: " : "Install ") + hit.title, onclick: function () { if (isMod) installMod(hit); else installPack(hit); } },
         hit.installed ? "Installed" : busyNow ? "Installing…" : "Install"));
   }
 
@@ -1584,6 +1637,244 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       return refresh(true);
     });
   }
+
+  // ---------- Packs: resource packs, shader packs, data packs ----------
+
+  var packs = { kind: "resourcepacks", data: null, error: null, loading: false, seq: 0, busy: {}, places: {} };
+  var PACK_LEADS = {
+    resourcepacks: "Resource packs change textures, sounds and models. Turn them on here or in the game's Options › Resource Packs; when two change the same thing, the one turned on last wins.",
+    shaderpacks: "Shader packs change the lighting and sky. They need Iris, which is installed by itself with the first shader pack. Pick one here or in the game's Video Settings › Shader Packs.",
+    datapacks: "Data packs change recipes, loot, mobs and world generation. An every-world (Paxi) folder applies them to all worlds, and Paxi is installed by itself when it's needed. In multiplayer only the server's data packs count."
+  };
+
+  function packPlaceLabel() {
+    var d = packs.data;
+    if (!d || d.kind !== "datapacks") return "the server's every-world folder";
+    var p = d.places.filter(function (x) { return x.id === d.place; })[0];
+    return p ? p.label.replace(/^Server:/, "the server:").replace(/^This game:/, "this game:") : "the chosen folder";
+  }
+
+  function loadPacks(check) {
+    if (!connected) return Promise.resolve();
+    var seq = ++packs.seq;
+    var kind = packs.kind;
+    packs.loading = true;
+    if (check) $("packs-check").disabled = true;
+    renderPacks();
+    return api("GET", "/api/packs?kind=" + kind + "&place=" + encodeURIComponent(packs.places[kind] || "") + (check ? "&check=1" : "")).then(function (res) {
+      if (seq !== packs.seq) return;
+      packs.data = res;
+      packs.error = null;
+      packs.places[kind] = res.place;
+    }, function (e) {
+      if (seq === packs.seq) packs.error = e.message;
+    }).then(function () {
+      if (seq !== packs.seq) return;
+      packs.loading = false;
+      $("packs-check").disabled = false;
+      renderPacks();
+      if (check && packs.data && !packs.data.modrinthError) {
+        var n = packs.data.packs.filter(function (p) { return p.modrinth && p.modrinth.update; }).length;
+        toast(n ? count(n, "update", "updates") + " available." : "Everything Modrinth knows about is up to date.");
+      }
+    });
+  }
+
+  function packTitle(p) {
+    return (p.modrinth && p.modrinth.title) || p.name.replace(/\.zip$/i, "").replace(/[_]+/g, " ");
+  }
+
+  function renderPacks() {
+    Array.prototype.forEach.call(document.querySelectorAll("#pack-kinds button"), function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-kind") === packs.kind));
+    });
+    $("packs-lead").textContent = PACK_LEADS[packs.kind];
+    var d = packs.data && packs.data.kind === packs.kind ? packs.data : null;
+    var where = $("packs-where"), status = $("packs-status"), list = $("packs-list");
+    where.replaceChildren();
+    status.replaceChildren();
+    list.replaceChildren();
+    ["packs-search", "packs-add", "packs-open", "packs-check"].forEach(function (id) { $(id).disabled = !connected || !d; });
+    $("packs-update-all").hidden = true;
+    if (!d) {
+      list.append(h("p", { class: "packs-empty" }, packs.error || "Loading…"));
+      return;
+    }
+
+    // Where these packs are.
+    if (d.kind === "datapacks") {
+      var select = h("select", { "aria-label": "Where the data packs go", onchange: function () { packs.places.datapacks = select.value; loadPacks(false); } });
+      d.places.forEach(function (p) { select.append(h("option", { value: p.id }, p.label + " (" + p.count + ")")); });
+      select.value = d.place;
+      where.append(h("span", null, "Folder:"), select, h("code", null, d.path));
+    } else {
+      where.append(h("span", null, "Folder:"), h("code", null, d.path));
+      if (d.sharedWith) where.append(h("span", null, d.sharedWith.length ? "Shared with " + d.sharedWith.join(", ") + "." : "The shared folder (no other instance uses it yet)."));
+      else where.append(h("span", null, "This instance's own."));
+    }
+
+    // Anything worth knowing first.
+    var place = d.places.filter(function (x) { return x.id === d.place; })[0] || {};
+    if (d.kind === "shaderpacks") {
+      var active = d.packs.filter(function (p) { return p.on === true; })[0];
+      if (!d.shaderMod) status.append(h("p", { class: "warnbox" }, "Iris isn't installed in this instance. It's installed by itself (with Sodium, which it needs) when you add a shader pack here."));
+      else if (d.shaderModOff) status.append(h("p", { class: "warnbox" }, "Iris is turned off in the Mods list. It's turned back on by itself when you add a shader pack here."));
+      else status.append(h("div", { class: "row-actions" },
+        h("span", null, active ? "Shaders are on: " + packTitle(active) + "." : "Shaders are off."),
+        active ? btn("Turn shaders off", function () { setShader(null); }, "", { disabled: !connected || d.gameRunning }) : null));
+    }
+    if (d.kind === "datapacks" && place.paxi && !place.paxiInstalled)
+      status.append(h("p", { class: "warnbox" }, "Paxi isn't installed " + (place.side === "server" ? "on the server" : "in this instance") + " yet. It's installed by itself (with YUNG's API, which it needs) when you add a data pack here."));
+    else if (d.kind === "datapacks" && place.paxiOff)
+      status.append(h("p", { class: "warnbox" }, "Paxi is turned off " + (place.side === "server" ? "on the server" : "in this instance") + ". It's turned back on by itself when you add a data pack here."));
+    if (d.kind === "datapacks" && place.side === "game" && d.places.some(function (x) { return x.side === "server"; }))
+      status.append(h("p", { class: "hint", style: "margin:0" }, "Data packs in this game only apply in single player. Your server only uses the server's."));
+    if (d.gameRunning) status.append(h("p", { class: "warnbox" }, "The game is running. Close it before turning packs on or off, updating or deleting them."));
+    if (d.serverRunning) status.append(h("p", { class: "warnbox" }, "The server is running. New data packs load after /reload or a restart; stop it before updating or deleting them."));
+    if (d.modrinthError) status.append(h("p", { class: "hint", style: "margin:0" }, "Modrinth: " + d.modrinthError));
+
+    var updates = d.packs.filter(function (p) { return p.modrinth && p.modrinth.update; });
+    if (updates.length) {
+      $("packs-update-all").hidden = false;
+      $("packs-update-all").textContent = "Update all (" + updates.length + ")";
+      $("packs-update-all").disabled = !connected || d.gameRunning || d.serverRunning;
+    }
+
+    var rows = d.packs.slice();
+    if (d.kind === "resourcepacks") rows.sort(function (a, b) { return (b.on >= 0) - (a.on >= 0) || (b.on - a.on) || packTitle(a).localeCompare(packTitle(b)); });
+    else if (d.kind === "shaderpacks") rows.sort(function (a, b) { return (b.on === true) - (a.on === true) || packTitle(a).localeCompare(packTitle(b)); });
+    else rows.sort(function (a, b) { return packTitle(a).localeCompare(packTitle(b)); });
+    if (!rows.length) list.append(h("p", { class: "packs-empty" }, "No " + PACK_NOUNS[d.kind] + " here yet. Search Modrinth, add .zip files, or download one in a tab (it lands here by itself)."));
+    rows.forEach(function (p) { list.append(packRow(d, p)); });
+  }
+
+  function packRow(d, p) {
+    var busyNow = !!packs.busy[p.name];
+    var locked = !connected || busyNow || d.gameRunning || d.serverRunning;
+    var m = p.modrinth;
+    var state = h("div", { class: "pack-state" });
+    var off = false;
+    if (d.kind === "resourcepacks") {
+      off = p.on < 0;
+      state.append(btn(off ? "Turn on" : "On", function () { setResourcePack(p, off); }, off ? "" : "primary",
+        { disabled: locked, title: off ? "Turn this resource pack on" : "Turn this resource pack off", "aria-pressed": String(!off) }));
+    } else if (d.kind === "shaderpacks" && d.shaderMod && !d.shaderModOff) {
+      if (p.on === true) state.append(h("span", { class: "chip" }, "in use"));
+      else state.append(btn("Use", function () { setShader(p.name); }, "", { disabled: locked }));
+    }
+    var actions = h("div", { class: "pack-actions" },
+      m && m.update ? btn("Update", function () { updatePacks([p.name]); }, "primary", { disabled: locked, title: "Update to " + m.update.versionNumber }) : null,
+      h("button", { type: "button", class: "act delete", disabled: locked, title: "Delete…", "aria-label": "Delete " + packTitle(p), onclick: function () { askDeletePack(d, p); } }, icon("trash")));
+    var meta = [p.name, p.folder ? "folder" : formatBytes(p.size)];
+    if (m) meta.push("Modrinth " + m.versionNumber);
+    return h("div", { class: "pack-row" + (off ? " is-off" : ""), "aria-busy": busyNow ? "true" : null },
+      p.icon ? h("img", { class: "pack-icon", src: p.icon, alt: "" }) : h("span", { class: "pack-icon", "aria-hidden": "true" }),
+      h("div", { style: "min-width:0" },
+        h("div", { class: "pack-name" },
+          m && m.slug ? h("a", { class: "result-title", href: "https://modrinth.com/" + MODRINTH_PATH[d.kind] + "/" + encodeURIComponent(m.slug), target: "_blank", rel: "noopener" }, packTitle(p)) : h("span", null, packTitle(p)),
+          m && m.update ? h("span", { class: "badge update", title: "Newer on Modrinth" }, "update → " + m.update.versionNumber) : null),
+        p.description ? h("div", { class: "pack-desc" }, p.description) : null,
+        h("div", { class: "pack-meta" }, meta.join(" · "))),
+      state, actions);
+  }
+
+  // What was done about Iris / Paxi, from the list the app sends back ("Iris", "Sodium", "Paxi (turned back on)").
+  function neededText(list) {
+    var back = / \(turned back on\)$/;
+    var on = list.filter(function (m) { return back.test(m); }).map(function (m) { return m.replace(back, ""); });
+    var added = list.filter(function (m) { return !back.test(m); });
+    var parts = [];
+    if (added.length) parts.push("Also installed " + added.join(" and ") + (added.length === 1 ? ", which is needed for it." : ", which are needed for it."));
+    if (on.length) parts.push("Turned " + on.join(" and ") + " back on, since it's needed.");
+    return parts.join(" ");
+  }
+
+  function packAction(names, promise, done) {
+    names.forEach(function (n) { packs.busy[n] = true; });
+    renderPacks();
+    return promise.then(done, function (e) { toast(e.message); }).then(function () {
+      names.forEach(function (n) { delete packs.busy[n]; });
+      return loadPacks(false);
+    });
+  }
+  function setResourcePack(p, on) {
+    packAction([p.name], api("POST", "/api/packs/resource", { name: p.name, on: on }), function () {
+      toast((on ? "Turned on " : "Turned off ") + packTitle(p) + ". It applies the next time the game starts.");
+    });
+  }
+  function setShader(name) {
+    packAction(name ? [name] : [], api("POST", "/api/packs/shader", { name: name }), function () {
+      toast(name ? "The game will use " + name.replace(/\.zip$/i, "") + " next time it starts." : "Shaders are off from the next start.");
+    });
+  }
+  function updatePacks(names) {
+    var d = packs.data;
+    packAction(names, api("POST", "/api/packs/update", { kind: d.kind, place: d.place, names: names }), function (res) {
+      var ok = res.results.filter(function (r) { return !r.error; });
+      var failed = res.results.filter(function (r) { return r.error; });
+      toast((ok.length ? "Updated " + count(ok.length, PACK_NOUNS[d.kind].replace(/s$/, ""), PACK_NOUNS[d.kind]) + "." : "") +
+        (failed.length ? " " + failed[0].error : ""));
+    });
+  }
+  function askDeletePack(d, p) {
+    confirmDialog({
+      title: "Delete " + packTitle(p) + "?",
+      items: [p.name],
+      body: "It moves to the Recycle Bin, so you can restore it from there." +
+        (d.sharedWith && d.sharedWith.length ? " The folder is shared, so it's gone from " + d.sharedWith.join(", ") + " too." : "") +
+        (d.kind === "shaderpacks" ? " Its shader settings go with it." : ""),
+      ok: "Move to Recycle Bin",
+      onOk: function () {
+        packAction([p.name], api("POST", "/api/packs/delete", { kind: d.kind, place: d.place, names: [p.name] }), function () { toast("Moved " + p.name + " to the Recycle Bin."); });
+      }
+    });
+  }
+  function installPack(hit) {
+    installing[hit.projectId] = true;
+    renderSearch();
+    var kind = search.kind;
+    api("POST", "/api/packs/install", { kind: kind, place: packs.places[kind] || "", projectId: hit.projectId }).then(function (res) {
+      hit.installed = true;
+      toast("Installed " + hit.title + "." + (res.added.length ? " " + neededText(res.added) : "") + (res.notes.length ? " " + res.notes.join(" ") : ""));
+      if (res.added.length) refresh(true);
+    }, function (e) {
+      if (/already there/.test(e.message)) hit.installed = true;
+      toast(e.message);
+    }).then(function () {
+      delete installing[hit.projectId];
+      renderSearch();
+      if (currentView === "packs") loadPacks(false);
+    });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll("#pack-kinds button"), function (b) {
+    b.addEventListener("click", function () {
+      if (packs.kind === b.getAttribute("data-kind")) return;
+      packs.kind = b.getAttribute("data-kind");
+      packs.data = null;
+      loadPacks(false);
+    });
+  });
+  $("packs-search").addEventListener("click", function () { openSearch(packs.kind); });
+  $("packs-open").addEventListener("click", function () {
+    api("POST", "/api/packs/open", { kind: packs.kind, place: packs.places[packs.kind] || "" }).catch(function (e) { toast(e.message); });
+  });
+  $("packs-check").addEventListener("click", function () { loadPacks(true); });
+  $("packs-update-all").addEventListener("click", function () {
+    updatePacks(packs.data.packs.filter(function (p) { return p.modrinth && p.modrinth.update; }).map(function (p) { return p.name; }));
+  });
+  $("packs-add").addEventListener("click", function () {
+    var kind = packs.kind;
+    api("POST", "/api/packs/add", { kind: kind, place: packs.places[kind] || "" }).then(function (res) {
+      var parts = [];
+      if (res.added.length) parts.push("Added " + count(res.added.length, PACK_NOUNS[kind].replace(/s$/, ""), PACK_NOUNS[kind]) + ".");
+      if (res.mods.length) parts.push(neededText(res.mods));
+      if (res.notes.length) parts.push(res.notes.join(" "));
+      if (parts.length) toast(parts.join(" "));
+      if (res.mods.length) refresh(true);
+      return loadPacks(false);
+    }, function (e) { toast(e.message); });
+  });
 
   // ---------- Managing the tags themselves ----------
 
@@ -2145,7 +2436,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       h("p", { class: "hint", style: "margin:0;line-height:1.4" }, "Ticked items are the same in every instance that ticks them. " +
         "Ticking packs moves this instance's packs into the shared folder, and unticking gives it a copy of its own, so nothing is lost. " +
         "Edit the shared Java arguments under Shared settings in the instance list."));
-    setSharing(source ? source.sharing : null);
+    setSharing(source ? source.sharing : inst.data && inst.data.shareByDefault === false
+      ? { java: false, javaArgs: "", shaderpacks: false, resourcepacks: false, options: false } : null);
     form.append.apply(form, [
       h("label", { class: "prop" }, h("b", null, "Name"), nameInput),
       settings ? null : h("label", { class: "prop" }, h("b", null, "Start from"), copySelect),
@@ -2324,6 +2616,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     srv.sync = null;
     search.hits = [];
     inst.data = null;
+    packs.data = null;
+    packs.places = {};
+    if (currentView === "packs") loadPacks(false);
     if (res && res.target && server) server.target = res.target;
     return refresh(true).then(function () {
       if (currentView === "snapshots") loadSnapshots();
@@ -2361,7 +2656,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           h("div", { class: "who" }, count(f.count, "pack", "packs") + " in the shared folder. " + who(kind, what)),
           h("div", { class: "share-row" }, btn("Open folder", function () { api("POST", "/api/sharing/open", { kind: kind }).catch(function (e) { toast(e.message); }); })));
       }
+      var byDefault = h("input", { type: "checkbox" });
+      byDefault.checked = d.shareByDefault;
+      byDefault.addEventListener("change", function () {
+        byDefault.disabled = true;
+        api("POST", "/api/sharing/defaults", { on: byDefault.checked }).then(function (res) {
+          inst.data = null;
+          toast(res.shareByDefault ? "New instances share everything." : "New instances share nothing until you tick it in their Settings.");
+        }, function (e) { byDefault.checked = !byDefault.checked; toast(e.message); }).then(function () { byDefault.disabled = false; });
+      });
       form.replaceChildren(
+        h("section", null,
+          h("label", { class: "toggle" }, byDefault, "New instances share everything"),
+          h("div", { class: "who" }, "Covers instances made here and ones the app finds for the first time (made in the launcher or imported). You can still untick anything in an instance's Settings, and it stays that way.")),
         h("section", null, h("h3", null, "Java arguments"),
           args,
           h("div", { class: "who" }, (sharing("java").length ? "Used by " + sharing("java").join(", ") + "." : "No instance uses them yet.") +
@@ -2447,7 +2754,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   // ---------- Sections (Mods / Server / Snapshots / Cleanup) ----------
 
-  var VIEWS = ["mods", "server", "snapshots", "cleanup"];
+  var VIEWS = ["mods", "packs", "server", "snapshots", "cleanup"];
   var currentView = "mods";
   function setView(name, initial) {
     if (VIEWS.indexOf(name) < 0) name = "mods";
@@ -2462,6 +2769,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!menuEl.hidden) closeMenu();
     if (!hasToken) return;
     if (name === "server") { refreshServer(); startConsole(); }
+    if (name === "packs") loadPacks(false);
     if (name === "snapshots") loadSnapshots();
     if (name === "cleanup") loadCleanup();
   }
@@ -4210,6 +4518,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     host.addEventListener("message", function (e) {
       var msg = String(e.data || "");
       if (msg === "refresh") refresh(true);
+      else if (msg === "packs") { if (currentView === "packs") loadPacks(false); refresh(true); }
       else if (msg === "server") refreshServer();
       else if (msg === "confirm-quit") confirmQuit();
       else if (msg.indexOf("status:") === 0) toast(msg.slice(7));

@@ -147,6 +147,7 @@ namespace MinecraftModManager
             var recent = folders.Where(f => !prism.Any(i => SamePath(i.Mods, f)))
                 .Select(f => (object)Obj("name", FolderLabel(f), "path", f, "exists", Directory.Exists(f), "current", SamePath(f, current))).ToList();
             return Obj("ok", true, "current", current, "prismInstalled", FindPrism() != null, "prismSetUp", PrismInstancesDir() != null,
+                "shareByDefault", sharing.ShareByDefault,
                 "prismRunning", PrismRunning(), "instances", instances, "recent", recent);
         }
 
@@ -397,6 +398,7 @@ namespace MinecraftModManager
             }
             Log("Instance  created " + name + " (Minecraft " + minecraft + ", " + LoaderName(loaderName) + " " + loaderVersion + ")" + (source != null ? " as a copy of " + source.Name : ""));
             var problems = new List<object>();
+            MarkInstanceKnown(folder); // its sharing was chosen in the dialog, so the defaults don't apply again
             InstanceInfo created = PrismInstances().FirstOrDefault(i => i.Id == folder);
             if (created != null)
             {

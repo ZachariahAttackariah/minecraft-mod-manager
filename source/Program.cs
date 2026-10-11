@@ -178,7 +178,7 @@ namespace MinecraftModManager
 
             // Settings changed in a game since last time reach the other sharing instances, even ones
             // started from the launcher itself.
-            ThreadPool.QueueUserWorkItem(delegate { TrySyncGameSettings(); });
+            ThreadPool.QueueUserWorkItem(delegate { TryApplySharingDefaults(); TrySyncGameSettings(); });
 
             if (showWindow)
             {
@@ -212,9 +212,14 @@ namespace MinecraftModManager
         static void HandleDownload(CoreWebView2DownloadStartingEventArgs e, Action<string> report)
         {
             string name = Path.GetFileName(e.ResultFilePath);
+            if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            {
+                HandlePackDownload(e, report); // see Packs.cs
+                return;
+            }
             if (!name.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
             {
-                report("Saving " + name + " to your Downloads folder. Only .jar files go into the mods folder.");
+                report("Saving " + name + " to your Downloads folder. Only .jar and pack .zip files go into the game.");
                 return;
             }
             string target = Path.Combine(modsDir, name);
@@ -310,11 +315,21 @@ namespace MinecraftModManager
                     SendJson(ctx, 200, ModrinthSearch(req.QueryString["q"], offset, req.QueryString["sort"]));
                     return;
                 }
+                if (method == "GET" && path == "/api/packs/search")
+                {
+                    int offset;
+                    int.TryParse(req.QueryString["offset"], out offset);
+                    SendJson(ctx, 200, SearchPacks(req.QueryString["kind"], req.QueryString["place"], req.QueryString["q"], offset, req.QueryString["sort"]));
+                    return;
+                }
                 if (method == "GET")
                 {
                     object result = null;
                     switch (path)
                     {
+                        case "/api/packs":
+                            result = ListPacks(req.QueryString["kind"], req.QueryString["place"], req.QueryString["check"] == "1");
+                            break;
                         case "/api/server":
                             result = ServerStatus();
                             break;
@@ -482,6 +497,31 @@ namespace MinecraftModManager
                         return;
                     case "/api/sharing/java":
                         SendJson(ctx, 200, SetSharedJavaArgs(Str(body, "javaArgs")));
+                        return;
+                    case "/api/packs/install":
+                        SendJson(ctx, 200, InstallPack(Str(body, "kind"), Str(body, "place"), Str(body, "projectId")));
+                        return;
+                    case "/api/packs/update":
+                        SendJson(ctx, 200, UpdatePacks(Str(body, "kind"), Str(body, "place"), StrList(body, "names")));
+                        return;
+                    case "/api/packs/delete":
+                        SendJson(ctx, 200, DeletePacks(Str(body, "kind"), Str(body, "place"), StrList(body, "names")));
+                        return;
+                    case "/api/packs/add":
+                        SendJson(ctx, 200, AddPackFiles(Str(body, "kind"), Str(body, "place")));
+                        return;
+                    case "/api/packs/open":
+                        OpenPackFolder(Str(body, "kind"), Str(body, "place"));
+                        SendJson(ctx, 200, Obj("ok", true));
+                        return;
+                    case "/api/packs/resource":
+                        SendJson(ctx, 200, SetResourcePackOn(Str(body, "name"), Bool(body, "on")));
+                        return;
+                    case "/api/packs/shader":
+                        SendJson(ctx, 200, SetShader(Str(body, "name")));
+                        return;
+                    case "/api/sharing/defaults":
+                        SendJson(ctx, 200, SetShareByDefault(Bool(body, "on")));
                         return;
                     case "/api/sharing/open":
                         OpenSharedFolder(Str(body, "kind"));
@@ -661,6 +701,7 @@ namespace MinecraftModManager
             if (prism == null) throw new UserError("The launcher isn't installed, so the game can't be started from here.");
             string[] instance = PrismInstanceFor(modsDir);
             if (instance == null) throw new UserError("This mods folder isn't part of an instance, so there's nothing to launch. Pick an instance in the bottom bar.");
+            TryApplySharingDefaults(); // an instance made in the launcher since starts out sharing too
             TrySyncGameSettings(); // shared game settings changed in another instance come along
             var start = new ProcessStartInfo(prism, "--launch \"" + instance[0] + "\"");
             start.UseShellExecute = false;
@@ -843,9 +884,15 @@ namespace MinecraftModManager
         // Returns jar file name -> SHA-1.
         static Dictionary<string, string> IdentifyFolder(string dir)
         {
+            if (!Directory.Exists(dir)) return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            return IdentifyFiles(new DirectoryInfo(dir).GetFiles().Where(f => JarName.IsMatch(f.Name)));
+        }
+
+        // The same for any files (pack zips too). Returns file name -> SHA-1.
+        static Dictionary<string, string> IdentifyFiles(IEnumerable<FileInfo> files)
+        {
             var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            if (!Directory.Exists(dir)) return hashes;
-            foreach (FileInfo file in new DirectoryInfo(dir).GetFiles().Where(f => JarName.IsMatch(f.Name)))
+            foreach (FileInfo file in files)
             {
                 try { hashes[file.Name] = FileSha1(file); }
                 catch (IOException) { }
@@ -1075,8 +1122,9 @@ namespace MinecraftModManager
                 {
                     string file = DownloadVersion(item.Version, dir, false, null, notes);
                     if (file == null) continue;
-                    Log("Installed " + file + " from Modrinth" + (item.RequiredBy != null ? " (needed by " + item.RequiredBy + ")" : ""));
-                    TagFromProject(file, S(item.Version, "project_id"), notes);
+                    bool here = SamePath(dir, modsDir); // or the server's mods folder (a mod a pack needs)
+                    Log("Installed " + file + " from Modrinth" + (item.RequiredBy != null ? " (needed by " + item.RequiredBy + ")" : "") + (here ? "" : " into " + dir));
+                    if (here) TagFromProject(file, S(item.Version, "project_id"), notes);
                     added.Add(Obj("file", file, "title", item.Title, "projectId", S(item.Version, "project_id"), "dependency", item.RequiredBy != null));
                 }
                 catch (UserError ex)

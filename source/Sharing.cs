@@ -127,7 +127,7 @@ namespace MinecraftModManager
         {
             bool wasShared = !OwnJavaArgs(cfg);
             string before = Regex.Replace(IniGet(cfg, "JvmArgs") ?? "", @"\s+", " ").Trim();
-            ownArgs = CleanJavaArgs(ownArgs);
+            if (!useShared) ownArgs = CleanJavaArgs(ownArgs); // switching to the shared ones never needs them checked
             if (useShared == wasShared && (useShared || ownArgs == before)) return null;
             string legacy = IniGet(cfg, "OverrideJava");
             if (legacy != null)
@@ -147,13 +147,122 @@ namespace MinecraftModManager
             string path = LauncherConfigPath();
             if (!File.Exists(path)) throw new UserError("Open the launcher once first, so it can set itself up.");
             RequirePrismClosed();
+            if (SharedJavaArgs() == args) throw new UserError("Nothing was changed.");
+            WriteSharedJavaArgs(args, null);
+            return Obj("ok", true, "javaArgs", args);
+        }
+
+        static void WriteSharedJavaArgs(string args, string takenFrom)
+        {
+            string path = LauncherConfigPath();
             List<string> cfg = File.ReadAllLines(path).ToList();
-            if ((IniGet(cfg, "JvmArgs") ?? "") == args) throw new UserError("Nothing was changed.");
             IniSet(cfg, "JvmArgs", args);
             File.Copy(path, path + ".bak", true);
             File.WriteAllLines(path, cfg, new UTF8Encoding(false));
-            Log("Shared    Java arguments: " + (args.Length == 0 ? "(none)" : args));
-            return Obj("ok", true, "javaArgs", args);
+            Log("Shared    Java arguments: " + (args.Length == 0 ? "(none)" : args) + (takenFrom != null ? " (taken from " + takenFrom + ")" : ""));
+        }
+
+        // ---------- Sharing by default ----------
+        // Every instance the app hasn't seen before (made in the launcher, imported, or there before
+        // sharing existed) is set up to share everything, once. Unticking something later sticks.
+        // The Java part waits while the launcher is open, since it would undo it.
+
+        static void ApplySharingDefaults()
+        {
+            lock (SharingLock)
+            {
+                SharingState state = LoadSharingState();
+                List<InstanceInfo> fresh = PrismInstances().Where(i => !state.Known.Contains(i.Id)).ToList();
+                if (fresh.Count == 0) return;
+                if (!state.ShareByDefault)
+                {
+                    state.Known.AddRange(fresh.Select(i => i.Id));
+                    SaveSharingState(state);
+                    return;
+                }
+                bool launcherSetUp = File.Exists(LauncherConfigPath());
+                bool javaReady = launcherSetUp && !PrismRunning();
+                // With no shared arguments yet, the most recently played instance's own ones become them,
+                // so switching it over doesn't change how it runs.
+                if (javaReady && SharedJavaArgs().Length == 0)
+                {
+                    foreach (InstanceInfo info in fresh.OrderByDescending(i => i.LastPlayed))
+                    {
+                        List<string> cfg = ReadInstanceCfg(info);
+                        string own = Regex.Replace(IniGet(cfg, "JvmArgs") ?? "", @"(^|\s)-Xm[sx]\S*", " ", RegexOptions.IgnoreCase);
+                        own = Regex.Replace(own, @"\s+", " ").Trim();
+                        if (!OwnJavaArgs(cfg) || own.Length == 0) continue;
+                        WriteSharedJavaArgs(own, info.Name);
+                        break;
+                    }
+                }
+                var done = new List<string>();
+                foreach (InstanceInfo info in fresh)
+                {
+                    if (GameRunning(GameDirOf(info))) continue; // next time
+                    var changes = new List<string>();
+                    try
+                    {
+                        if (javaReady)
+                        {
+                            string cfgPath = Path.Combine(InstanceDir(info), "instance.cfg");
+                            List<string> cfg = File.ReadAllLines(cfgPath).ToList();
+                            string java = SetInstanceJava(cfg, true, null);
+                            if (java != null)
+                            {
+                                File.Copy(cfgPath, cfgPath + ".bak", true);
+                                File.WriteAllLines(cfgPath, cfg, new UTF8Encoding(false));
+                                changes.Add(java);
+                            }
+                        }
+                        foreach (string kind in SharedFolders)
+                            if (!SharesFolder(info, kind)) changes.Add(ApplyFolderSharing(info, kind, true));
+                        string options = ShareGameSettings(info, true);
+                        if (options != null) changes.Add(options);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log("Shared    couldn't set up sharing for " + info.Name + ": " + ex.Message);
+                        continue;
+                    }
+                    if (changes.Count > 0) Log("Shared    " + info.Name + " (new to the app): " + string.Join(", ", changes));
+                    if (javaReady || !launcherSetUp) done.Add(info.Id);
+                }
+                state = LoadSharingState(); // ShareGameSettings saved its own changes meanwhile
+                state.Known.AddRange(done.Where(id => !state.Known.Contains(id)));
+                SaveSharingState(state);
+            }
+        }
+
+        static void MarkInstanceKnown(string id)
+        {
+            lock (SharingLock)
+            {
+                SharingState state = LoadSharingState();
+                if (state.Known.Contains(id)) return;
+                state.Known.Add(id);
+                SaveSharingState(state);
+            }
+        }
+
+        static Dictionary<string, object> SetShareByDefault(bool on)
+        {
+            lock (SharingLock)
+            {
+                SharingState state = LoadSharingState();
+                state.ShareByDefault = on;
+                // Turning it on applies to instances that turn up from now on, not to ones already set up.
+                if (on) state.Known.AddRange(PrismInstances().Select(i => i.Id).Where(id => !state.Known.Contains(id)));
+                SaveSharingState(state);
+            }
+            Log("Shared    new instances " + (on ? "share everything" : "share nothing") + " by default");
+            return Obj("ok", true, "shareByDefault", on);
+        }
+
+        static void TryApplySharingDefaults()
+        {
+            try { ApplySharingDefaults(); }
+            catch (Exception ex) { Log("Shared    couldn't set up sharing for new instances: " + ex.Message); }
         }
 
         // ---------- Shared pack folders ----------
@@ -460,6 +569,8 @@ namespace MinecraftModManager
         {
             public readonly List<string> Options = new List<string>();     // instance folder names
             public readonly Dictionary<string, long> Seen = new Dictionary<string, long>(); // options.txt time at the last sync
+            public readonly List<string> Known = new List<string>();       // instances already set up (see ApplySharingDefaults)
+            public bool ShareByDefault = true;
         }
 
         static SharingState LoadSharingState()
@@ -471,6 +582,8 @@ namespace MinecraftModManager
                 if (!File.Exists(path)) return state;
                 var json = new JavaScriptSerializer().DeserializeObject(File.ReadAllText(path)) as Dictionary<string, object>;
                 foreach (object id in A(Get(json, "options"))) if (id is string) state.Options.Add((string)id);
+                foreach (object id in A(Get(json, "known"))) if (id is string) state.Known.Add((string)id);
+                if (Get(json, "shareByDefault") is bool) state.ShareByDefault = (bool)Get(json, "shareByDefault");
                 Dictionary<string, object> seen = D(Get(json, "seen"));
                 if (seen != null)
                     foreach (KeyValuePair<string, object> kv in seen)
@@ -487,7 +600,8 @@ namespace MinecraftModManager
         {
             Directory.CreateDirectory(SharedDir());
             var seen = state.Seen.ToDictionary(kv => kv.Key, kv => (object)kv.Value.ToString(CultureInfo.InvariantCulture));
-            File.WriteAllText(SharingStatePath(), new JavaScriptSerializer().Serialize(Obj("options", state.Options, "seen", seen)), new UTF8Encoding(false));
+            File.WriteAllText(SharingStatePath(), new JavaScriptSerializer().Serialize(Obj("shareByDefault", state.ShareByDefault, "known", state.Known,
+                "options", state.Options, "seen", seen)), new UTF8Encoding(false));
         }
 
         static long OptionsTime(InstanceInfo info)
@@ -612,6 +726,7 @@ namespace MinecraftModManager
                 folders[kind] = Obj("path", dir, "count", Directory.Exists(dir) ? Directory.GetFileSystemEntries(dir).Length : 0);
             }
             return Obj("ok", true, "javaArgs", SharedJavaArgs(), "launcherSetUp", File.Exists(LauncherConfigPath()), "prismRunning", PrismRunning(),
+                "shareByDefault", state.ShareByDefault,
                 "folders", folders, "hasOptions", File.Exists(SharedOptionsPath()), "instances", instances);
         }
 

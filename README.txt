@@ -6,7 +6,7 @@ Close the window to quit. Opening the exe again while it's running just brings t
 The window remembers its size and position. Like Firefox, the tabs sit in the window's title bar:
 drag the empty part of it to move the window, double-click it to maximize.
 
-Sections (along the top): Mods, Server, Snapshots, Cleanup.
+Sections (along the top): Mods, Packs, Server, Snapshots, Cleanup.
 
 Bottom bar (like the Minecraft Launcher)
   Instance picker ... bottom left. Lists every instance with its Minecraft version, loader
@@ -35,11 +35,36 @@ Tabs
   Middle-click / x .. close a tab
   Ctrl+T new tab, Ctrl+W close tab, Ctrl+Tab / Ctrl+Shift+Tab next / previous tab, Ctrl+1..9 jump to a tab,
   Ctrl+Shift+T reopen the last closed tab, Ctrl+L or F6 address bar.
-  Any .jar you download in a tab goes straight into the current mods folder.
+  Any .jar you download in a tab goes straight into the current mods folder, and pack .zip files go to
+  their pack folder (see Packs).
+
+Packs
+  Resource packs, shader packs and data packs, each with the same tools as mods: Search Modrinth (installs
+  the right download for your Minecraft version), Add files... (.zip files, checked to be the right kind),
+  Open folder, Check for updates / Update, and delete (to the Recycle Bin). Packs from Modrinth show their
+  name, description and icon, and any update.
+  Resource packs .... On / Turn on edits the game's list of resource packs (options.txt); the one turned on
+                      last wins when two change the same thing. Close the game first.
+  Shader packs ...... Use picks the shader the game starts with; "Turn shaders off" switches them off.
+                      Each shader's own settings file goes with it when it's updated or deleted.
+                      Shader packs need Iris (Oculus on Forge): adding a shader pack installs it, with
+                      Sodium, which it needs, or turns it back on if it's turned off.
+  Data packs ........ Choose where they go: the server's every-world folder (the default when there's a
+                      server, since only the server's data packs count in multiplayer), the server's world,
+                      this game's every-world folder, or one single-player world. Every-world folders work
+                      through the Paxi mod: adding a data pack there installs Paxi (with YUNG's API) on that
+                      side, or turns it back on. Restart the server after Paxi is added.
+  Downloads ......... a pack .zip downloaded in a tab goes to the right place by itself: resource and shader
+                      packs into this game, data packs into the default data pack folder. Other .zip files
+                      go to Downloads.
 
 Sharing between instances
   Shared settings... in the instance list shows what's shared. Each instance ticks what it shares in its
-  own Settings; a new instance shares everything unless you untick it, and a copy shares what its source does.
+  own Settings. "New instances share everything" (on by default) applies to instances made here and to ones
+  the app sees for the first time (made in the launcher, imported, or there before sharing existed): each is
+  set up once, and anything you untick later stays unticked. A copy shares what its source does.
+  When the shared Java arguments are still empty, the most recently played instance's own ones become them,
+  so switching it over doesn't change how it runs.
   Java arguments .... one set for every instance that ticks it. An instance that doesn't keeps its own arguments
                       (edited in its Settings). Memory stays per instance, so -Xmx / -Xms aren't accepted.
                       These are the launcher's global Java arguments, so close the launcher before saving them.
@@ -142,7 +167,8 @@ Good to know
   - Instances and Play run through Prism Launcher, which needs to be installed.
   - Close Minecraft before changing mods. Jars that are in use are refused.
   - Only this PC can reach the app's internal server, and only the app's own page can make changes.
-  - It only touches .jar and .jar.disabled files directly inside the mods folders it manages.
+  - It only touches .jar and .jar.disabled files directly inside the mods folders it manages, pack files in the
+    pack folders, and the instance settings described above.
   - The built-in browser keeps its own sign-ins and cookies in %LOCALAPPDATA%\MinecraftModManager\WebView2.
 
 Files
@@ -155,6 +181,7 @@ Files
   source\Window.cs                        The window, its tabs and the title bar they sit in.
   source\Instances.cs                     The instance picker, and creating / changing / deleting instances.
   source\Sharing.cs                       Sharing Java arguments, shader / resource packs and game settings.
+  source\Packs.cs                         Resource, shader and data packs (and adding Iris / Paxi when needed).
   source\Server.cs                        Starting, stopping and talking to the Minecraft server.
   source\ServerCreate.cs                  Creating servers and switching between them.
   source\Sync.cs                          Comparing and syncing the game and the server.
