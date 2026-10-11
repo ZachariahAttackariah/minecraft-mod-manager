@@ -52,8 +52,10 @@ Packs
   Data packs ........ Choose where they go: the server's every-world folder (the default when there's a
                       server, since only the server's data packs count in multiplayer), the server's world,
                       this game's every-world folder, or one single-player world. Every-world folders work
-                      through the Paxi mod: adding a data pack there installs Paxi (with YUNG's API) on that
-                      side, or turns it back on. Restart the server after Paxi is added.
+                      through the Paxi mod: it's the datapacks folder next to mods (where CurseForge puts
+                      data packs too), or config\paxi\datapacks if Paxi's own setting turns the first off.
+                      Adding a data pack there installs Paxi (with YUNG's API) on that side, or turns it back
+                      on. Restart the server after Paxi is added.
   Downloads ......... a pack .zip downloaded in a tab goes to the right place by itself: resource and shader
                       packs into this game, data packs into the default data pack folder. Other .zip files
                       go to Downloads.

@@ -4,7 +4,7 @@
 //  - Shader packs live in <game>\shaderpacks. Iris (Oculus on Forge) keeps the chosen pack in
 //    config\iris.properties and each pack's own settings in "<pack>.txt" beside it, which travels with it.
 //  - Data packs go into one world (saves\<world>\datapacks, or the server's world), or into every world
-//    through Paxi (config\paxi\datapacks), on the game or on the server.
+//    through Paxi (the datapacks folder next to mods, or config\paxi\datapacks), on the game or the server.
 // Modrinth identifies zips by hash like jars, offers updates, and searches and installs each kind.
 // Adding a shader pack makes sure Iris is there; adding a data pack to a Paxi folder makes sure Paxi is.
 
@@ -49,6 +49,35 @@ namespace MinecraftModManager
             return props.TryGetValue("level-name", out level) && !string.IsNullOrWhiteSpace(level) ? level.Trim() : "world";
         }
 
+        // Paxi loads every-world data packs from a datapacks folder in the game (or server) folder, where
+        // CurseForge puts them, unless its config turns that off; then from its own config\paxi\datapacks.
+        static string PaxiDataDir(string root)
+        {
+            bool baseFolder = true;
+            try
+            {
+                string config = Path.Combine(root, "config");
+                if (Directory.Exists(config))
+                    foreach (string file in Directory.GetFiles(config, "paxi*.*"))
+                    {
+                        Match m = Regex.Match(File.ReadAllText(file), @"Load from base 'datapacks' directory""?\s*[=:]\s*(true|false)", RegexOptions.IgnoreCase);
+                        if (m.Success) baseFolder = m.Groups[1].Value.ToLowerInvariant() == "true";
+                    }
+            }
+            catch { }
+            return baseFolder ? Path.Combine(root, "datapacks") : Path.Combine(root, "config", "paxi", "datapacks");
+        }
+
+        // Paxi's own folder is listed too when packs are sitting in it, so none are out of sight.
+        static void AddPaxiPlaces(List<PackPlace> places, string idPrefix, string labelPrefix, string root, string side, string mods)
+        {
+            string main = PaxiDataDir(root);
+            places.Add(new PackPlace { Id = idPrefix + "paxi", Label = labelPrefix + "every world (Paxi)", Dir = main, Side = side, ModsDir = mods });
+            string own = Path.Combine(root, "config", "paxi", "datapacks");
+            if (!SamePath(own, main) && PackEntries(own).Any())
+                places.Add(new PackPlace { Id = idPrefix + "paxi-config", Label = labelPrefix + "every world (Paxi's config folder)", Dir = own, Side = side, ModsDir = mods });
+        }
+
         // Data packs default to the server's every-world folder when there's a server, since that's
         // where they count in multiplayer; otherwise this game's.
         static List<PackPlace> PackPlaces(string kind)
@@ -63,13 +92,11 @@ namespace MinecraftModManager
             string server = serverDir;
             if (server != null && Directory.Exists(server))
             {
-                places.Add(new PackPlace { Id = "server-paxi", Label = "Server: every world (Paxi)", Dir = Path.Combine(server, "config", "paxi", "datapacks"),
-                    Side = "server", ModsDir = Path.Combine(server, "mods") });
+                AddPaxiPlaces(places, "server-", "Server: ", server, "server", Path.Combine(server, "mods"));
                 string level = ServerLevel();
                 places.Add(new PackPlace { Id = "server-world", Label = "Server: the world " + level, Dir = Path.Combine(server, level, "datapacks"), Side = "server" });
             }
-            places.Add(new PackPlace { Id = "paxi", Label = "This game: every world (Paxi)", Dir = Path.Combine(game, "config", "paxi", "datapacks"),
-                Side = "game", ModsDir = modsDir });
+            AddPaxiPlaces(places, "", "This game: ", game, "game", modsDir);
             string saves = Path.Combine(game, "saves");
             if (Directory.Exists(saves))
                 foreach (DirectoryInfo world in new DirectoryInfo(saves).GetDirectories()

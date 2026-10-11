@@ -49,7 +49,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Instances can be created (empty, or as a copy of another), duplicated, renamed, given more or less memory, switched to another Minecraft version, loader (NeoForge, Fabric, Forge, Quilt) or loader version, and deleted (to the Recycle Bin). They are written in Prism's own format, and Prism downloads the game files on first launch.
 - **Packs:** resource packs, shader packs and data packs get the same tools as mods: Modrinth search, install, hash-based identification and updates, adding `.zip` files (checked by what's inside), and deleting to the Recycle Bin.
   - Resource packs are turned on and off in `options.txt`; the shader in use is set in Iris's config.
-  - Data packs go into a world, the server's world, or every world through Paxi (`config/paxi/datapacks`), on the game or the server.
+  - Data packs go into a world, the server's world, or every world through Paxi (the `datapacks` folder next to `mods`, which Paxi loads by default, or `config/paxi/datapacks` when Paxi's config turns that off), on the game or the server.
   - Adding a shader pack installs Iris (Oculus on Forge) and its dependencies if they're missing; adding a data pack to a Paxi folder does the same for Paxi on that side. A mod that's there but turned off is turned back on instead.
   - A pack `.zip` downloaded in a tab is sorted into the right folder by what's inside it.
 - **Sharing between instances:** each instance opts in or out of each part separately, and instances share everything by default (including ones made in the launcher, the first time the app sees them).
