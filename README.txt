@@ -45,9 +45,10 @@ Mods page
   Click the Mod or Side column heading to sort by name or by side (click again to reverse).
   A turned-off mod shows OFF on its icon, and an available update is the green arrow among the row's
   actions, so neither makes the row taller. Every tag gets its own colour.
-  Tags from another tool: if the folder also has a .mod-tags.json keyed by mod id (another launcher's
-  tag file), it's read whenever it changes and copied into mod-tags.json, matched to jars by mod id,
-  with tag names made valid ("To Do" becomes to-do). Its tags win for the mods it lists; it's never written to.
+  Tags from another tool: if the folder has a .mod-tags.json keyed by mod id (another launcher's tag
+  file), the list shows its tags, matched to jars by mod id, with tag names made valid ("To Do" shows as
+  to-do). It updates as soon as that file changes. Nothing is written in such a folder (the other tool
+  merges any mod-tags.json it finds into its own), so tags there are edited in that launcher only.
 
 Tabs
   Links (Modrinth, CurseForge, mod pages) open as tabs in the same window, next to the pinned
