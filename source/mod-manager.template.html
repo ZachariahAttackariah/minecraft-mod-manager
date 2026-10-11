@@ -248,6 +248,8 @@ h1 { margin: 0; }
 .pill .x { font-size: 13px; line-height: 1; opacity: 0.7; }
 
 .selection-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; width: 100%; padding: 7px 8px 7px 12px; background: color-mix(in srgb, var(--accent) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius: 6px; }
+.selection-bar.is-empty { background: var(--surface); border-color: var(--line); }
+.selection-bar.is-empty .sel-count { font-weight: 500; color: var(--muted); }
 .sel-count { font-size: 13.5px; font-weight: 600; }
 .sel-count .note { font-weight: 400; color: var(--muted); }
 .sel-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }
@@ -1543,9 +1545,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function renderSelectionBar() {
     var bar = $("selection-bar");
     var rows = selectedRows();
-    bar.hidden = !rows.length;
+    bar.hidden = !model;
     bar.replaceChildren();
-    if (!rows.length) return;
+    // Always shown, so selecting the first mod doesn't push the list down (that shift used to close a
+    // just-opened right-click menu). Empty, it keeps the same height with its buttons greyed out.
+    bar.classList.toggle("is-empty", !rows.length);
+    if (!rows.length) {
+      bar.append(
+        h("span", { class: "sel-count" }, "No mods selected", h("span", { class: "note" }, " · click a mod to select it, right-click for actions")),
+        h("span", { class: "sel-actions" },
+          h("button", { type: "button", class: "btn", disabled: true }, "Tags…"),
+          h("button", { type: "button", class: "btn", disabled: true }, "Copy filenames")));
+      return;
+    }
     var shown = {};
     visible().forEach(function (r) { shown[r.key] = true; });
     var hidden = rows.filter(function (r) { return !shown[r.key]; }).length;
