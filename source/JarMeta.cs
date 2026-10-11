@@ -1,6 +1,6 @@
 // What's inside a jar (mod ids, versions, the mods it needs, mods bundled inside it), read from
 // META-INF/neoforge.mods.toml (or mods.toml / fabric.mod.json), and the pre-launch check built on it:
-// missing or turned-off required mods, wrong versions, the same mod twice, mods for another
+// missing or turned-off required mods, wrong versions, the same mod twice (Duplicates.cs), mods for another
 // Minecraft version or loader. NeoForge refuses to start in most of these cases, so catching them
 // before Play / Start saves a slow launch that ends in an error screen.
 
@@ -596,11 +596,15 @@ namespace MinecraftModManager
             Dictionary<string, List<Provider>> serverProviders = null; // read only when something is missing
 
             var issues = new List<object>();
-            // The same mod twice: NeoForge stops with "duplicate mods found".
+            // The same mod twice (on or off): one issue per mod, with the copy to keep already picked (Duplicates.cs).
+            List<DupGroup> dupes = FindDuplicates(jars, metas, mc);
+            foreach (DupGroup g in dupes) issues.Add(DuplicateIssue(g, side == "client"));
+            // Two different jars that both provide one mod id (one lists the other's id as an alias):
+            // NeoForge stops with "duplicate mods found", but which to drop is the user's call.
             foreach (KeyValuePair<string, List<Provider>> p in providers)
             {
                 List<string> files = p.Value.Where(x => !x.Nested).Select(x => x.File).Distinct().ToList();
-                if (files.Count < 2) continue;
+                if (files.Count < 2 || dupes.Any(g => files.All(f => g.Copies.Any(c => c.File.Name == f)))) continue;
                 issues.Add(Issue("error", "duplicate", "Two jars contain the same mod (" + p.Key + "), and the game refuses to start with both.",
                     files, Obj("action", "disable-one", "files", files)));
             }

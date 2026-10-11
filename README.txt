@@ -103,6 +103,12 @@ Play and the pre-launch check
   that's missing or turned off, the wrong version of a library, the same mod twice, mods for another
   Minecraft version, Fabric mods without Sinytra Connector. Anything it finds is listed with one-click
   fixes (turn it on, copy it from the server, search Modrinth).
+  Duplicates: a mod that's in the folder more than once, on or off, is listed once with the copy to keep
+  already picked: the one made for this Minecraft version, then the build for the instance's own loader
+  (not a Fabric build run through Connector), then the version your other mods require, then the one
+  that's on, then the newest version. "Remove the other copy" (or "Fix all duplicates") moves the rest to the Recycle Bin, moves
+  their tags to the kept copy, and turns the kept copy on if the copy that was on is the one removed.
+  Two or more extra copies at once are snapshotted first.
 
 Mod details
   Click a mod's name (or right-click > Details...) for: Modrinth's description and links, every Modrinth
@@ -187,7 +193,8 @@ Good to know
   - Only this PC can reach the app's internal server, and only the app's own page can make changes.
   - It only touches .jar and .jar.disabled files directly inside the mods folders it manages, pack files in the
     pack folders, and the instance settings described above.
-  - The built-in browser keeps its own sign-ins and cookies in %LOCALAPPDATA%\MinecraftModManager\WebView2.
+  - The built-in browser keeps its own sign-ins and cookies (including cookie-banner choices) in
+    %LOCALAPPDATA%\MinecraftModManager\WebView2. Closing the app waits a moment for the browser to save them.
 
 Files
   MinecraftModManager.exe                 The app (page embedded inside).

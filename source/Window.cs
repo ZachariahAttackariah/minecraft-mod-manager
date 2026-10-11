@@ -28,16 +28,42 @@ namespace MinecraftModManager
 
         static Task<CoreWebView2Environment> environment;
 
-        // One shared browser profile for every tab, kept in %LOCALAPPDATA%, so sign-ins and
-        // cookies on Modrinth / CurseForge survive between runs.
+        // One shared browser profile for every tab, kept in the data folder (%LOCALAPPDATA%\MinecraftModManager,
+        // or a test run's --data folder), so sign-ins and cookies on Modrinth / CurseForge survive between runs.
         static Task<CoreWebView2Environment> GetEnvironment()
         {
             if (environment == null)
             {
-                string profileDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MinecraftModManager", "WebView2");
+                string profileDir = Path.Combine(dataDir, "WebView2");
                 environment = CoreWebView2Environment.CreateAsync(null, profileDir, null);
             }
             return environment;
+        }
+
+        static bool browserStarted;
+        static volatile bool browserExited;
+
+        // The browser's exit event comes once it has saved cookies and site data and let go of the profile.
+        static void WatchBrowser(CoreWebView2Environment env)
+        {
+            if (browserStarted) return;
+            browserStarted = true;
+            env.BrowserProcessExited += delegate { browserExited = true; };
+        }
+
+        // After the window (and every tab's view with it) has closed, give the browser a few seconds to shut
+        // down properly. Exiting straight away could lose the cookies set that session, which is why sites
+        // like Modrinth asked about cookies again on every start. The event arrives through this thread's
+        // message queue, hence DoEvents.
+        static void WaitForBrowserExit()
+        {
+            if (!browserStarted) return;
+            DateTime until = DateTime.UtcNow.AddSeconds(5);
+            while (!browserExited && DateTime.UtcNow < until)
+            {
+                Application.DoEvents();
+                System.Threading.Thread.Sleep(15);
+            }
         }
 
         // Anything that wants a web page shown: a tab in the app window, or the normal browser without one.
@@ -277,7 +303,9 @@ namespace MinecraftModManager
                 try
                 {
                     manager.View = NewView();
-                    await manager.View.EnsureCoreWebView2Async(await GetEnvironment());
+                    CoreWebView2Environment env = await GetEnvironment();
+                    await manager.View.EnsureCoreWebView2Async(env);
+                    WatchBrowser(env);
                 }
                 catch (Exception ex)
                 {

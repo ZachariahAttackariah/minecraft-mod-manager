@@ -140,7 +140,7 @@ namespace MinecraftModManager
             }
 
             var cache = new CleanGroup { Id = "browser-cache", Where = "This app", Label = "Built-in browser cache", Description = "Cached pages and images from the tabs. Sign-ins and cookies are kept." };
-            string profile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"MinecraftModManager\WebView2\EBWebView\Default");
+            string profile = Path.Combine(dataDir, @"WebView2\EBWebView\Default");
             foreach (string sub in new[] { "Cache", "Code Cache", "GPUCache", @"Service Worker\CacheStorage" })
             {
                 var part = new CleanGroup();

@@ -561,6 +561,7 @@ details.more > summary { cursor: pointer; font: 600 13.5px/1.3 var(--font-displa
 .issue .lvl { padding: 1px 6px; font: 600 11px/1.5 var(--font-mono); border-radius: 3px; color: var(--danger-ink); background: var(--danger); }
 .issue .lvl.warning { background: var(--c-server); }
 .issue .files { grid-column: 2; font: 400 12px/1.4 var(--font-mono); color: var(--muted); overflow-wrap: anywhere; }
+.dup-all { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin: 10px 0 2px; padding: 10px 12px; font-size: 13.5px; background: var(--bg); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 4px; }
 button.mod-name { padding: 0; font: inherit; font-weight: 600; font-size: 14.5px; text-align: left; color: var(--ink); background: none; border: 0; cursor: pointer; }
 button.mod-name:hover { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 2px; }
 
@@ -3033,6 +3034,20 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // opts: { title, lead, actionLabel, readyLabel, action } — action is offered as "do it anyway".
   function problemsDialog(res, opts) {
     var body = h("div");
+    var dupes = res.side === "client" && connected
+      ? res.issues.filter(function (is) { return is.fix && is.fix.action === "remove-duplicates"; }).map(function (is) { return is.fix; }) : [];
+    if (dupes.length > 1) {
+      var extra = dupes.reduce(function (n, f) { return n + f.remove.length; }, 0);
+      body.append(h("div", { class: "dup-all" },
+        h("span", null, count(dupes.length, "mod is", "mods are") + " in the folder more than once. The best copy of each is already picked."),
+        btn("Fix all duplicates", function (e) {
+          e.currentTarget.disabled = true;
+          removeDuplicates(dupes).then(function (msg) {
+            toast(msg);
+            return refresh(true).then(runCheck).then(function (again) { if (again && !$("big-scrim").hidden) problemsDialog(again, opts); });
+          }, function (err) { toast(err.message); });
+        }, "primary", { title: "Moves " + count(extra, "extra jar", "extra jars") + " to the Recycle Bin. A snapshot is taken first." })));
+    }
     res.issues.forEach(function (is) { body.append(issueRow(is, res.side, opts)); });
     if (!res.issues.length) body.append(h("p", { class: "search-empty" }, "No problems left."));
     if (res.side === "server" && res.issues.length) body.append(h("p", { class: "hint", style: "margin:12px 0" }, "To fix the server, sort it out in the game first, then use Server → Sync from the game."));
@@ -3041,6 +3056,16 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     openBig(res.errors && opts.title ? opts.title : (res.side === "server" ? "Server mod check" : "Game mod check"),
       res.errors && opts.lead ? opts.lead : "Checked " + res.enabled + " jars that are on, for Minecraft " + res.minecraft + (res.neoforge ? " with NeoForge " + res.neoforge : "") + ".",
       body, buttons);
+  }
+
+  // Removes the extra copies the check picked; resolves with the message to show.
+  function removeDuplicates(fixes) {
+    return api("POST", "/api/check/remove-duplicates", { groups: fixes.map(function (f) { return { keep: f.keep, remove: f.remove }; }) }).then(function (res) {
+      var msg = count(res.removed.length, "extra copy", "extra copies") + " moved to the Recycle Bin" +
+        (res.turnedOn.length ? ", and " + count(res.turnedOn.length, "kept copy", "kept copies") + " turned on" : "") + ".";
+      if (res.failed.length) msg += " " + count(res.failed.length, "file", "files") + " couldn't be changed: " + res.failed[0].error;
+      return msg;
+    });
   }
 
   function issueRow(is, side, opts) {
@@ -3073,6 +3098,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           openSearch();
           runSearch(true);
         }));
+      } else if (fix.action === "remove-duplicates") {
+        fixes.append(btn(fix.remove.length === 1 ? "Remove the other copy" : "Remove the other " + fix.remove.length, function (e) {
+          e.currentTarget.disabled = true;
+          removeDuplicates([fix]).then(function (msg) { return after(msg); }, function (err) { toast(err.message); });
+        }, "primary", { title: "Keeps " + fix.keep + (fix.turnOn ? " and turns it on" : "") + ". The others go to the Recycle Bin, and their tags move to the one kept." }));
       } else if (fix.action === "disable-one") {
         fix.files.forEach(function (file) {
           fixes.append(btn("Turn off " + file, function (e) {

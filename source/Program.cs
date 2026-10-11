@@ -197,6 +197,7 @@ namespace MinecraftModManager
             {
                 window = new AppWindow();
                 Application.Run(window);
+                WaitForBrowserExit();
             }
             else
             {
@@ -493,6 +494,9 @@ namespace MinecraftModManager
                         return;
                     case "/api/sides/detect":
                         SendJson(ctx, 200, DetectSides());
+                        return;
+                    case "/api/check/remove-duplicates":
+                        SendJson(ctx, 200, RemoveDuplicates(body));
                         return;
                     case "/api/modrinth/install":
                         SendJson(ctx, 200, ModrinthInstall(Str(body, "projectId")));
