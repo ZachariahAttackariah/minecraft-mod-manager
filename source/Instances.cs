@@ -1,5 +1,5 @@
 // Instances: the Prism Launcher instances on this PC, plus other mods folders used before, for the
-// picker in the bottom bar. Choosing one switches the managed mods folder, and for a Prism instance
+// picker next to the Play button. Choosing one switches the managed mods folder, and for a Prism instance
 // the Minecraft version and loader that Modrinth lookups use follow the instance's own versions.
 
 using System;

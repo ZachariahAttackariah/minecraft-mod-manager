@@ -8,8 +8,8 @@ drag the empty part of it to move the window, double-click it to maximize.
 
 Sections (along the top): Mods, Packs, Server, Snapshots, Cleanup.
 
-Bottom bar (like the Minecraft Launcher)
-  Instance picker ... bottom left. Lists every instance with its Minecraft version, loader
+Top right (like the Minecraft Launcher)
+  Instance picker ... next to PLAY. Lists every instance with its Minecraft version, loader
                       and mod count, plus other mods folders you've used. Choosing an instance also
                       sets the Minecraft version and loader that Modrinth looks for.
                       "Shared settings..." is what instances can share (see below). "Other mods folder..."
@@ -25,8 +25,15 @@ Bottom bar (like the Minecraft Launcher)
                       packs and game settings works either way). The instance being managed can't be deleted.
                       Switching an instance to another Minecraft version or loader leaves its mods folder as it
                       is; press Check mods afterwards to see which mods don't fit, and Modrinth can find matches.
-  PLAY .............. bottom middle. Starts the chosen instance.
-  Server ............ bottom right. The server's status; click it for the Server page.
+  PLAY .............. starts the chosen instance.
+  Pre-launch check .. under PLAY: Check mods (see below), the result, and "Show and fix".
+  Server ............ at the right end of the section tabs: the server's status; click it for the Server page.
+  Under the tabs: "Open mods folder", "Open instance folder" (the folder the mods folder is in: configs,
+  saves, packs) and Refresh.
+
+Mods page
+  The list is in the middle, with "Where each jar installs" (client / server) on the left and the topic
+  tags on the right; click either to filter the list. Hover over a tag to see what it means.
 
 Tabs
   Links (Modrinth, CurseForge, mod pages) open as tabs in the same window, next to the pinned
@@ -82,8 +89,8 @@ Sharing between instances
   The shared files are in %LOCALAPPDATA%\MinecraftModManager\shared.
 
 Play and the pre-launch check
-  Play starts the game straight away. The pre-launch check only runs when you press Check mods (in the bar
-  under the Modrinth status). It looks for the things that stop NeoForge from starting: a required mod
+  Play starts the game straight away. The pre-launch check only runs when you press Check mods (under
+  the PLAY button). It looks for the things that stop NeoForge from starting: a required mod
   that's missing or turned off, the wrong version of a library, the same mod twice, mods for another
   Minecraft version, Fabric mods without Sinytra Connector. Anything it finds is listed with one-click
   fixes (turn it on, copy it from the server, search Modrinth).
@@ -156,7 +163,7 @@ Managing mods
   Selection bar ..... enable, disable, delete, update, tag or copy everything selected
   Right-click ....... actions on the left, tags on the right (tick to add, untick to remove, or type a new tag)
 
-Manage tags (button on the Topic tags panel)
+Manage tags (the Manage button above the topic tags, right of the list)
   Add, rename or delete tags, and describe what each means. client / server are the side tags the app relies
   on (sync uses them): their description can change, not their name.
   Careful: with many mods selected, clicking a half-filled tag in the right-click menu adds it to ALL of

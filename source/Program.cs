@@ -440,6 +440,10 @@ namespace MinecraftModManager
                         OpenModsFolder();
                         SendJson(ctx, 200, Obj("ok", true));
                         return;
+                    case "/api/open-game-folder":
+                        OpenGameFolder();
+                        SendJson(ctx, 200, Obj("ok", true));
+                        return;
                     case "/api/settings":
                     {
                         string version = (Str(body, "gameVersion") ?? "").Trim();
@@ -700,7 +704,7 @@ namespace MinecraftModManager
             string prism = FindPrism();
             if (prism == null) throw new UserError("The launcher isn't installed, so the game can't be started from here.");
             string[] instance = PrismInstanceFor(modsDir);
-            if (instance == null) throw new UserError("This mods folder isn't part of an instance, so there's nothing to launch. Pick an instance in the bottom bar.");
+            if (instance == null) throw new UserError("This mods folder isn't part of an instance, so there's nothing to launch. Pick an instance next to the Play button.");
             TryApplySharingDefaults(); // an instance made in the launcher since starts out sharing too
             TrySyncGameSettings(); // shared game settings changed in another instance come along
             var start = new ProcessStartInfo(prism, "--launch \"" + instance[0] + "\"");
@@ -1700,6 +1704,14 @@ namespace MinecraftModManager
         static void OpenModsFolder()
         {
             try { Process.Start("explorer.exe", "\"" + modsDir + "\""); } catch { }
+        }
+
+        // The folder the mods folder is in: for an instance, its game folder (configs, saves, packs).
+        static void OpenGameFolder()
+        {
+            string dir = GameDir();
+            if (!Directory.Exists(dir)) throw new UserError(dir + " isn't there any more.");
+            try { Process.Start("explorer.exe", "\"" + dir + "\""); } catch { }
         }
 
         // Runs on the UI thread. Closing the main window ends Application.Run in Main.

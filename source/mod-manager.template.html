@@ -46,7 +46,7 @@
   --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
   --font-pixel: "Pixelify Sans", "Noto Sans", sans-serif;
   --gutter: clamp(16px, 4vw, 32px);
-  --bar-h: 84px;
+  --bar-h: 0px; /* the old bottom bar is gone; kept for the toasts and sticky footers that leave room for it */
   color-scheme: dark;
 }
 *, *::before, *::after { box-sizing: border-box; }
@@ -57,10 +57,18 @@ button, input { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent-fg); outline-offset: 2px; }
 code { font-family: var(--font-mono); font-size: 0.92em; }
 
-.wrap { max-width: 1180px; margin: 0 auto; padding-inline: var(--gutter); padding-block: 26px 56px; }
+.wrap { max-width: 1560px; margin: 0 auto; padding-inline: var(--gutter); padding-block: 26px 56px; }
 
 .top { display: grid; gap: 0; margin-bottom: 14px; }
-.brand-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.brand-row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 16px; }
+.brand-row .wordmark { margin-top: 10px; }
+.launch { display: grid; gap: 8px; justify-items: stretch; min-width: 0; max-width: 100%; }
+.launch-row { display: flex; align-items: stretch; justify-content: flex-end; gap: 8px; min-width: 0; }
+.launch .inst-btn { max-width: 340px; }
+.launch .check-bar { margin-top: 0; padding: 6px 10px; font-size: 12.5px; justify-content: flex-end; }
+.launch .check-bar .btn { padding: 6px 10px 7px; font-size: 12.5px; }
+.launch .check-bar .grow { flex: 1; min-width: 0; }
+@media (max-width: 640px) { .launch { width: 100%; } .launch-row { justify-content: stretch; } .launch .inst-btn { flex: 1; max-width: none; } }
 .wordmark { margin: 0; display: flex; align-items: center; gap: 14px; font: 700 clamp(22px, 3vw, 28px)/1 var(--font-pixel); letter-spacing: 0.03em; text-transform: uppercase; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.45); }
 .block { flex: none; display: inline-block; width: 36px; height: 36px; border-radius: 3px; background: linear-gradient(180deg, #74b84b 0 30%, #4f8f34 30% 38%, #8b5d3b 38% 100%); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.18); }
 .block.folder { background: linear-gradient(180deg, #9a9a9a 0 30%, #7a7a7a 30% 100%); }
@@ -74,11 +82,11 @@ h1 { margin: 0; }
 .folder-actions { display: inline-flex; flex-wrap: wrap; gap: 6px; }
 .get-mods { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 8px; }
 .get-label { font: 600 12px/1.2 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-.play-box { display: inline-flex; justify-self: center; }
-.btn.play { justify-content: center; min-width: min(280px, 38vw); height: 56px; padding: 0 28px; font: 800 22px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: #fff; background: var(--accent); border-radius: 3px; box-shadow: inset 0 -4px 0 var(--accent-deep), inset 0 2px 0 rgba(255, 255, 255, 0.2); }
+
+.btn.play { justify-content: center; min-width: min(200px, 34vw); height: 52px; padding: 0 26px; font: 800 20px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: #fff; background: var(--accent); border-radius: 3px; box-shadow: inset 0 -4px 0 var(--accent-deep), inset 0 2px 0 rgba(255, 255, 255, 0.2); }
 .btn.play:hover { background: var(--accent-hover); }
 .btn.play:disabled { background: var(--btn); box-shadow: inset 0 -4px 0 var(--bevel-lo); color: var(--muted); opacity: 1; }
-@media (max-width: 560px) { .play-box { align-items: flex-start; } }
+
 .mr-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 8px; padding: 8px 10px; font-size: 13.5px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
 .target { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .target-btn { padding: 4px 8px; font: 600 13px/1.2 var(--font-mono); color: var(--ink); background: var(--bg); border: 1px dashed var(--muted); border-radius: 4px; cursor: pointer; }
@@ -141,8 +149,28 @@ h1 { margin: 0; }
 .notice { margin: 0 0 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 12px; border: 1px solid var(--line); border-left: 3px solid var(--c-x2); border-radius: 5px; background: var(--surface); font-size: 14px; }
 .notice.info { border-left-color: var(--accent); }
 
-.summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.75fr); gap: 14px; margin-bottom: 18px; }
-@media (max-width: 860px) { .summary { grid-template-columns: minmax(0, 1fr); } }
+.mods-layout { display: grid; grid-template-columns: minmax(180px, 220px) minmax(0, 1fr) minmax(210px, 260px); grid-template-areas: "left main right"; gap: 16px; align-items: start; }
+.side-left { grid-area: left; }
+.side-right { grid-area: right; }
+.main-col { grid-area: main; min-width: 0; }
+.side-col { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; min-width: 0; scrollbar-width: thin; }
+.side-col .panel { padding: 14px; }
+.side-col .section-label { align-items: center; }
+.side-col .section-label .btn { padding: 6px 10px 7px; font-size: 12.5px; }
+.side-col .side-legend { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.side-col .tag-grid { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.side-col .tag-card { padding: 8px 10px; }
+.side-col .tag-card .count { font-size: 15px; }
+.mods-layout .toolbar { margin-inline: 0; padding-inline: 0; }
+@media (max-width: 1180px) {
+  .mods-layout { grid-template-columns: minmax(200px, 240px) minmax(0, 1fr); grid-template-areas: "left main" "right main"; }
+  .side-col { position: static; max-height: none; }
+}
+@media (max-width: 860px) {
+  .mods-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "left" "right" "main"; }
+  .side-col .tag-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  .side-col .side-legend { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
+}
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 16px; min-width: 0; }
 .section-label { margin: 0 0 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font: 600 14px/1.2 var(--font-display); letter-spacing: 0.01em; }
 .hint { font: 400 12px/1.2 var(--font-body); color: var(--muted); }
@@ -314,7 +342,6 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 }
 
 /* ---- Sections (Mods / Server / Snapshots / Cleanup) ---- */
-.bar-right { justify-self: end; display: inline-flex; align-items: center; gap: 10px; }
 .server-chip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; font: 600 13.5px/1 var(--font-body); color: var(--ink); background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
 .server-chip:hover { background: var(--btn); }
 .dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
@@ -326,6 +353,8 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .view-nav button:hover { color: var(--ink); }
 .view-nav button[aria-current="page"] { color: var(--ink); }
 .view-nav button[aria-current="page"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -2px; height: 3px; background: var(--accent-hover); }
+.view-nav .nav-right { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; padding-bottom: 6px; }
+.view-nav .server-chip { padding: 7px 12px; font-size: 13px; }
 .view-nav .badge-n { margin-left: 6px; padding: 1px 6px; font: 600 11px/1.4 var(--font-mono); color: var(--danger-ink); background: var(--danger); border-radius: 8px; }
 .view { padding-top: 2px; }
 .subnav { display: inline-flex; margin-bottom: 12px; }
@@ -489,16 +518,14 @@ details.more > summary { cursor: pointer; font: 600 13.5px/1.3 var(--font-displa
 button.mod-name { padding: 0; font: inherit; font-weight: 600; font-size: 14.5px; text-align: left; color: var(--ink); background: none; border: 0; cursor: pointer; }
 button.mod-name:hover { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 2px; }
 
-/* ---- Bottom bar: instance picker + PLAY, like the Minecraft Launcher ---- */
-body { padding-bottom: var(--bar-h); }
-.playbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; height: var(--bar-h); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; padding: 0 var(--gutter); background: #1b1b1b; border-top: 1px solid #111; box-shadow: 0 -8px 24px -12px rgba(0, 0, 0, 0.7); }
-.inst-btn { justify-self: start; display: flex; align-items: center; gap: 12px; min-width: 0; max-width: 100%; padding: 8px 14px 8px 8px; color: var(--ink); text-align: left; background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
+/* ---- Instance picker + PLAY (top right), like the Minecraft Launcher ---- */
+.inst-btn { display: flex; align-items: center; gap: 12px; min-width: 0; max-width: 100%; padding: 8px 14px 8px 8px; color: var(--ink); text-align: left; background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
 .inst-btn:hover, .inst-btn[aria-expanded="true"] { background: var(--btn); }
 .inst-text { display: grid; min-width: 0; gap: 3px; }
 .inst-name { font: 700 15px/1.2 var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inst-sub { font-size: 12px; line-height: 1.2; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .caret { margin-left: 4px; font-size: 12px; color: var(--muted); }
-.inst-pop { position: fixed; left: var(--gutter); bottom: calc(var(--bar-h) + 8px); z-index: 41; display: flex; flex-direction: column; width: min(480px, calc(100vw - 32px)); max-height: min(70vh, 560px); background: #202020; border: 1px solid #111; border-radius: 4px; box-shadow: var(--shadow-lg); }
+.inst-pop { position: absolute; top: 0; left: 0; z-index: 41; display: flex; flex-direction: column; width: min(480px, calc(100vw - 32px)); max-height: min(70vh, 560px); background: #202020; border: 1px solid #111; border-radius: 4px; box-shadow: var(--shadow-lg); }
 .inst-pop .head { padding: 12px 14px; font: 700 12px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
 .inst-list { overflow: auto; padding: 6px; }
 .inst-group { padding: 10px 8px 4px; font: 700 11px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
@@ -552,8 +579,6 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 .shared-form .share-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .inst-foot { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border-top: 1px solid var(--line); }
 @media (max-width: 720px) {
-  .playbar { grid-template-columns: minmax(0, 1fr) auto; }
-  .bar-right { display: none; }
   .btn.play { min-width: 0; height: 48px; font-size: 18px; }
 }
 </style>
@@ -563,7 +588,18 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   <header class="top">
     <div class="brand-row">
       <h1 class="wordmark"><span class="block" aria-hidden="true"></span>Minecraft Mod Manager</h1>
-      <p class="eyebrow"><span class="live-dot" id="live-dot"></span><span id="eyebrow">Mods folder</span></p>
+      <!-- Top right, like a launcher: which instance, PLAY, and the pre-launch check under them. -->
+      <div class="launch">
+        <div class="launch-row">
+          <button class="inst-btn" type="button" id="inst-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="inst-pop" title="Choose an instance">
+            <span class="block" id="inst-icon" aria-hidden="true"></span>
+            <span class="inst-text"><span class="inst-name" id="inst-name">Choose an instance</span><span class="inst-sub" id="inst-sub"></span></span>
+            <span class="caret" aria-hidden="true">▼</span>
+          </button>
+          <button class="btn play" type="button" id="play">Play</button>
+        </div>
+        <div class="check-bar" id="check-bar" hidden></div>
+      </div>
     </div>
     <nav class="view-nav" id="view-nav" aria-label="Sections">
       <button type="button" data-view="mods" aria-current="page">Mods</button>
@@ -571,11 +607,16 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <button type="button" data-view="server">Server</button>
       <button type="button" data-view="snapshots">Snapshots</button>
       <button type="button" data-view="cleanup">Cleanup</button>
+      <span class="nav-right">
+        <span class="eyebrow"><span class="live-dot" id="live-dot"></span><span id="eyebrow">Connecting</span></span>
+        <button class="server-chip" type="button" id="server-chip" title="Open the Server page"><span class="dot" id="server-dot"></span><span id="server-chip-text">Server</span></button>
+      </span>
     </nav>
     <div class="folder-bar">
       <span id="folder-line">Connecting…</span>
       <span class="folder-actions">
-        <button class="btn" type="button" id="open-folder">Open folder</button>
+        <button class="btn" type="button" id="open-folder">Open mods folder</button>
+        <button class="btn" type="button" id="open-game-folder">Open instance folder</button>
         <button class="btn" type="button" id="refresh">Refresh</button>
       </span>
     </div>
@@ -614,21 +655,25 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <button class="btn" type="button" id="mr-check">Check for updates</button>
       </span>
     </div>
-    <div class="check-bar" id="check-bar" hidden></div>
     <div style="height:18px"></div>
 
-  <section class="summary" aria-label="Summary">
+  <!-- The mod list with its filters on either side: where jars install on the left, topic tags on the right. -->
+  <div class="mods-layout">
+  <aside class="side-col side-left" aria-label="Where each jar installs">
     <div class="panel">
-      <h2 class="section-label"><span>Where each jar installs</span><span class="hint">Click to filter</span></h2>
+      <h2 class="section-label"><span>Where each jar installs</span></h2>
       <div class="side-chart" id="side-chart"></div>
       <div class="side-legend" id="side-legend"></div>
+      <p class="hint" style="margin:10px 0 0">Click to filter the list.</p>
     </div>
+  </aside>
+  <aside class="side-col side-right" aria-label="Topic tags">
     <div class="panel">
-      <h2 class="section-label"><span>Topic tags</span><span class="section-tools"><span class="hint">Click to filter</span><button class="btn" type="button" id="manage-tags">Manage tags</button></span></h2>
+      <h2 class="section-label"><span>Topic tags</span><button class="btn" type="button" id="manage-tags">Manage</button></h2>
       <div class="tag-grid" id="tag-grid"></div>
     </div>
-  </section>
-
+  </aside>
+  <div class="main-col">
   <div class="toolbar" role="search">
     <label class="search">
       <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -657,6 +702,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <p id="empty-text">No mods match these filters.</p>
       <button class="btn" type="button" id="empty-clear">Clear filters</button>
     </div>
+  </div>
+  </div>
   </div>
 
   <p class="foot">
@@ -756,19 +803,6 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   </section>
 </div>
 
-<footer class="playbar" id="playbar">
-  <button class="inst-btn" type="button" id="inst-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="inst-pop" title="Choose an instance">
-    <span class="block" id="inst-icon" aria-hidden="true"></span>
-    <span class="inst-text"><span class="inst-name" id="inst-name">Choose an instance</span><span class="inst-sub" id="inst-sub"></span></span>
-    <span class="caret" aria-hidden="true">▼</span>
-  </button>
-  <span class="play-box" id="play-box">
-    <button class="btn play" type="button" id="play">Play</button>
-  </span>
-  <span class="bar-right">
-    <button class="server-chip" type="button" id="server-chip" title="Open the Server page"><span class="dot" id="server-dot"></span><span id="server-chip-text">Server</span></button>
-  </span>
-</footer>
 
 <div class="inst-pop" id="inst-pop" role="dialog" aria-label="Instances" hidden>
   <div class="head">Instances</div>
@@ -1165,11 +1199,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (model) parts.push(" · " + model.byStatus.all + " jars · " + model.byStatus.disabled + " disabled");
     if (server.checkedAt) parts.push(" · checked " + clock(server.checkedAt));
     append(line, parts);
-    ["choose-folder", "open-folder", "refresh", "open-search", "play", "manage-tags", "inst-btn"].forEach(function (id) { $(id).disabled = !connected; });
+    ["choose-folder", "open-folder", "open-game-folder", "refresh", "open-search", "play", "manage-tags", "inst-btn"].forEach(function (id) { $(id).disabled = !connected; });
     var prism = server.prism || {};
+    $("open-game-folder").textContent = prism.instanceId ? "Open instance folder" : "Open game folder";
+    $("open-game-folder").title = "The folder the mods folder is in (configs, saves, packs and so on)";
     $("play").disabled = !canPlay();
     $("play").title = !prism.installed ? "The launcher isn't installed, so the game can't be started from here"
-      : prism.instanceId ? "Start " + prism.instanceName : "This mods folder isn't an instance. Pick one from the list on the left.";
+      : prism.instanceId ? "Start " + prism.instanceName : "This mods folder isn't an instance. Pick one from the list next to Play.";
     renderInstanceButton();
     if (!check.loading) renderCheckBar();
     renderMrBar();
@@ -1228,14 +1264,15 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var grid = $("tag-grid");
     grid.replaceChildren();
     model.topics.forEach(function (t) {
-      grid.append(h("button", { type: "button", class: "tag-card", style: "--c:" + colorOf(t), "aria-pressed": String(state.tags.indexOf(t) >= 0), onclick: function () { toggleTag(t); } },
-        h("span", { class: "row1" }, h("span", { class: "name" }, t), h("span", { class: "count" }, String(model.counts[t]))),
-        model.defs[t] ? h("span", { class: "desc" }, String(model.defs[t])) : null));
+      // One line each in the side column; what a tag means shows on hover.
+      grid.append(h("button", { type: "button", class: "tag-card", style: "--c:" + colorOf(t), "aria-pressed": String(state.tags.indexOf(t) >= 0),
+          title: model.defs[t] ? t + ": " + model.defs[t] : t, onclick: function () { toggleTag(t); } },
+        h("span", { class: "row1" }, h("span", { class: "name" }, t), h("span", { class: "count" }, String(model.counts[t])))));
     });
     var untagged = model.present.filter(function (r) { return !r.topics.length; }).length;
-    grid.append(h("button", { type: "button", class: "tag-card", style: "--c:var(--muted)", "aria-pressed": String(state.untagged), onclick: toggleUntagged },
-      h("span", { class: "row1" }, h("span", { class: "name" }, "no topic tag"), h("span", { class: "count" }, String(untagged))),
-      h("span", { class: "desc" }, "Jars that only have side tags so far.")));
+    grid.append(h("button", { type: "button", class: "tag-card", style: "--c:var(--muted)", "aria-pressed": String(state.untagged), onclick: toggleUntagged,
+        title: "Jars that only have side tags so far." },
+      h("span", { class: "row1" }, h("span", { class: "name" }, "no topic tag"), h("span", { class: "count" }, String(untagged)))));
   }
 
   function sideTitle(key) {
@@ -2273,7 +2310,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     } catch (e) { fallback(); }
   }
 
-  // ---------- Instances (the picker in the bottom bar) ----------
+  // ---------- Instances (the picker next to PLAY) ----------
 
   var inst = { data: null, error: null };
 
@@ -2307,13 +2344,26 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     pop.hidden = false;
     $("inst-btn").setAttribute("aria-expanded", "true");
     renderInstances();
+    placeInstances();
     loadInstances().then(function () {
       if (pop.hidden) return;
       renderInstances();
+      placeInstances();
       var current = pop.querySelector('.inst-item[aria-current="true"]') || pop.querySelector(".inst-item:not([disabled])");
       if (current) current.focus();
     });
   }
+  // The list drops down under the instance button, right edges lined up, kept on screen.
+  function placeInstances() {
+    var pop = $("inst-pop");
+    if (pop.hidden) return;
+    var r = $("inst-btn").getBoundingClientRect();
+    var left = Math.max(8, Math.min(r.right - pop.offsetWidth, window.innerWidth - pop.offsetWidth - 8));
+    pop.style.left = (left + window.scrollX) + "px";
+    pop.style.top = (r.bottom + 6 + window.scrollY) + "px";
+  }
+  window.addEventListener("resize", placeInstances);
+
   function closeInstances(focusButton) {
     var pop = $("inst-pop");
     if (pop.hidden) return;
@@ -2829,29 +2879,34 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
   }
 
+  // A one-line pre-launch check under the PLAY button; the details are in its tooltip and in "Show and fix".
   function renderCheckBar(running) {
     var bar = $("check-bar"), d = check.data;
     bar.replaceChildren();
     bar.hidden = !hasToken;
+    bar.removeAttribute("title");
     if (running || check.loading) {
       bar.className = "check-bar";
-      append(bar, [h("strong", null, "Checking mods…"), " Reading every jar for missing or clashing mods."]);
+      append(bar, [h("span", { class: "grow" }, h("strong", null, "Checking mods…"))]);
+      bar.title = "Reading every jar for missing or clashing mods.";
       return;
     }
     if (!d) {
       bar.className = "check-bar";
-      append(bar, [h("strong", null, "Pre-launch check"), " Looks for missing, turned-off or clashing mods and wrong versions before you play.",
+      append(bar, [h("span", { class: "grow" }, h("strong", null, "Pre-launch check"), " not run yet"),
         btn("Check mods", manualCheck, "primary", { disabled: !connected })]);
+      bar.title = "Looks for missing, turned-off or clashing mods and wrong versions before you play.";
       return;
     }
     bar.className = "check-bar" + (d.errors ? " bad" : d.warnings ? " warn" : "");
     if (!d.errors && !d.warnings) {
-      append(bar, [h("strong", null, "Ready to play."), " Nothing missing or clashing (" + d.enabled + " jars on, Minecraft " + d.minecraft + (d.neoforge ? ", NeoForge " + d.neoforge : "") + ").",
+      append(bar, [h("span", { class: "grow" }, h("strong", null, "Ready to play"), " · nothing missing or clashing"),
         btn("Check again", manualCheck, "", { disabled: !connected })]);
+      bar.title = d.enabled + " jars on, Minecraft " + d.minecraft + (d.neoforge ? ", NeoForge " + d.neoforge : "") + ".";
       return;
     }
-    append(bar, [h("strong", null, d.errors ? count(d.errors, "problem", "problems") + " will stop the game from starting" : count(d.warnings, "warning", "warnings")),
-      d.errors && d.warnings ? " (and " + count(d.warnings, "warning", "warnings") + ")" : "",
+    append(bar, [h("span", { class: "grow" }, h("strong", null, d.errors ? count(d.errors, "problem", "problems") + " will stop the game" : count(d.warnings, "warning", "warnings")),
+        d.errors && d.warnings ? " (+" + count(d.warnings, "warning", "warnings") + ")" : ""),
       btn("Show and fix", function () { problemsDialog(d, {}); }, "primary"),
       btn("Check again", manualCheck, "", { disabled: !connected })]);
   }
@@ -4486,6 +4541,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   $("refresh").addEventListener("click", function () { refresh(true).then(function () { if (connected) toast("Refreshed"); }); });
   $("open-folder").addEventListener("click", function () { api("POST", "/api/open-folder").catch(function (e) { toast(e.message); }); });
+  $("open-game-folder").addEventListener("click", function () { api("POST", "/api/open-game-folder").catch(function (e) { toast(e.message); }); });
   $("choose-folder").addEventListener("click", function () {
     closeInstances();
     toast("Pick a folder in the window that just opened");
