@@ -1104,7 +1104,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   var tagBusy = false;
   var mr = { data: null, loading: false, error: null, again: null }; // Modrinth scan
   var lastFilesSig = "";
-  var state = { q: "", side: "all", status: "all", tags: [], match: "all", untagged: false, sort: "name", sortDir: 1 };
+  var state = { q: "", sides: [], status: "all", tags: [], match: "all", untagged: false, sort: "name", sortDir: 1 };
   var selected = {};
   var anchorKey = null;
 
@@ -1203,7 +1203,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function matches(r) {
     if (state.status === "updates") { if (!r.update) return false; }
     else if (state.status === "all" ? r.status === "missing" : r.status !== state.status) return false;
-    if (state.side !== "all" && r.side !== state.side) return false;
+    if (state.sides.length && state.sides.indexOf(r.side) < 0) return false;
     if (state.untagged && r.topics.length) return false;
     if (state.tags.length) {
       var has = function (t) { return r.tags.indexOf(t) >= 0; };
@@ -1358,8 +1358,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     SIDES.forEach(function (s) {
       var n = bySide[s.key];
       if (!n) return;
-      var pressed = String(state.side === s.key);
-      var pick = function () { setSide(state.side === s.key ? "all" : s.key); };
+      var pressed = String(state.sides.indexOf(s.key) >= 0);
+      var pick = function () { setSide(s.key); };
       chart.append(h("button", { type: "button", class: "seg " + s.key, style: "width:" + (n / total * 100).toFixed(3) + "%",
         "aria-pressed": pressed, "aria-label": s.label + ": " + n + " jars", title: s.label + ": " + n, onclick: pick }));
       legend.append(h("button", { type: "button", class: "legend-item", "aria-pressed": pressed, onclick: pick, title: sideTitle(s.key) },
@@ -1400,7 +1400,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var ctl = $("side-control");
     ctl.replaceChildren();
     [{ key: "all", label: "Any side" }].concat(SIDES.slice(0, 3)).forEach(function (s) {
-      ctl.append(h("button", { type: "button", "aria-pressed": String(state.side === s.key), onclick: function () { setSide(s.key); } }, s.label));
+      var on = s.key === "all" ? !state.sides.length : state.sides.indexOf(s.key) >= 0;
+      ctl.append(h("button", { type: "button", "aria-pressed": String(on), onclick: function () { setSide(s.key); },
+        title: s.key === "all" ? "Show every side" : "Click to add or remove " + s.label.toLowerCase() + " (pick several to see them together)" }, s.label));
     });
 
     var total = state.status === "all" ? b.all : b[state.status];
@@ -1411,7 +1413,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
     var active = $("active");
     active.replaceChildren();
-    var any = state.tags.length || state.untagged || state.q || state.side !== "all" || state.status !== "all";
+    var any = state.tags.length || state.untagged || state.q || state.sides.length || state.status !== "all";
     active.hidden = !any;
     if (!any) return;
     append(active, "Filters:");
@@ -1419,10 +1421,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var sl = STATUSES.filter(function (s) { return s.key === state.status; })[0].label;
       active.append(pill(sl, null, function () { setStatus("all"); }));
     }
-    if (state.side !== "all") {
-      var label = SIDES.filter(function (s) { return s.key === state.side; })[0].label;
-      active.append(pill(label, null, function () { setSide("all"); }));
-    }
+    SIDES.forEach(function (s) {
+      if (state.sides.indexOf(s.key) >= 0) active.append(pill(s.label, null, function () { setSide(s.key); }));
+    });
     state.tags.forEach(function (t) { active.append(pill(t, colorOf(t), function () { toggleTag(t); })); });
     if (state.untagged) active.append(pill("untagged", "var(--muted)", toggleUntagged));
     if (state.q) active.append(pill("“" + state.q + "”", null, function () { $("q").value = ""; state.q = ""; render(); }));
@@ -1507,7 +1508,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
     $("rows").replaceChildren(frag);
     $("empty").hidden = rows.length > 0 || !model;
-    var onlyStatus = !state.q && !state.tags.length && state.side === "all" && !state.untagged;
+    var onlyStatus = !state.q && !state.tags.length && !state.sides.length && !state.untagged;
     $("empty-text").textContent = onlyStatus && state.status === "disabled" ? "No jars are disabled."
       : onlyStatus && state.status === "updates" ? "Everything is up to date." : "No mods match these filters.";
   }
@@ -1565,7 +1566,16 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   // ---------- Filters ----------
 
-  function setSide(key) { state.side = key; render(); }
+  // "all" clears the side filter; any other side is added or taken away, so several can be shown at once.
+  function setSide(key) {
+    if (key === "all") state.sides = [];
+    else {
+      var i = state.sides.indexOf(key);
+      if (i >= 0) state.sides.splice(i, 1); else state.sides.push(key);
+      if (state.sides.length === SIDES.length) state.sides = []; // all four is the same as any
+    }
+    render();
+  }
   function setStatus(key) { state.status = key; render(); }
   function toggleTag(t) {
     state.untagged = false;
@@ -1579,7 +1589,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     render();
   }
   function clearAll() {
-    state.q = ""; state.side = "all"; state.status = "all"; state.tags = []; state.untagged = false; state.match = "all";
+    state.q = ""; state.sides = []; state.status = "all"; state.tags = []; state.untagged = false; state.match = "all";
     $("q").value = "";
     render();
   }
