@@ -135,6 +135,19 @@ namespace MinecraftModManager
                 dataDir = dataArg != null ? Path.GetFullPath(dataArg)
                     : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MinecraftModManager");
             }
+            // A saved folder that's gone falls back to another instance rather than a folder dialog, which can
+            // open behind other windows and look like the app never started. Test runs (--mods) never fall back.
+            if (folderArg == null && (modsDir == null || !Directory.Exists(modsDir)))
+            {
+                string gone = modsDir;
+                string fallback = FallbackFolder();
+                if (fallback != null)
+                {
+                    modsDir = fallback;
+                    SaveSettings();
+                    if (gone != null) Log("Now managing " + modsDir + " (" + gone + " isn't there any more)");
+                }
+            }
             if (modsDir == null || !Directory.Exists(modsDir))
             {
                 string picked = PickFolder(null);
@@ -1638,7 +1651,8 @@ namespace MinecraftModManager
             {
                 if (File.Exists(SettingsPath))
                 {
-                    var settings = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(File.ReadAllText(SettingsPath));
+                    // DeserializeObject, not Deserialize<>: only it gives lists as object[], which A() reads.
+                    var settings = new JavaScriptSerializer().DeserializeObject(File.ReadAllText(SettingsPath)) as Dictionary<string, object>;
                     saved = Str(settings, "modsFolder");
                     string version = Str(settings, "gameVersion");
                     string savedLoader = Str(settings, "loader");

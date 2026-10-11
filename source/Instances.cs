@@ -163,6 +163,15 @@ namespace MinecraftModManager
             }
         }
 
+        // Where to start when the saved mods folder is gone (say its instance was deleted outside the app):
+        // the most recently played instance, else a mods folder used before. Null when there's neither.
+        static string FallbackFolder()
+        {
+            InstanceInfo played = PrismInstances().FirstOrDefault(i => Directory.Exists(i.Mods));
+            if (played != null) return played.Mods;
+            lock (recentFolders) return recentFolders.FirstOrDefault(Directory.Exists);
+        }
+
         // For a Prism instance, Modrinth lookups follow the instance's own Minecraft version and loader.
         static void FollowInstanceTarget(string mods)
         {
