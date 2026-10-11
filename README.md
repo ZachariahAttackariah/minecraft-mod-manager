@@ -10,7 +10,8 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Turn mods on and off. Disabling renames `X.jar` to `X.jar.disabled`, the same as launchers do.
   - Delete mods to the Recycle Bin.
   - Select several mods at once, file-manager style.
-  - Tag mods (client / server, plus your own topic tags), stored in `mod-tags.json` next to the jars.
+  - Tag mods (client / server, plus your own tags), stored in `mod-tags.json` next to the jars. Tags and the client / server marks on each row are clickable (filter by a tag, switch a side).
+  - Each mod shows its icon: Modrinth's when Modrinth knows the jar, else the logo inside the jar.
 - **Modrinth**
   - Recognises installed jars by their SHA-1 hash.
   - Checks for updates and shows every changelog between your version and the new one before updating.
@@ -100,4 +101,4 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/Cleanup.cs` | Disk cleanup |
 | `source/mod-manager.template.html` | The page shown in the window |
 | `source/build.ps1` | Build script |
-| `source/make-icon.ps1` | Draws the icon (`lodestone.ico`) |
+| `source/make-icon.ps1` | Draws the icon, a grass block (`app.ico`) |

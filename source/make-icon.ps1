@@ -1,7 +1,7 @@
-# Draws the app icon (a lodestone block with a tilted compass needle) at several
-# sizes and writes lodestone.ico. Small sizes are 32-bit BMP entries, 256 is PNG.
+# Draws the app icon (the grass block from the instance picker) at several
+# sizes and writes app.ico. Small sizes are 32-bit BMP entries, 256 is PNG.
 Add-Type -AssemblyName System.Drawing
-$out = Join-Path $PSScriptRoot "lodestone.ico"
+$out = Join-Path $PSScriptRoot "app.ico"
 
 function New-RoundedRect([float]$x, [float]$y, [float]$w, [float]$h, [float]$r) {
     $p = New-Object System.Drawing.Drawing2D.GraphicsPath
@@ -15,43 +15,35 @@ function New-RoundedRect([float]$x, [float]$y, [float]$w, [float]$h, [float]$r) 
 }
 
 function New-IconBitmap([int]$s) {
+    # The same grass block as the instance picker (.block in the page): grass top, a darker edge, dirt
+    # below, a light line along the top and a shadow along the bottom, with slightly rounded corners.
+    $pad = if ($s -le 24) { 1 } else { [Math]::Round($s * 0.04) }
+    $size = $s - 2 * $pad
+    $grass = [Math]::Round($size * 0.30)
+    $edge = [Math]::Max(1, [Math]::Round($size * 0.08))
+    $light = [Math]::Max(1, [Math]::Round($size * 0.055))
+    $shade = [Math]::Max(1, [Math]::Round($size * 0.083))
+
+    # The bands are painted square first, then cut out with an anti-aliased rounded shape.
+    $tile = New-Object System.Drawing.Bitmap $s, $s, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $t = [System.Drawing.Graphics]::FromImage($tile)
+    $t.Clear([System.Drawing.Color]::Transparent)
+    $t.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml("#8b5d3b"))), $pad, $pad, $size, $size)
+    $t.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml("#74b84b"))), $pad, $pad, $size, $grass)
+    $t.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml("#4f8f34"))), $pad, $pad + $grass, $size, $edge)
+    $t.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(46, 255, 255, 255))), $pad, $pad, $size, $light)
+    $t.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(77, 0, 0, 0))), $pad, $pad + $size - $shade, $size, $shade)
+    $t.Dispose()
+
     $bmp = New-Object System.Drawing.Bitmap $s, $s, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
     $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
     $g.Clear([System.Drawing.Color]::Transparent)
-
-    $pad = [Math]::Max(0.5, $s * 0.05)
-    $size = $s - 2 * $pad
-    $block = New-RoundedRect $pad $pad $size $size ($s * 0.2)
-    $rect = New-Object System.Drawing.RectangleF $pad, $pad, $size, $size
-    $fill = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rect, ([System.Drawing.Color]::FromArgb(255, 82, 92, 87)), ([System.Drawing.Color]::FromArgb(255, 34, 39, 37)), 90
-    $g.FillPath($fill, $block)
-    if ($s -ge 32) {
-        $inset = $s * 0.045
-        $inner = New-RoundedRect ($pad + $inset) ($pad + $inset) ($size - 2 * $inset) ($size - 2 * $inset) ($s * 0.15)
-        $pen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(60, 255, 255, 255)), ([Math]::Max(1, $s / 40))
-        $g.DrawPath($pen, $inner)
-    }
-    if ($s -ge 48) {
-        $ring = $s * 0.33
-        $ringPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(70, 255, 255, 255)), ([Math]::Max(1, $s / 64))
-        $g.DrawEllipse($ringPen, $s / 2 - $ring, $s / 2 - $ring, $ring * 2, $ring * 2)
-    }
-
-    $g.TranslateTransform($s / 2, $s / 2)
-    $g.RotateTransform(35)
-    $len = $s * 0.31
-    $wid = $s * 0.115
-    $north = [System.Drawing.PointF[]]@((New-Object System.Drawing.PointF 0, (-$len)), (New-Object System.Drawing.PointF $wid, 0), (New-Object System.Drawing.PointF (-$wid), 0))
-    $south = [System.Drawing.PointF[]]@((New-Object System.Drawing.PointF 0, $len), (New-Object System.Drawing.PointF $wid, 0), (New-Object System.Drawing.PointF (-$wid), 0))
-    $g.FillPolygon((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 226, 74, 62))), $north)
-    $g.FillPolygon((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 239, 236, 228))), $south)
-    if ($s -ge 24) {
-        $dot = $s * 0.045
-        $g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 27, 31, 29))), -$dot, -$dot, $dot * 2, $dot * 2)
-    }
+    $radius = [Math]::Max(1, $size * 0.09)
+    $g.FillPath((New-Object System.Drawing.TextureBrush $tile), (New-RoundedRect $pad $pad $size $size $radius))
     $g.Dispose()
+    $tile.Dispose()
     return $bmp
 }
 

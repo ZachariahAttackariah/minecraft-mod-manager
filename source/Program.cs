@@ -297,6 +297,13 @@ namespace MinecraftModManager
                     SendError(ctx, 403, "Requests from other websites are blocked.");
                     return;
                 }
+                // A mod's logo from inside its jar. Images can't send the token header, so it comes in the URL.
+                if (method == "GET" && path == "/api/mod-icon")
+                {
+                    if (req.QueryString["t"] != Token) { SendText(ctx, 403, "text/plain; charset=utf-8", "Forbidden"); return; }
+                    SendModIcon(ctx, req.QueryString["file"]);
+                    return;
+                }
                 if (req.Headers["X-Mod-Manager-Token"] != Token)
                 {
                     SendError(ctx, 403, "This page is from an earlier run of Minecraft Mod Manager. Reload the page.");
@@ -651,8 +658,9 @@ namespace MinecraftModManager
                 foreach (FileInfo file in jars)
                 {
                     string[] info = GetJarInfo(file);
+                    ModInfo main = GetJarMeta(file).Mods.FirstOrDefault();
                     files.Add(Obj("name", file.Name, "size", file.Length, "modified", file.LastWriteTimeUtc.ToString("o"),
-                        "modId", info[0], "displayName", info[1]));
+                        "modId", info[0], "displayName", info[1], "logo", main != null && main.Logo != null));
                 }
                 string tagsPath = Path.Combine(dir, "mod-tags.json");
                 if (File.Exists(tagsPath)) tagsText = File.ReadAllText(tagsPath, Encoding.UTF8);
@@ -985,6 +993,7 @@ namespace MinecraftModManager
                         "projectId", S(version, "project_id"),
                         "slug", S(project, "slug"),
                         "title", S(project, "title"),
+                        "icon", S(project, "icon_url"),
                         "clientSide", S(project, "client_side"),
                         "serverSide", S(project, "server_side"),
                         "versionNumber", S(version, "version_number"),
@@ -1816,6 +1825,23 @@ namespace MinecraftModManager
             res.AddHeader("Cache-Control", "no-store");
             res.AddHeader("X-Content-Type-Options", "nosniff");
             res.AddHeader("Referrer-Policy", "no-referrer");
+            res.ContentLength64 = bytes.Length;
+            using (Stream output = res.OutputStream) output.Write(bytes, 0, bytes.Length);
+        }
+
+        static void SendModIcon(HttpListenerContext ctx, string name)
+        {
+            string path;
+            try { path = ResolveModFile(modsDir, name ?? ""); }
+            catch (UserError) { SendText(ctx, 404, "text/plain; charset=utf-8", "Not found"); return; }
+            string type;
+            byte[] bytes = JarLogo(new FileInfo(path), out type);
+            if (bytes == null) { SendText(ctx, 404, "text/plain; charset=utf-8", "No logo"); return; }
+            HttpListenerResponse res = ctx.Response;
+            res.StatusCode = 200;
+            res.ContentType = type;
+            res.AddHeader("Cache-Control", "private, max-age=86400"); // a new version of a jar has a new name, so a new address
+            res.AddHeader("X-Content-Type-Options", "nosniff");
             res.ContentLength64 = bytes.Length;
             using (Stream output = res.OutputStream) output.Write(bytes, 0, bytes.Length);
         }

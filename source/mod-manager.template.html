@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap">
 <style>
-/* Layout: one working column. Live folder header, summary (side split + topic tags), a sticky filter + selection bar, then a dense, selectable mod list with row actions that folds into cards on phones. */
+/* Layout: one working column. Live folder header, filters on either side (side split, tags), a sticky filter + selection bar, then a dense, selectable mod list with row actions that folds into cards on phones. */
 :root {
   /* Minecraft Launcher look: charcoal panels, white text, Minecraft green, bevelled buttons. Dark only, like the launcher. */
   --bg: #262626;
@@ -250,7 +250,11 @@ h1 { margin: 0; }
 .row.is-selected:hover { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); }
 .row[aria-busy="true"] { opacity: 0.55; }
 .c-check { display: flex; align-items: center; }
-.c-name { min-width: 0; }
+.c-name { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.c-name-text { min-width: 0; }
+.mod-icon { flex: none; width: 36px; height: 36px; border-radius: 6px; object-fit: contain; background: var(--sunken); }
+.mod-icon.letter { display: grid; place-items: center; font: 700 15px/1 var(--font-title); color: var(--muted); }
+.row.is-disabled .mod-icon, .row.is-missing .mod-icon { opacity: 0.45; filter: grayscale(1); }
 .mod-name { font-weight: 600; font-size: 14.5px; color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
 a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 2px; }
 .file-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 2px; }
@@ -267,6 +271,12 @@ a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--acce
 .chips { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; }
 .chip { --c: var(--c-x3); padding: 4px 7px; font: 500 12px/1 var(--font-mono); white-space: nowrap; color: color-mix(in srgb, var(--c) 80%, var(--ink)); background: color-mix(in srgb, var(--c) 13%, transparent); border: 1px solid color-mix(in srgb, var(--c) 36%, transparent); border-radius: 3px; }
 .chips .none { color: var(--muted); font-size: 13px; }
+button.chip { cursor: pointer; }
+button.chip:hover { border-color: var(--c); }
+button.chip[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 32%, transparent); border-color: var(--c); }
+button.slot { padding: 0; border: 0; cursor: pointer; }
+button.slot:hover:not(:disabled) { outline: 2px solid color-mix(in srgb, var(--c) 70%, transparent); outline-offset: 1px; }
+button.slot:disabled { cursor: default; }
 
 .c-actions { display: flex; justify-content: flex-end; gap: 4px; }
 .act { display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; color: var(--muted); background: none; border: 1px solid transparent; border-radius: 5px; cursor: pointer; opacity: 0.45; }
@@ -657,7 +667,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     </div>
     <div style="height:18px"></div>
 
-  <!-- The mod list with its filters on either side: where jars install on the left, topic tags on the right. -->
+  <!-- The mod list with its filters on either side: where jars install on the left, tags on the right. -->
   <div class="mods-layout">
   <aside class="side-col side-left" aria-label="Where each jar installs">
     <div class="panel">
@@ -667,9 +677,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <p class="hint" style="margin:10px 0 0">Click to filter the list.</p>
     </div>
   </aside>
-  <aside class="side-col side-right" aria-label="Topic tags">
+  <aside class="side-col side-right" aria-label="Tags">
     <div class="panel">
-      <h2 class="section-label"><span>Topic tags</span><button class="btn" type="button" id="manage-tags">Manage</button></h2>
+      <h2 class="section-label"><span>Tags</span><button class="btn" type="button" id="manage-tags">Manage</button></h2>
       <div class="tag-grid" id="tag-grid"></div>
     </div>
   </aside>
@@ -694,7 +704,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <span role="columnheader"><button class="check" type="button" id="select-all" role="checkbox" aria-checked="false" aria-label="Select all shown mods"></button></span>
       <span role="columnheader">Mod</span>
       <span role="columnheader" class="h-hide">Side</span>
-      <span role="columnheader" class="h-hide">Topic tags</span>
+      <span role="columnheader" class="h-hide">Tags</span>
       <span role="columnheader" class="r h-hide">Actions</span>
     </div>
     <div id="rows" role="rowgroup"></div>
@@ -1122,7 +1132,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       tracked: !!tags,
       tags: tags ? tags.slice() : [],
       name: known ? known[0] : (f && f.displayName) || prettify(key),
-      slug: known && known[1] ? known[1] : null
+      slug: known && known[1] ? known[1] : null,
+      logo: !!(f && f.logo)
     };
   }
 
@@ -1271,8 +1282,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
     var untagged = model.present.filter(function (r) { return !r.topics.length; }).length;
     grid.append(h("button", { type: "button", class: "tag-card", style: "--c:var(--muted)", "aria-pressed": String(state.untagged), onclick: toggleUntagged,
-        title: "Jars that only have side tags so far." },
-      h("span", { class: "row1" }, h("span", { class: "name" }, "no topic tag"), h("span", { class: "count" }, String(untagged)))));
+        title: "Jars with no tags besides client / server." },
+      h("span", { class: "row1" }, h("span", { class: "name" }, "untagged"), h("span", { class: "count" }, String(untagged)))));
   }
 
   function sideTitle(key) {
@@ -1318,7 +1329,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       active.append(pill(label, null, function () { setSide("all"); }));
     }
     state.tags.forEach(function (t) { active.append(pill(t, colorOf(t), function () { toggleTag(t); })); });
-    if (state.untagged) active.append(pill("no topic tag", "var(--muted)", toggleUntagged));
+    if (state.untagged) active.append(pill("untagged", "var(--muted)", toggleUntagged));
     if (state.q) active.append(pill("“" + state.q + "”", null, function () { $("q").value = ""; state.q = ""; render(); }));
     if (state.tags.length > 1) {
       active.append(h("button", { type: "button", class: "linkish", onclick: function () { state.match = state.match === "all" ? "any" : "all"; render(); } },
@@ -1335,7 +1346,30 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function slot(letter, tag, r) {
     var on = r.tags.indexOf(tag) >= 0;
     var who = tag === "client" ? "Client" : "Server";
-    return h("span", { class: "slot " + (on ? "on" : "off"), style: "--c:" + colorOf(tag), title: who + (on ? ": install" : ": not needed"), "aria-label": who + (on ? " yes" : " no") }, letter);
+    return h("button", { type: "button", class: "slot " + (on ? "on" : "off"), style: "--c:" + colorOf(tag), "data-action": "side", "data-tag": tag,
+      disabled: r.status === "missing" || !!busy[r.key] || tagBusy || !connected, "aria-pressed": String(on),
+      title: who + (on ? ": install. Click if it isn't needed on the " + tag + "." : ": not needed. Click if it should go on the " + tag + "."),
+      "aria-label": who + (on ? " yes" : " no") + ", click to change" }, letter);
+  }
+
+  // Switches a side tag on one mod, with Undo in the message.
+  function toggleSideTag(r, tag) {
+    var on = r.tags.indexOf(tag) >= 0;
+    applyTags([r], on ? [] : [tag], on ? [tag] : [], null, function () { applyTags([r], on ? [tag] : [], on ? [] : [tag]); });
+  }
+
+  // Modrinth's icon when Modrinth knows the jar, else the logo the jar carries, else its first letter.
+  function modIcon(r) {
+    var jarLogo = r.logo && r.status !== "missing" ? "/api/mod-icon?file=" + encodeURIComponent(r.file) + "&t=" + encodeURIComponent(TOKEN) : null;
+    var src = (r.mr && r.mr.icon) || jarLogo;
+    var letter = function () { return h("span", { class: "mod-icon letter", "aria-hidden": "true" }, (r.name || "?").replace(/^\W+/, "").charAt(0).toUpperCase() || "?"); };
+    if (!src) return letter();
+    var img = h("img", { class: "mod-icon", src: src, alt: "", loading: "lazy", decoding: "async" });
+    img.addEventListener("error", function () {
+      if (jarLogo && img.getAttribute("src") !== jarLogo) img.setAttribute("src", jarLogo);
+      else if (img.parentNode) img.parentNode.replaceChild(letter(), img);
+    });
+    return img;
   }
 
   function renderList(rows) {
@@ -1353,8 +1387,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         title: "Update from " + (r.mr ? r.mr.versionNumber : "this version") + " to " + r.update.versionNumber + " (Modrinth" + (r.update.type && r.update.type !== "release" ? ", " + r.update.type : "") + ")" },
         "update → " + r.update.versionNumber));
       var chips = r.topics.length
-        ? r.topics.map(function (t) { return h("span", { class: "chip", style: "--c:" + colorOf(t), title: model.defs[t] || t }, t); })
-        : h("span", { class: "none", "aria-label": "No topic tags" }, "—");
+        ? r.topics.map(function (t) {
+            var on = state.tags.indexOf(t) >= 0;
+            return h("button", { type: "button", class: "chip", style: "--c:" + colorOf(t), "data-action": "filter-tag", "data-tag": t, "aria-pressed": String(on),
+              title: (model.defs[t] ? model.defs[t] + "\n" : "") + (on ? "Click to stop filtering by " + t : "Click to show only mods tagged " + t) }, t);
+          })
+        : h("span", { class: "none", "aria-label": "No tags" }, "—");
       var actions = h("div", { class: "c-actions", role: "cell" });
       if (r.status !== "missing") {
         var isBusy = !!busy[r.key];
@@ -1369,7 +1407,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           role: "row", "aria-selected": sel ? "true" : "false", "data-key": r.key, "aria-busy": busy[r.key] ? "true" : null },
         h("div", { class: "c-check", role: "cell" },
           h("button", { type: "button", class: "check", role: "checkbox", "aria-checked": sel ? "true" : "false", "aria-label": "Select " + r.name })),
-        h("div", { class: "c-name", role: "cell" }, name, h("div", { class: "file-line" }, h("span", { class: "file" }, r.file), badges)),
+        h("div", { class: "c-name", role: "cell" }, modIcon(r), h("div", { class: "c-name-text" }, name, h("div", { class: "file-line" }, h("span", { class: "file" }, r.file), badges))),
         h("div", { class: "c-slots", role: "cell" }, h("span", { class: "slots" }, slot("C", "client", r), slot("S", "server", r))),
         h("div", { class: "c-chips chips", role: "cell" }, chips),
         actions));
@@ -2147,13 +2185,14 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
   }
 
-  function applyTags(rows, add, remove, focusAfter) {
+  function applyTags(rows, add, remove, focusAfter, undo) {
     if (tagBusy || !connected || !rows.length) return;
     tagBusy = true;
     if (!menuEl.hidden) renderMenu();
     api("POST", "/api/tags", { keys: rows.map(function (r) { return r.key; }), add: add, remove: remove }).then(function () {
       var who = rows.length === 1 ? rows[0].name : count(rows.length, "mod", "mods");
-      toast(add.length ? "Added " + add.join(", ") + " to " + who : "Removed " + remove.join(", ") + " from " + who);
+      var msg = add.length ? "Added " + add.join(", ") + " to " + who : "Removed " + remove.join(", ") + " from " + who;
+      if (undo) toast(msg, "Undo", undo); else toast(msg);
     }, function (e) {
       toast(e.message);
     }).then(function () {
@@ -4314,7 +4353,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (kind === "toggle") setEnabled([hit.row], hit.row.status === "disabled");
       else if (kind === "update") updateMods([hit.row]);
       else if (kind === "details") openDetails(hit.row);
-      else askDelete([hit.row]);
+      else if (kind === "filter-tag") toggleTag(action.getAttribute("data-tag"));
+      else if (kind === "side") toggleSideTag(hit.row, action.getAttribute("data-tag"));
+      else if (kind === "delete") askDelete([hit.row]);
       return;
     }
     if (e.target.closest(".check")) { clickSelect(hit.row, e, true); return; }

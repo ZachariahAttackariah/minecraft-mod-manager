@@ -35,7 +35,7 @@ try {
     $result = (& cscript //nologo "//E:{16d51579-a30b-4c8b-a276-0ff4dc41e755}" $check 2>&1 | Out-String).Trim()
     if ($result -ne "syntax ok") { throw "The page's script has a syntax error (line numbers count from <script>, plus one):`n$result" }
 
-    $icon = Join-Path $src "lodestone.ico"
+    $icon = Join-Path $src "app.ico"
     if (-not (Test-Path $icon)) { & (Join-Path $src "make-icon.ps1") | Out-Host }
 
     & $csc /nologo /target:winexe /platform:x64 /optimize+ /utf8output `

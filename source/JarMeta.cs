@@ -19,6 +19,7 @@ namespace MinecraftModManager
     sealed class ModInfo
     {
         public string Id, Version, Name, Description;
+        public string Logo; // path of its logo inside the jar, if it names one
     }
 
     sealed class DepInfo
@@ -95,7 +96,9 @@ namespace MinecraftModManager
             if (toml != null)
             {
                 meta.Kind = kind;
-                foreach (KeyValuePair<string, Dictionary<string, string>> section in ParseToml(toml))
+                List<KeyValuePair<string, Dictionary<string, string>>> sections = ParseToml(toml);
+                string topLogo = Val(sections[0].Value, "logoFile"); // some jars name it once for all their mods
+                foreach (KeyValuePair<string, Dictionary<string, string>> section in sections)
                 {
                     Dictionary<string, string> v = section.Value;
                     if (section.Key == "mods")
@@ -105,7 +108,7 @@ namespace MinecraftModManager
                         string version = Val(v, "version");
                         if (version != null && version.Contains("${file.jarVersion}")) version = jarVersion;
                         if (version != null && version.Contains("${")) version = null;
-                        meta.Mods.Add(new ModInfo { Id = id, Version = version, Name = Val(v, "displayName") ?? id, Description = Val(v, "description") });
+                        meta.Mods.Add(new ModInfo { Id = id, Version = version, Name = Val(v, "displayName") ?? id, Description = Val(v, "description"), Logo = Val(v, "logoFile") ?? topLogo });
                     }
                     else if (section.Key.StartsWith("dependencies.", StringComparison.OrdinalIgnoreCase))
                     {
@@ -141,7 +144,8 @@ namespace MinecraftModManager
                 if (json != null)
                 {
                     string id = S(json, "id");
-                    if (id != null) meta.Mods.Add(new ModInfo { Id = id, Version = S(json, "version"), Name = S(json, "name") ?? S(D(Get(json, "metadata")), "name") ?? id });
+                    if (id != null) meta.Mods.Add(new ModInfo { Id = id, Version = S(json, "version"), Name = S(json, "name") ?? S(D(Get(json, "metadata")), "name") ?? id,
+                        Logo = FabricIcon(Get(json, "icon") ?? Get(D(Get(json, "metadata")), "icon")) });
                     foreach (object alias in A(Get(json, "provides")))
                     {
                         string a = alias as string ?? S(D(alias), "id");
@@ -160,6 +164,51 @@ namespace MinecraftModManager
                     if (m.Success) meta.Mods.Add(new ModInfo { Id = m.Groups[1].Value, Name = m.Groups[1].Value });
                 }
             }
+        }
+
+        // Fabric / Quilt name one icon, or several by size ({"16": ..., "128": ...}): the one nearest 128 px.
+        static string FabricIcon(object icon)
+        {
+            if (icon is string) return (string)icon;
+            Dictionary<string, object> sizes = D(icon);
+            if (sizes == null) return null;
+            int best = -1;
+            string path = null;
+            foreach (KeyValuePair<string, object> kv in sizes)
+            {
+                int size;
+                if (!int.TryParse(kv.Key, out size) || !(kv.Value is string)) continue;
+                if (path == null || Math.Abs(size - 128) < Math.Abs(best - 128)) { best = size; path = (string)kv.Value; }
+            }
+            return path;
+        }
+
+        // The logo a jar names for its own mod, as image bytes, or null (no logo, not an image, or too big).
+        static byte[] JarLogo(FileInfo file, out string type)
+        {
+            type = null;
+            ModInfo main = GetJarMeta(file).Mods.FirstOrDefault();
+            string logo = main == null || main.Logo == null ? null : main.Logo.Replace('\\', '/').TrimStart('/');
+            if (logo == null) return null;
+            string ext = Path.GetExtension(logo).ToLowerInvariant();
+            type = ext == ".png" ? "image/png" : ext == ".jpg" || ext == ".jpeg" ? "image/jpeg" : ext == ".gif" ? "image/gif" : null;
+            if (type == null) return null;
+            try
+            {
+                using (var stream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                using (var zip = new ZipArchive(stream, ZipArchiveMode.Read))
+                {
+                    ZipArchiveEntry entry = zip.GetEntry(logo);
+                    if (entry == null || entry.Length > 2 * 1024 * 1024) return null;
+                    using (Stream s = entry.Open())
+                    using (var copy = new MemoryStream())
+                    {
+                        s.CopyTo(copy);
+                        return copy.ToArray();
+                    }
+                }
+            }
+            catch { return null; }
         }
 
         static List<string> JarJarPaths(ZipArchive zip)

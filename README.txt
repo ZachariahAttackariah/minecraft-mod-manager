@@ -32,8 +32,10 @@ Top right (like the Minecraft Launcher)
   saves, packs) and Refresh.
 
 Mods page
-  The list is in the middle, with "Where each jar installs" (client / server) on the left and the topic
-  tags on the right; click either to filter the list. Hover over a tag to see what it means.
+  The list is in the middle, with "Where each jar installs" (client / server) on the left and the tags
+  on the right; click either to filter the list. Hover over a tag to see what it means.
+  Each mod shows its icon (Modrinth's, else the logo inside the jar). On a mod's row, click a tag to filter
+  by it (click again to stop), and click C or S to switch that mod's client / server tag (Undo in the message).
 
 Tabs
   Links (Modrinth, CurseForge, mod pages) open as tabs in the same window, next to the pinned
@@ -163,7 +165,7 @@ Managing mods
   Selection bar ..... enable, disable, delete, update, tag or copy everything selected
   Right-click ....... actions on the left, tags on the right (tick to add, untick to remove, or type a new tag)
 
-Manage tags (the Manage button above the topic tags, right of the list)
+Manage tags (the Manage button above the tags, right of the list)
   Add, rename or delete tags, and describe what each means. client / server are the side tags the app relies
   on (sync uses them): their description can change, not their name.
   Careful: with many mods selected, clicking a half-filled tag in the right-click menu adds it to ALL of
@@ -202,7 +204,7 @@ Files
   source\lib\                             The WebView2 DLLs used for building (from Microsoft's NuGet package).
   source\names.json                       Optional display names and Modrinth links for known jars (kept local).
   source\build.ps1                        Rebuilds the exe (and syntax-checks the page). Close the app first.
-  source\make-icon.ps1, lodestone.ico     The icon.
+  source\make-icon.ps1, app.ico           The icon (the grass block from the instance picker).
 
 Command line (optional): MinecraftModManager.exe --mods "D:\some\mods" --server "D:\server" --port 8737 --no-window
 A mod-manager.html placed next to the exe replaces the built-in page, for quick edits without rebuilding.
