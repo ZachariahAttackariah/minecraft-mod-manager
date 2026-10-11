@@ -182,11 +182,16 @@ h1 { margin: 0; }
 .side-col .tag-card .count { font-size: 15px; }
 .mods-layout .toolbar { margin-inline: 0; padding-inline: 0; }
 @media (max-width: 1180px) {
-  .mods-layout { grid-template-columns: minmax(200px, 240px) minmax(0, 1fr); grid-template-areas: "left main" "right main"; }
+  /* The list spans both rows; without "auto 1fr" its height was shared between them and the tags panel
+     landed halfway down a long list. Now the first row is only as tall as the side chart, and the tags
+     panel sits right under it and stays in view while the list scrolls. */
+  .mods-layout { grid-template-columns: minmax(200px, 240px) minmax(0, 1fr); grid-template-areas: "left main" "right main"; grid-template-rows: auto 1fr; }
   .side-col { position: static; max-height: none; }
+  .side-right { position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow: auto; }
 }
 @media (max-width: 860px) {
-  .mods-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "left" "right" "main"; }
+  .mods-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "left" "right" "main"; grid-template-rows: none; }
+  .side-right { position: static; max-height: none; }
   .side-col .tag-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
   .side-col .side-legend { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
 }
