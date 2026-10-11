@@ -1261,10 +1261,9 @@ namespace MinecraftModManager
         {
             Dictionary<string, object> project;
             if (projectId == null || !ProjectById.TryGetValue(projectId, out project)) return;
-            var sides = new List<string>();
-            if (S(project, "client_side") != "unsupported") sides.Add("client");
-            if (S(project, "server_side") != "unsupported") sides.Add("server");
-            if (sides.Count == 0) return;
+            string side = ModrinthSide(S(project, "client_side"), S(project, "server_side")); // same rule as Detect (Sides.cs)
+            if (side == null) return;
+            var sides = side == "both" ? new List<string> { "client", "server" } : new List<string> { side };
             try { UpdateTags(new List<string> { file }, sides, new List<string>()); }
             catch (UserError ex) { notes.Add("Couldn't tag " + file + ": " + ex.Message); }
         }
