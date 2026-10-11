@@ -483,6 +483,9 @@ namespace MinecraftModManager
                     case "/api/tags/edit":
                         SendJson(ctx, 200, EditTag(Str(body, "name"), Str(body, "newName"), Str(body, "description")));
                         return;
+                    case "/api/tags/forget":
+                        SendJson(ctx, 200, ForgetTagEntries(StrList(body, "keys")));
+                        return;
                     case "/api/tags/delete":
                         SendJson(ctx, 200, DeleteTag(Str(body, "name")));
                         return;
@@ -1330,6 +1333,37 @@ namespace MinecraftModManager
             catch (UserError ex) { notes.Add("Couldn't move the tags of " + oldKey + ": " + ex.Message); }
             Log(verb + oldKey + " -> " + newKey + " (Modrinth " + S(current, "version_number") + " -> " + S(target, "version_number") + ")");
             return newFile;
+        }
+
+        // Drops mod-tags.json entries for jars that aren't in the folder any more (deleted or replaced by
+        // hand). An entry whose jar is there, on or off, is never touched. Returns the entries removed,
+        // with their tags, so the page can offer Undo.
+        static Dictionary<string, object> ForgetTagEntries(List<string> keys)
+        {
+            if (keys.Count == 0) throw new UserError("No mods were chosen.");
+            RequireOwnTags(modsDir);
+            lock (FileLock)
+            {
+                string dir = modsDir, path = Path.Combine(dir, "mod-tags.json");
+                if (!File.Exists(path)) throw new UserError("This folder has no mod-tags.json.");
+                TagsDoc doc = LoadTagsDoc(path);
+                var removed = new List<object>();
+                foreach (string k in keys)
+                {
+                    string key = doc.Mods.Keys.FirstOrDefault(m => string.Equals(m, k, StringComparison.OrdinalIgnoreCase));
+                    if (key == null) continue;
+                    string jar = NormalizeKey(key);
+                    if (File.Exists(Path.Combine(dir, jar)) || File.Exists(Path.Combine(dir, jar + ".disabled"))) continue;
+                    removed.Add(Obj("key", key, "tags", doc.Mods[key]));
+                    doc.Mods.Remove(key);
+                }
+                if (removed.Count > 0)
+                {
+                    SaveTagsDoc(path, doc);
+                    Log("Tags      forgot " + removed.Count + (removed.Count == 1 ? " entry" : " entries") + " for jars not in the folder");
+                }
+                return Obj("ok", true, "removed", removed);
+            }
         }
 
         static void RenameTagKey(string oldKey, string newKey)

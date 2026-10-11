@@ -754,6 +754,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     <div class="seg-control" id="side-control" role="group" aria-label="Filter by side"></div>
     <div class="tools">
       <span class="count-label" id="count" aria-live="polite"></span>
+      <button class="btn danger-outline" id="forget-missing" type="button" hidden title="Remove the leftover tags of jars that aren't in the folder any more">Forget these</button>
       <button class="btn" id="copy" type="button">Copy filenames</button>
     </div>
     <div class="selection-bar" id="selection-bar" role="region" aria-label="Selected mods" hidden></div>
@@ -1417,6 +1418,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var copy = $("copy");
     copy.textContent = "Copy " + count(n, "filename", "filenames");
     copy.disabled = n === 0;
+    var forget = $("forget-missing");
+    forget.hidden = state.status !== "missing" || n === 0;
+    forget.textContent = "Forget " + (n === 1 ? "this" : "these " + n) + "…";
+    forget.disabled = !connected;
 
     var active = $("active");
     active.replaceChildren();
@@ -2290,6 +2295,40 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       onOk: function () { deleteMods(rows); }
     });
   }
+  // Leftover tag entries for jars that aren't in the folder (deleted or replaced by hand).
+  function askForget(rows) {
+    rows = rows.filter(function (r) { return r.status === "missing"; });
+    if (!rows.length || !connected) return;
+    confirmDialog({
+      title: rows.length === 1 ? "Forget " + rows[0].name + "?" : "Forget " + rows.length + " mods that aren't in the folder?",
+      items: rows.map(function (r) { return r.file; }),
+      body: "Their entries are removed from mod-tags.json. No files are deleted, and mod-tags.json keeps the previous version as mod-tags.json.bak.",
+      ok: rows.length === 1 ? "Forget" : "Forget " + rows.length,
+      onOk: function () { forgetEntries(rows); }
+    });
+  }
+  function forgetEntries(rows) {
+    api("POST", "/api/tags/forget", { keys: rows.map(function (r) { return r.key; }) }).then(function (res) {
+      var gone = res.removed;
+      rows.forEach(function (r) { delete selected[r.key]; });
+      // Undo puts each entry back with its tags (entries that had none can't be restored this way).
+      var undo = function () {
+        var groups = {};
+        gone.forEach(function (e) { if (e.tags.length) (groups[e.tags.join("\n")] = groups[e.tags.join("\n")] || []).push(e.key); });
+        var chain = Promise.resolve();
+        Object.keys(groups).forEach(function (t) {
+          chain = chain.then(function () { return api("POST", "/api/tags", { keys: groups[t], add: t.split("\n"), remove: [] }); });
+        });
+        chain.then(function () { toast("Put them back"); }, function (e) { toast(e.message); }).then(function () { return refresh(true); });
+      };
+      if (gone.length) toast("Forgot " + count(gone.length, "mod", "mods"), "Undo", undo);
+      else toast("Nothing to forget: those jars are in the folder.");
+    }, function (e) {
+      toast(e.message);
+    }).then(function () { return refresh(true); });
+  }
+  $("forget-missing").addEventListener("click", function () { askForget(visible()); });
+
   function closeDialog() {
     $("scrim").hidden = true;
     dialogConfirm = null;
@@ -2375,6 +2414,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (g.enabled.length) actions.append(menuItem(single ? "Disable" : "Disable " + g.enabled.length, "switchOff", function () { setEnabled(g.enabled, false); }));
       if (g.present.length) {
         actions.append(menuItem(single ? "Delete…" : "Delete " + g.present.length + "…", "trash", function () { askDelete(g.present); }, "danger"));
+        actions.append(h("hr"));
+      }
+      var leftovers = rows.filter(function (r) { return r.status === "missing"; });
+      if (leftovers.length) {
+        actions.append(menuItem(leftovers.length === 1 ? "Forget…" : "Forget " + leftovers.length + "…", "clear", function () { askForget(leftovers); }, "danger"));
         actions.append(h("hr"));
       }
     }

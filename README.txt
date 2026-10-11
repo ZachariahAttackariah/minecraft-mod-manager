@@ -43,6 +43,9 @@ Mods page
   Each mod shows its icon (Modrinth's, else the logo inside the jar). On a mod's row, click a tag to filter
   by it (click again to stop). C and S show where it installs; change them from the right-click menu.
   Click the Mod or Side column heading to sort by name or by side (click again to reverse).
+  "Not in folder" lists mods that still have tags in mod-tags.json but whose jar is gone (deleting keeps
+  tags, in case the jar comes back). "Forget these" there, or Forget in the right-click menu, removes
+  those leftover entries (with Undo); it never touches a jar that's in the folder.
   A turned-off mod shows OFF on its icon, and an available update is the green arrow among the row's
   actions, so neither makes the row taller. Every tag gets its own colour.
   Tags from another tool: if the folder has a .mod-tags.json keyed by mod id (another launcher's tag
