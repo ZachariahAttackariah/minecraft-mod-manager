@@ -129,6 +129,7 @@ namespace MinecraftModManager
                         "license", license == null ? null : S(license, "name") ?? S(license, "id"),
                         "source", S(project, "source_url"), "issues", S(project, "issues_url"), "wiki", S(project, "wiki_url"), "discord", S(project, "discord_url"),
                         "updated", S(project, "updated"),
+                        "gallery", Gallery(project),
                         "versionNumber", S(version, "version_number"), "versionId", S(version, "id"));
                 }
             }
@@ -136,6 +137,18 @@ namespace MinecraftModManager
             {
                 return Obj("found", false, "error", ex.Message);
             }
+        }
+
+        // The project's gallery images in the author's order, featured first: a smaller "url" for the grid
+        // and the full-size "raw" for viewing one.
+        static List<object> Gallery(Dictionary<string, object> project)
+        {
+            return A(Get(project, "gallery")).Select(x => D(x)).Where(g => g != null && S(g, "url") != null)
+                .OrderByDescending(g => Get(g, "featured") is bool && (bool)Get(g, "featured"))
+                .ThenBy(g => { double o; return double.TryParse(S(g, "ordering"), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out o) ? o : 0; })
+                .Select(g => (object)Obj("url", S(g, "url"), "raw", S(g, "raw_url") ?? S(g, "url"), "title", S(g, "title"), "description", S(g, "description"),
+                    "featured", Get(g, "featured") is bool && (bool)Get(g, "featured")))
+                .ToList();
         }
 
         // Every Modrinth version of a project for the chosen Minecraft version + loader, newest first (cached 10 minutes).

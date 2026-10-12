@@ -513,6 +513,23 @@ details.more > summary { cursor: pointer; font: 600 13.5px/1.3 var(--font-displa
 .det-head h2 { margin: 0; font: 700 21px/1.2 var(--font-display); overflow-wrap: anywhere; }
 .det-head .drawer-close { grid-column: 3; grid-row: 1; align-self: start; }
 .det-head .sub { font-size: 13px; color: var(--muted); }
+.gal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.gal-item { position: relative; display: block; padding: 0; aspect-ratio: 16 / 10; overflow: hidden; background: var(--sunken); border: 1px solid var(--line); border-radius: 6px; cursor: zoom-in; }
+.gal-item:hover { border-color: var(--accent-fg); }
+.gal-item img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.gal-cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 8px 5px; font-size: 12px; text-align: left; color: #fff; background: linear-gradient(transparent, rgba(0, 0, 0, 0.8)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gal-star { position: absolute; top: 5px; right: 6px; font-size: 13px; color: #ffd75e; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7); }
+.lightbox { position: fixed; inset: 0; z-index: 70; display: grid; grid-template-rows: minmax(0, 1fr) auto; justify-items: center; align-items: center; gap: 10px; padding: 48px 72px 20px; background: rgba(0, 0, 0, 0.9); }
+.lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6); }
+.lb-cap { max-width: 900px; text-align: center; color: #fff; font-size: 14px; }
+.lb-cap .d { margin-top: 2px; font-size: 13px; color: #c9c9c9; }
+.lb-count { position: absolute; top: 16px; left: 18px; font: 500 13px/1 var(--font-mono); color: #c9c9c9; }
+.lb-close { position: absolute; top: 10px; right: 12px; width: 36px; height: 36px; font-size: 26px; line-height: 1; color: #fff; background: none; border: 0; border-radius: 6px; cursor: pointer; }
+.lb-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 72px; font-size: 36px; line-height: 1; color: #fff; background: rgba(255, 255, 255, 0.08); border: 0; border-radius: 6px; cursor: pointer; }
+.lb-close:hover, .lb-nav:hover { background: rgba(255, 255, 255, 0.18); }
+.lb-prev { left: 12px; }
+.lb-next { right: 12px; }
+@media (max-width: 560px) { .lightbox { padding: 48px 8px 16px; } .lb-nav { width: 36px; height: 56px; font-size: 28px; } }
 .det-tabs { display: flex; gap: 2px; padding: 0 16px; border-bottom: 1px solid var(--line); }
 .det-tabs button { position: relative; padding: 10px 12px; font: 600 13.5px/1 var(--font-body); color: var(--muted); background: none; border: 0; cursor: pointer; }
 .det-tabs button[aria-selected="true"] { color: var(--ink); }
@@ -927,6 +944,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     </div>
     <div class="det-tabs" role="tablist" id="det-tabs">
       <button type="button" role="tab" data-tab="overview" aria-selected="true">Overview</button>
+      <button type="button" role="tab" data-tab="gallery" aria-selected="false" id="det-gallery-tab" hidden>Gallery</button>
       <button type="button" role="tab" data-tab="versions" aria-selected="false">Versions</button>
       <button type="button" role="tab" data-tab="deps" aria-selected="false">Needs &amp; needed by</button>
       <button type="button" role="tab" data-tab="configs" aria-selected="false">Config files</button>
@@ -3361,6 +3379,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     $("det-title").textContent = r.name;
     $("det-sub").textContent = r.file;
     $("det-icon").replaceChildren(h("span", { class: "ph" }));
+    $("det-gallery-tab").hidden = true;
     $("details-scrim").hidden = false;
     setDetTab("overview");
     $("details-close").focus();
@@ -3380,6 +3399,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
   }
   function closeDetails() {
+    closeLightbox();
     $("details-scrim").hidden = true;
     det.seq++;
   }
@@ -3418,10 +3438,74 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (mr.icon) $("det-icon").replaceChildren(h("img", { src: mr.icon, alt: "" }));
     var main = d.mods[0] || {};
     $("det-sub").textContent = [main.version ? "Version " + main.version : null, d.enabled ? "on" : "turned off", KIND_NAMES[d.kind] && d.kind !== "neoforge" ? KIND_NAMES[d.kind] : null].filter(Boolean).join(" · ");
-    if (det.tab === "overview") renderOverview(body, d, mr, main);
+    var gallery = mr.gallery || [];
+    $("det-gallery-tab").hidden = !gallery.length;
+    $("det-gallery-tab").textContent = "Gallery" + (gallery.length ? " " + gallery.length : "");
+    if (det.tab === "gallery") renderGallery(body, gallery);
+    else if (det.tab === "overview") renderOverview(body, d, mr, main);
     else if (det.tab === "versions") renderVersions(body, mr);
     else if (det.tab === "deps") renderDeps(body, d);
     else renderConfigs(body, d);
+  }
+
+  // ---- Gallery: the mod's Modrinth screenshots; click one to see it full size ----
+
+  function renderGallery(body, gallery) {
+    if (!gallery.length) { body.append(h("p", { class: "search-empty" }, "This mod has no gallery on Modrinth.")); return; }
+    var grid = h("div", { class: "gal-grid" });
+    gallery.forEach(function (g, i) {
+      grid.append(h("button", { type: "button", class: "gal-item", title: g.description || g.title || "View full size", onclick: function () { openLightbox(gallery, i); } },
+        h("img", { src: g.url, alt: g.title || "", loading: "lazy", decoding: "async" }),
+        g.featured ? h("span", { class: "gal-star", title: "Featured" }, "★") : null,
+        g.title ? h("span", { class: "gal-cap" }, g.title) : null));
+    });
+    body.append(grid);
+  }
+
+  var lightbox = null;
+  function openLightbox(gallery, index) {
+    closeLightbox();
+    var img = h("img", { alt: "" }), cap = h("div", { class: "lb-cap" }), num = h("div", { class: "lb-count" });
+    var show = function (i) {
+      index = (i + gallery.length) % gallery.length;
+      var g = gallery[index];
+      img.src = g.raw || g.url;
+      img.alt = g.title || "";
+      cap.replaceChildren();
+      if (g.title) cap.append(h("div", { class: "t" }, g.title));
+      if (g.description) cap.append(h("div", { class: "d" }, g.description));
+      num.textContent = (index + 1) + " / " + gallery.length;
+    };
+    var many = gallery.length > 1;
+    var el = h("div", { class: "lightbox", role: "dialog", "aria-label": "Gallery image" },
+      num,
+      h("button", { type: "button", class: "lb-close", "aria-label": "Close", onclick: closeLightbox }, "×"),
+      many ? h("button", { type: "button", class: "lb-nav lb-prev", "aria-label": "Previous image", onclick: function (e) { e.stopPropagation(); show(index - 1); } }, "‹") : null,
+      img,
+      many ? h("button", { type: "button", class: "lb-nav lb-next", "aria-label": "Next image", onclick: function (e) { e.stopPropagation(); show(index + 1); } }, "›") : null,
+      cap);
+    el.addEventListener("mousedown", function (e) { if (e.target === el) closeLightbox(); });
+    // Caught before the page's own key handling, so Esc closes only the image, not the whole preview.
+    var keys = function (e) {
+      if (e.key === "Escape") closeLightbox();
+      else if (e.key === "ArrowLeft" && many) show(index - 1);
+      else if (e.key === "ArrowRight" && many) show(index + 1);
+      else return;
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    document.addEventListener("keydown", keys, true);
+    lightbox = { el: el, keys: keys, back: document.activeElement };
+    document.body.append(el);
+    show(index);
+    el.querySelector(".lb-close").focus();
+  }
+  function closeLightbox() {
+    if (!lightbox) return;
+    document.removeEventListener("keydown", lightbox.keys, true);
+    lightbox.el.remove();
+    if (lightbox.back && document.contains(lightbox.back)) lightbox.back.focus();
+    lightbox = null;
   }
 
   function renderOverview(body, d, mr, main) {

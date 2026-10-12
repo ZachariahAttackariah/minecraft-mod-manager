@@ -28,6 +28,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Fabric mods without Sinytra Connector.
 - **Mod details**
   - Description, links and versions with changelogs.
+  - Gallery: the mod's Modrinth screenshots, full size on click (arrow keys to flip through).
   - What a mod needs and what needs it, including mods bundled inside jars.
   - Its config files, and whether the server's copies match.
 - **Server**
