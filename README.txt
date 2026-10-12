@@ -31,6 +31,11 @@ Top right (like the Minecraft Launcher)
   Under the tabs: the mods folder (click it to open it; hover for the full path), its jar count, then
   "Open instance folder" (the folder the mods folder is in: configs, saves, packs) and Refresh.
 
+Mods and Libraries
+  Mods tagged library (or libraries) are kept out of the Mods list and shown in the Libraries tab next to
+  it, with the same list and tools. Tag a mod library, or take the tag off, to move it between the two.
+  Counts, the side chart and tag counts follow the tab you're on.
+
 Mods page
   One bar above the list: getting mods (Search Modrinth, the Modrinth and CurseForge websites) on the left,
   and the Minecraft version Modrinth looks for, the update count and Update all / Check for updates on the right.

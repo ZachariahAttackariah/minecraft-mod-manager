@@ -404,6 +404,8 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .view-nav button[aria-current="page"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -2px; height: 3px; background: var(--accent-hover); }
 .view-nav .nav-right { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; padding-bottom: 6px; }
 .view-nav .server-chip { padding: 7px 12px; font-size: 13px; }
+.view-nav .nav-n { margin-left: 6px; font: 600 11px/1 var(--font-mono); letter-spacing: 0; color: var(--muted); }
+.lib-note { margin: -4px 0 14px; font-size: 13px; color: var(--muted); }
 .view-nav .badge-n { margin-left: 6px; padding: 1px 6px; font: 600 11px/1.4 var(--font-mono); color: var(--danger-ink); background: var(--danger); border-radius: 8px; }
 .view { padding-top: 2px; }
 .subnav { display: inline-flex; margin-bottom: 12px; }
@@ -690,6 +692,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     </div>
     <nav class="view-nav" id="view-nav" aria-label="Sections">
       <button type="button" data-view="mods" aria-current="page">Mods</button>
+      <button type="button" data-view="libraries" title="Mods tagged library: the ones other mods need. They're kept out of the Mods list.">Libraries<span class="nav-n" id="lib-count"></span></button>
       <button type="button" data-view="packs">Packs</button>
       <button type="button" data-view="server">Server</button>
       <button type="button" data-view="snapshots">Snapshots</button>
@@ -751,6 +754,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     </div>
     </div>
     <div style="height:16px"></div>
+
+    <p class="lib-note" id="lib-note" hidden>Libraries are mods that other mods need. Anything tagged <strong>library</strong> lives here instead of in the Mods list; tag a mod library (or take the tag off) to move it.</p>
 
   <!-- The mod list with its filters on either side: where jars install on the left, tags on the right. -->
   <div class="mods-layout">
@@ -1233,7 +1238,23 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     };
   }
 
+  // Mods tagged library (Roma's files call it "libraries") live in the Libraries tab; the Mods tab hides
+  // them. Everything on the page (list, counts, side chart, tag counts) works on the current tab's mods.
+  var LIBRARY_TAGS = ["library", "libraries"];
+  function isLibrary(r) { return r.tags.some(function (t) { return LIBRARY_TAGS.indexOf(t) >= 0; }); }
+  function inArea(r) { return (currentView === "libraries") === isLibrary(r); }
+  function areaStats() {
+    var rows = model.rows.filter(inArea);
+    var present = rows.filter(function (r) { return r.status !== "missing"; });
+    var byStatus = { all: present.length, enabled: 0, disabled: 0, missing: rows.length - present.length, updates: 0 };
+    present.forEach(function (r) { byStatus[r.status]++; if (r.update) byStatus.updates++; });
+    var counts = {};
+    model.topics.forEach(function (t) { counts[t] = present.filter(function (r) { return r.tags.indexOf(t) >= 0; }).length; });
+    return { present: present, byStatus: byStatus, counts: counts };
+  }
+
   function matches(r) {
+    if (!inArea(r)) return false;
     if (state.status === "updates") { if (!r.update) return false; }
     else if (state.status === "all" ? r.status === "missing" : r.status !== state.status) return false;
     if (state.sides.length && state.sides.indexOf(r.side) < 0) return false;
@@ -1383,9 +1404,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   function renderSummary() {
     if (!model) return;
-    var total = model.present.length || 1;
+    var area = areaStats();
+    var total = area.present.length || 1;
     var bySide = { client: 0, both: 0, server: 0, none: 0 };
-    model.present.forEach(function (r) { bySide[r.side]++; });
+    area.present.forEach(function (r) { bySide[r.side]++; });
+    var libs = model.present.filter(isLibrary).length;
+    $("lib-count").textContent = libs ? String(libs) : "";
+    $("lib-note").hidden = currentView !== "libraries";
 
     var chart = $("side-chart"), legend = $("side-legend");
     chart.replaceChildren(); legend.replaceChildren();
@@ -1407,9 +1432,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       // One line each in the side column; what a tag means shows on hover.
       grid.append(h("button", { type: "button", class: "tag-card", style: "--c:" + colorOf(t), "aria-pressed": String(state.tags.indexOf(t) >= 0),
           title: model.defs[t] ? t + ": " + model.defs[t] : t, onclick: function () { toggleTag(t); } },
-        h("span", { class: "row1" }, h("span", { class: "name" }, t), h("span", { class: "count" }, String(model.counts[t])))));
+        h("span", { class: "row1" }, h("span", { class: "name" }, t), h("span", { class: "count" }, String(area.counts[t])))));
     });
-    var untagged = model.present.filter(function (r) { return !r.topics.length; }).length;
+    var untagged = area.present.filter(function (r) { return !r.topics.length; }).length;
     grid.append(h("button", { type: "button", class: "tag-card", style: "--c:var(--muted)", "aria-pressed": String(state.untagged), onclick: toggleUntagged,
         title: "Jars with no tags besides client / server." },
       h("span", { class: "row1" }, h("span", { class: "name" }, "untagged"), h("span", { class: "count" }, String(untagged)))));
@@ -1423,7 +1448,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   function renderToolbar(n) {
-    var b = model ? model.byStatus : { all: 0, enabled: 0, disabled: 0, missing: 0, updates: 0 };
+    var b = model ? areaStats().byStatus : { all: 0, enabled: 0, disabled: 0, missing: 0, updates: 0 };
     var sc = $("status-control");
     sc.replaceChildren();
     STATUSES.forEach(function (s) {
@@ -1547,7 +1572,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     $("rows").replaceChildren(frag);
     $("empty").hidden = rows.length > 0 || !model;
     var onlyStatus = !state.q && !state.tags.length && !state.sides.length && !state.untagged;
-    $("empty-text").textContent = onlyStatus && state.status === "disabled" ? "No jars are disabled."
+    var noLibs = currentView === "libraries" && model && !model.rows.some(isLibrary);
+    $("empty-text").textContent = noLibs ? "No mods are tagged library yet. Right-click a mod in the Mods list and give it the library tag to move it here."
+      : onlyStatus && state.status === "disabled" ? "No jars are disabled."
       : onlyStatus && state.status === "updates" ? "Everything is up to date." : "No mods match these filters.";
   }
 
@@ -3046,12 +3073,20 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   // ---------- Sections (Mods / Server / Snapshots / Cleanup) ----------
 
-  var VIEWS = ["mods", "packs", "server", "snapshots", "cleanup"];
+  var VIEWS = ["mods", "libraries", "packs", "server", "snapshots", "cleanup"];
   var currentView = "mods";
   function setView(name, initial) {
     if (VIEWS.indexOf(name) < 0) name = "mods";
+    var was = currentView;
     currentView = name;
-    VIEWS.forEach(function (v) { $("view-" + v).hidden = v !== name; });
+    // Libraries is the Mods page showing only mods tagged library.
+    var section = name === "libraries" ? "mods" : name;
+    ["mods", "packs", "server", "snapshots", "cleanup"].forEach(function (v) { $("view-" + v).hidden = v !== section; });
+    if (section === "mods" && was !== name && model) {
+      Object.keys(selected).forEach(function (k) { delete selected[k]; });
+      anchorKey = null;
+      render();
+    }
     Array.prototype.forEach.call(document.querySelectorAll("#view-nav button"), function (b) {
       if (b.getAttribute("data-view") === name) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
     });
@@ -4902,7 +4937,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }
     var t = e.target;
     var typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
-    if (typing || currentView !== "mods") return;
+    if (typing || (currentView !== "mods" && currentView !== "libraries")) return;
     if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) {
       e.preventDefault();
       var rows = visible();
