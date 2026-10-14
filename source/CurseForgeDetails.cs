@@ -35,7 +35,7 @@ namespace MinecraftModManager
                 "discord", null, "updated", S(mod, "dateModified"), "downloadsAllowed", CfDownloadsAllowed(mod),
                 "gallery", A(Get(mod, "screenshots")).Select(x => D(x)).Where(x => x != null && S(x, "url") != null)
                     .Select(x => (object)Obj("url", S(x, "thumbnailUrl") ?? S(x, "url"), "raw", S(x, "url"), "title", S(x, "title"), "description", S(x, "description"), "featured", false)).ToList(),
-                "versionNumber", S(current, "displayName"), "versionId", "cf:" + CfId(Get(current, "id")));
+                "versionNumber", S(current, "displayName"), "versionId", "cf:" + CfId(Get(current, "id")), "loose", Bool(match, "loose"));
         }
 
         static string CfDescription(long id)
@@ -94,7 +94,7 @@ namespace MinecraftModManager
             long currentId = CfId(Get(current, "id"));
             string currentDate = S(current, "fileDate");
             List<object> versions = CfFiles(id).Select(f => (object)CfVersionObj(f, currentId, currentDate)).ToList();
-            return Obj("ok", true, "source", "curseforge", "target", TargetObj(), "url", CfUrl(mod), "downloadsAllowed", CfDownloadsAllowed(mod),
+            return Obj("ok", true, "source", "curseforge", "loose", Bool(match, "loose"), "target", TargetObj(), "url", CfUrl(mod), "downloadsAllowed", CfDownloadsAllowed(mod),
                 "current", Obj("id", "cf:" + currentId, "number", S(current, "displayName")), "versions", versions);
         }
 

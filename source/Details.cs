@@ -117,8 +117,14 @@ namespace MinecraftModManager
                         VersionByHash[hash] = D(Get(found, hash));
                     }
                     Dictionary<string, object> version = VersionByHash[hash];
-                    // Not on Modrinth: CurseForge's page for it, when CurseForge knows it (CurseForgeDetails.cs).
-                    if (version == null) return (CfReady ? CfInfo(file) : null) ?? Obj("found", false);
+                    // Not on Modrinth byte for byte: CurseForge's exact file first, then the same mod on Modrinth
+                    // by its id and name, then on CurseForge by its id and name (Loose.cs, CurseForgeDetails.cs).
+                    if (version == null)
+                    {
+                        if (CfReady && CfExactFor(file.DirectoryName, file.Name) != null) return CfInfo(file) ?? Obj("found", false);
+                        if (LooseModrinth(file, hash)) version = VersionByHash[hash];
+                        else return (CfReady ? CfInfo(file) : null) ?? Obj("found", false);
+                    }
                     Dictionary<string, object> project = GetProject(S(version, "project_id"));
                     if (project == null) return Obj("found", false);
                     Dictionary<string, object> license = D(Get(project, "license"));
@@ -131,7 +137,7 @@ namespace MinecraftModManager
                         "source", S(project, "source_url"), "issues", S(project, "issues_url"), "wiki", S(project, "wiki_url"), "discord", S(project, "discord_url"),
                         "updated", S(project, "updated"),
                         "gallery", Gallery(project),
-                        "versionNumber", S(version, "version_number"), "versionId", S(version, "id"));
+                        "versionNumber", S(version, "version_number"), "versionId", S(version, "id"), "loose", Bool(version, "loose"));
                 }
             }
             catch (UserError ex)
@@ -185,6 +191,7 @@ namespace MinecraftModManager
                     VersionByHash[hash] = D(Get(found, hash));
                 }
                 Dictionary<string, object> current = VersionByHash[hash];
+                if (current == null && !(CfReady && CfExactFor(modsDir, name) != null) && LooseModrinth(file, hash)) current = VersionByHash[hash];
                 if (current == null)
                 {
                     if (CfReady) return CfVersions(name);
@@ -192,7 +199,7 @@ namespace MinecraftModManager
                 }
                 string currentDate = S(current, "date_published");
                 List<object> versions = ProjectVersions(S(current, "project_id")).Select(v => (object)VersionObj(v, S(current, "id"), currentDate)).ToList();
-                return Obj("ok", true, "target", TargetObj(), "current", Obj("id", S(current, "id"), "number", S(current, "version_number")), "versions", versions);
+                return Obj("ok", true, "target", TargetObj(), "loose", Bool(current, "loose"), "current", Obj("id", S(current, "id"), "number", S(current, "version_number")), "versions", versions);
             }
         }
 

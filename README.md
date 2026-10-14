@@ -33,6 +33,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Fabric mods without Sinytra Connector.
 - **Mod details**
   - Description, links and versions with changelogs, for Modrinth and CurseForge mods alike; switch to any version.
+  - A jar neither site publishes byte for byte (another build of the same mod) is matched by its mod id and name, and only offered updates when its own version is in the site's list.
   - Gallery: the mod's screenshots, full size on click (arrow keys to flip through).
   - Where its updates come from (match what's installed, releases, betas, everything), pin this version, and a note.
 - **Notes, pins and skipped updates:** a note on any mod (shown on hover, found by search), pinning a mod so Update all leaves it alone, and skipping one update until a newer one comes out. Kept per mods folder in the app's data folder.

@@ -385,6 +385,9 @@ namespace MinecraftModManager
                         case "/api/modrinth/versions":
                             result = ModrinthVersions(req.QueryString["file"]);
                             break;
+                        case "/api/compare":
+                            result = CompareFolders(req.QueryString["other"]);
+                            break;
                         case "/api/presets":
                             result = ListPresets();
                             break;
@@ -982,8 +985,9 @@ namespace MinecraftModManager
         }
 
         // The same for any files (pack zips too). Returns file name -> SHA-1.
-        static Dictionary<string, string> IdentifyFiles(IEnumerable<FileInfo> files)
+        static Dictionary<string, string> IdentifyFiles(IEnumerable<FileInfo> fileList)
         {
+            List<FileInfo> files = fileList.ToList();
             var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (FileInfo file in files)
             {
@@ -999,6 +1003,19 @@ namespace MinecraftModManager
             }
             FetchProjects(hashes.Values.Select(h => VersionByHash[h]).Where(v => v != null)
                 .Select(v => S(v, "project_id")).Where(id => id != null && !ProjectById.ContainsKey(id)).Distinct().ToList());
+            // Jars Modrinth doesn't know byte for byte: CurseForge's fingerprint comes first; what neither
+            // knows is matched to a Modrinth project by its mod id and name (Loose.cs).
+            List<FileInfo> rest = files.Where(f => JarName.IsMatch(f.Name) && hashes.ContainsKey(f.Name) && VersionByHash[hashes[f.Name]] == null).ToList();
+            if (rest.Count > 0)
+            {
+                HashSet<string> onCurseForge = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (CfReady)
+                {
+                    try { onCurseForge.UnionWith(CfIdentify(rest).Keys); }
+                    catch (UserError) { }
+                }
+                foreach (FileInfo f in rest.Where(f => !onCurseForge.Contains(f.Name))) LooseModrinth(f, hashes[f.Name]);
+            }
             return hashes;
         }
 
@@ -1069,6 +1086,7 @@ namespace MinecraftModManager
                     if (held != null) { heldUpdate = Obj("versionId", S(latest, "id"), "versionNumber", S(latest, "version_number"), "type", S(latest, "version_type"), "why", held); latest = null; }
                     if (latest != null) updates++;
                     mods[pair.Key] = Obj(
+                        "loose", Bool(version, "loose"),
                         "held", heldUpdate,
                         "versionType", S(version, "version_type"),
                         "projectId", S(version, "project_id"),
@@ -1097,6 +1115,9 @@ namespace MinecraftModManager
         // Asks Modrinth for the newest version of each hash, grouped by the release types each mod may move to.
         static void CheckLatest(string dir, List<string> hashes)
         {
+            // Loosely matched jars have no hash Modrinth knows; their newest version comes from the version list.
+            foreach (string h in hashes.Where(h => Bool(VersionByHash[h], "loose")).ToList()) LatestByHash[h] = LooseLatest(h);
+            hashes = hashes.Where(h => !Bool(VersionByHash[h], "loose")).ToList();
             foreach (var group in hashes.GroupBy(h => string.Join(",", AllowedTypes(dir, S(VersionByHash[h], "project_id"), S(VersionByHash[h], "version_type")))))
             {
                 List<string> list = group.ToList();

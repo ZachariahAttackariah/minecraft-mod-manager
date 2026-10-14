@@ -206,6 +206,8 @@ namespace MinecraftModManager
         {
             Dictionary<string, object> mod = CfMod(CfId(Get(match, "id")));
             if (mod == null) return null;
+            // A loose match whose own file isn't in CurseForge's list: nothing can be called newer.
+            if (CfId(Get(D(Get(match, "file")), "id")) == 0) return null;
             string[] types = AllowedTypes(modsDir, "cf:" + CfId(Get(match, "id")), CfReleaseName(Get(D(Get(match, "file")), "releaseType")));
             int want = CfLoader();
             Dictionary<string, object> latest = A(Get(mod, "latestFilesIndexes")).Select(x => D(x)).Where(x => x != null
@@ -221,7 +223,14 @@ namespace MinecraftModManager
         static int CfScanInto(Dictionary<string, object> mods, IEnumerable<FileInfo> jars, ref int updates)
         {
             int found = 0;
-            foreach (KeyValuePair<string, Dictionary<string, object>> p in CfIdentify(jars))
+            List<FileInfo> jarList = jars.ToList();
+            Dictionary<string, Dictionary<string, object>> matches = CfIdentify(jarList);
+            foreach (FileInfo jar in jarList.Where(j => !matches.ContainsKey(j.Name)))
+            {
+                Dictionary<string, object> loose = CfLooseMatch(jar);
+                if (loose != null) matches[jar.Name] = loose;
+            }
+            foreach (KeyValuePair<string, Dictionary<string, object>> p in matches)
             {
                 Dictionary<string, object> match = p.Value, file = D(Get(match, "file"));
                 Dictionary<string, object> mod = CfMod(CfId(Get(match, "id")));
@@ -237,7 +246,7 @@ namespace MinecraftModManager
                 }
                 if (latest != null) updates++;
                 found++;
-                mods[p.Key] = Obj("source", "curseforge", "cfModId", CfId(Get(mod, "id")), "projectId", null, "slug", null,
+                mods[p.Key] = Obj("source", "curseforge", "loose", Bool(match, "loose"), "cfModId", CfId(Get(mod, "id")), "projectId", null, "slug", null,
                     "url", CfUrl(mod), "title", S(mod, "name"), "icon", CfIcon(mod), "clientSide", null, "serverSide", null,
                     "versionNumber", S(file, "displayName"), "versionType", CfReleaseName(Get(file, "releaseType")), "held", heldUpdate, "downloadsAllowed", CfDownloadsAllowed(mod),
                     "update", latest == null ? null : Obj("versionId", "cf:" + CfId(Get(latest, "fileId")), "versionNumber", S(latest, "filename"), "type", CfReleaseName(Get(latest, "releaseType"))));
@@ -245,7 +254,12 @@ namespace MinecraftModManager
             return found;
         }
 
+        // CurseForge's match for a jar: by fingerprint, else by its mod id and name (Loose.cs).
         static Dictionary<string, object> CfMatchFor(string dir, string name)
+        {
+            return CfExactFor(dir, name) ?? (CfReady && JarName.IsMatch(name) ? CfLooseMatch(new FileInfo(Path.Combine(dir, name))) : null);
+        }
+        static Dictionary<string, object> CfExactFor(string dir, string name)
         {
             if (!CfReady) return null;
             Dictionary<string, Dictionary<string, object>> found = CfIdentify(new[] { new FileInfo(Path.Combine(dir, name)) });

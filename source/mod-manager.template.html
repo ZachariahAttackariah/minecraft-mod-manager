@@ -4592,6 +4592,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     add("Mod id", d.mods.map(function (m) { return m.id; }).join(", "));
     add("Version", main.version || (mr.versionNumber ? mr.versionNumber + " (Modrinth)" : null));
     add("Loader", KIND_NAMES[d.kind] || d.kind);
+    if (mr.found && mr.loose) add("Matched by", "Mod id and name. This jar isn't a file " + (mr.site === "curseforge" ? "CurseForge" : "Modrinth") + " publishes byte for byte (a different build or a repack), so it's matched by what it says it is.");
     if (mr.found && mr.site === "curseforge") add("From", "CurseForge" + (mr.author ? ", by " + mr.author : ""));
     if (mr.found && mr.clientSide) add("Where it's needed", "Client: " + (SIDE_WORDS[mr.clientSide] || mr.clientSide) + " · Server: " + (SIDE_WORDS[mr.serverSide] || mr.serverSide) + " (Modrinth)");
     add("Your tags", r.tags.length ? r.tags.join(", ") : "none");
@@ -4654,6 +4655,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var pageOnly = v.source === "curseforge" && v.downloadsAllowed === false;
     body.append(h("p", { class: "hint", style: "margin:0 0 8px" }, "Every " + site + " version for " + targetText() + ", newest first. Open one to read its changelog." +
       (pageOnly ? " Its author only allows downloads from CurseForge's website, so switching opens its page there." : "")));
+    if (v.loose && !v.versions.some(function (x) { return x.installed; })) body.append(h("p", { class: "hint", style: "margin:0 0 8px" },
+      "Your jar (" + (v.current && v.current.number || "its version") + ") isn't one of these files, so none is marked as newer. Switching replaces it with the one you pick."));
     if (!v.versions.length) body.append(h("p", { class: "search-empty" }, site + " has no versions for " + targetText() + "."));
     v.versions.forEach(function (ver) {
       var install = ver.installed || !connected ? null : btn(pageOnly ? "Open page" : ver.newer ? "Update to this" : "Switch to this", function (e) {

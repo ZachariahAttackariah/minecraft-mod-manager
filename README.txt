@@ -153,6 +153,10 @@ Mod details
   what the mod needs and what needs it, and its config files (open them, and see whether the server's copy
   matches). It works the same for mods from Modrinth and from CurseForge (with a key); for a CurseForge mod
   whose author only allows downloads from their website, switching opens its page.
+  A jar that neither site publishes byte for byte (a different build or a repack of the same mod) is
+  matched by the mod id and name inside it, Modrinth first, CurseForge when Modrinth has no files for
+  your version. Its details say "Matched by mod id and name". It's offered an update only when one of
+  the site's files has the jar's own version number, so the app knows where it stands.
   Under the buttons: where its updates come from (see Updates), Pin this version, and a note.
 
 Notes, pins and skipped updates (right-click a mod)
