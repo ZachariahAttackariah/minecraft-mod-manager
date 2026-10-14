@@ -10,7 +10,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Turn mods on and off. Disabling renames `X.jar` to `X.jar.disabled`, the same as launchers do.
   - Delete mods to the Recycle Bin.
   - Select several mods at once, file-manager style.
-  - Tag mods (client / server, plus your own tags), stored in `mod-tags.json` next to the jars. Click a tag to show only mods with it, again to hide mods with it (right-click hides straight away); sort the list by name or by side.
+  - Tag mods (client / server, plus your own tags), stored in `mod-tags.json` next to the jars. Click a tag to show only mods with it; Ctrl+click to hide mods with it (a Setting can make a second click hide instead); the library tag only shows on the Libraries page; sort the list by name or by side.
   - Detect sides: works out client only, server only or both for every jar: the jar's metadata (`clientSideOnly`, a Fabric `environment`), its code (`@Mod(dist = ...)`, read from the class files), Modrinth's client / server flags, then what the jar contains (block / item models and its own network packets mean both; CurseForge environment tags; client-only mixins mean probably client). Results are listed for review before any tag changes, with Undo after.
   - Each mod shows its icon: Modrinth's when Modrinth knows the jar, else the logo inside the jar. Turned-off mods show OFF on the icon; updates are an arrow among the row's actions.
   - Another tool's `.mod-tags.json` (keyed by mod id) in the same folder is shown live, matched to jars by mod id. It's read-only: nothing is written in that folder, since that tool merges any `mod-tags.json` it finds.
@@ -27,7 +27,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Checks every download against Modrinth's checksum.
 - **Pre-launch check:** on demand (the Check mods button), the app reads every jar's `neoforge.mods.toml` / `mods.toml` / `fabric.mod.json`. It reports what would stop NeoForge from loading, with one-click fixes:
   - required mods that are missing or turned off, with Install it / Add all missing (found through the requiring mod's own Modrinth or CurseForge listing, then by id or name; each download checked to contain that mod);
-  - library versions outside the required range;
+  - library versions outside the required range, and mods made for another Minecraft or NeoForge version, with Fix version / Fix all versions (candidate versions are opened and checked against every mod's requirements before anything switches);
   - the same mod twice, on or off. The copy to keep is picked automatically (made for this Minecraft version, then built for the instance's loader, then the version other mods require, then turned on, then newest), and one click moves the rest to the Recycle Bin and carries their tags over;
   - mods made for another Minecraft version;
   - Fabric mods without Sinytra Connector.
@@ -134,6 +134,7 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/Worlds.cs` | World backups |
 | `source/ServerSchedule.cs` | Scheduled server restarts and backups |
 | `source/Modpack.cs` | Modpack export (.mrpack / CurseForge zip) and import |
+| `source/FixVersions.cs` | Finding versions that fit for the pre-launch check |
 | `source/MissingDeps.cs` | Finding and installing mods the pre-launch check finds missing |
 | `source/CrossSite.cs` | Finding the Modrinth twin of each CurseForge search result |
 | `source/Loose.cs` | Matching jars by mod id and name when no file matches exactly |

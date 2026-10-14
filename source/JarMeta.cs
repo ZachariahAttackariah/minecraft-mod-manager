@@ -667,7 +667,7 @@ namespace MinecraftModManager
                         issues.Add(Issue("error", isMc ? "wrong-minecraft" : "wrong-loader-version",
                             isMc ? owner + " is made for Minecraft " + DescribeRange(dep.Range) + ", not " + mc + "."
                                  : owner + " needs NeoForge " + DescribeRange(dep.Range) + ", and " + where + " has " + (have ?? "an unknown version") + ".",
-                            new[] { jar.Name }, null));
+                            new[] { jar.Name }, side == "client" ? Obj("action", "version", "file", jar.Name) : null));
                         continue;
                     }
                     List<Provider> found;
@@ -691,7 +691,8 @@ namespace MinecraftModManager
                     {
                         Provider p = found[0];
                         issues.Add(Issue("error", "dep-version", owner + " needs " + p.Name + " " + DescribeRange(dep.Range) + ", but " + (p.Version ?? "another version") +
-                            " is installed" + (p.Nested ? " (bundled inside " + p.File + ")" : "") + ".", new[] { jar.Name, p.File }.Distinct().ToList(), null));
+                            " is installed" + (p.Nested ? " (bundled inside " + p.File + ")" : "") + ".", new[] { jar.Name, p.File }.Distinct().ToList(),
+                            side == "client" ? Obj("action", "version", "file", jar.Name, "dep", dep.Id, "provider", p.Nested ? null : p.File, "nestedIn", p.Nested ? p.File : null) : null));
                         continue;
                     }
                     if (present || dep.Type != "required") continue;

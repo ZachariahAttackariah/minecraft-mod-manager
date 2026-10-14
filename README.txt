@@ -75,9 +75,10 @@ Mods page
   on the right; click either to filter the list. Hover over a tag to see what it means. The arrow by
   each panel's title folds it away. With more than 20 tags, a filter box sits above them, and tags used
   as lists (to-do, testing, broken, check...) get their own group.
-  Tag filters: click a tag card to show only mods with it, click again to hide mods with it instead
-  (the card turns dashed and says NOT), and a third time to stop. Right-click a tag card, or Alt+click a
-  tag on a row, to hide it straight away. Hidden tags beat shown ones.
+  Tag filters: click a tag to show only mods with it (click again to stop). Ctrl+click a tag (or right-click
+  a tag card) to hide mods with it instead: the card turns dashed and says NOT; click it to stop. Hidden
+  tags beat shown ones. Settings > Mod list > Hiding a tag can make a second click hide instead.
+  The library tag only shows on the Libraries page.
   Detect (by "Where each jar installs") works out client only, server only or both for every jar, trusting
   in this order: the jar's metadata (clientSideOnly, a Fabric environment); its code (an entry point that
   only loads on the client or the server); Modrinth's client / server info; then what's inside it (block
@@ -166,6 +167,12 @@ Play and the pre-launch check
   (also split in two: farmersdelight -> farmers-delight), and both sites' searches. It downloads each to a
   temporary folder and opens it, and installs the first that really contains that mod id. Mods neither
   site has are named so you can find them yourself.
+  Wrong versions: "Fix version" on one, or "Fix all versions". For a mod made for another Minecraft or
+  NeoForge version, another version of it. For "X needs Y in a range", a newer X that accepts the Y here,
+  then a Y in the range (its own jar when Y is only bundled inside another mod), and last an older X.
+  Each candidate is downloaded and opened, and only picked when every mod's declared requirements still
+  hold with it and the other planned switches in place. The plan is shown first; old jars go to the
+  Recycle Bin, tags and on / off carry over. When nothing fits, it says so.
   Duplicates: a mod that's in the folder more than once, on or off, is listed once with the copy to keep
   already picked: the one made for this Minecraft version, then the build for the instance's own loader
   (not a Fabric build run through Connector), then the version your other mods require, then the one

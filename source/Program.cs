@@ -706,6 +706,9 @@ namespace MinecraftModManager
                         OpenPrism();
                         SendJson(ctx, 200, Obj("ok", true));
                         return;
+                    case "/api/check/fix-versions":
+                        SendJson(ctx, 200, FixVersions(body));
+                        return;
                     case "/api/check/install-missing":
                         SendJson(ctx, 200, InstallMissing(body));
                         return;

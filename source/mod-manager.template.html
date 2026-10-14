@@ -1054,7 +1054,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <h2 class="section-label"><span>Tags</span><span class="sl-actions"><button class="btn" type="button" id="auto-tag" title="Suggest your tags for mods from their Modrinth and CurseForge categories. You review them first.">Auto-tag</button><button class="btn" type="button" id="manage-tags">Manage</button></span></h2>
       <input class="tag-filter" id="tag-filter" type="search" placeholder="Filter tags" aria-label="Filter tags" autocomplete="off" spellcheck="false" hidden>
       <div class="tag-grid" id="tag-grid"></div>
-      <p class="hint" style="margin:10px 0 0">Click a tag to show only it, click again to hide it. Right-click hides it straight away.</p>
+      <p class="hint" id="tag-hint" style="margin:10px 0 0"></p>
     </div>
   </aside>
   <div class="main-col">
@@ -1836,10 +1836,15 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var grid = $("tag-grid");
     grid.replaceChildren();
     // Past 20 tags a filter box shows; tags that work as lists (to-do, testing, broken...) get their own group.
+    $("tag-hint").textContent = pref("tagHide") === "cycle"
+      ? "Click a tag to show only it, click again to hide it. Ctrl+click or right-click hides it straight away."
+      : "Click a tag to show only it. Ctrl+click (or right-click) to hide mods with it instead.";
     var many = model.topics.length > 20;
     $("tag-filter").hidden = !many;
     var f = many ? $("tag-filter").value.trim().toLowerCase() : "";
-    var shownTags = model.topics.filter(function (t) { return !f || t.indexOf(f) >= 0 || state.tags.indexOf(t) >= 0 || state.excluded.indexOf(t) >= 0; });
+    // The library tag only means something on the Libraries page (the Mods page never shows library mods).
+    var shownTags = model.topics.filter(function (t) { return currentView === "libraries" || LIBRARY_TAGS.indexOf(t) < 0; })
+      .filter(function (t) { return !f || t.indexOf(f) >= 0 || state.tags.indexOf(t) >= 0 || state.excluded.indexOf(t) >= 0; });
     var lists = shownTags.filter(function (t) { return LIST_TAGS.test(t); });
     var topics = shownTags.filter(function (t) { return !LIST_TAGS.test(t); });
     var groups = lists.length && topics.length ? [["Topics", topics], ["Lists", lists]] : [["", shownTags]];
@@ -1851,10 +1856,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     function tagCard(t) {
       // One line each in the side column; what a tag means shows on hover.
       // Click: show only these, click again: hide these, again: off. Right-click or Alt+click hides straight away.
-      var inc = state.tags.indexOf(t) >= 0, exc = state.excluded.indexOf(t) >= 0;
+      var inc = state.tags.indexOf(t) >= 0, exc = state.excluded.indexOf(t) >= 0, twice = pref("tagHide") === "cycle";
       grid.append(h("button", { type: "button", class: "tag-card" + (exc ? " not" : ""), style: "--c:" + colorOf(t), "aria-pressed": inc ? "true" : exc ? "mixed" : "false",
-          title: (model.defs[t] ? t + ": " + model.defs[t] + "\n" : "") + (inc ? "Showing only " + t + ". Click to hide " + t + " instead" : exc ? "Hiding " + t + ". Click to stop" : "Click to show only " + t + ", right-click to hide it"),
-          onclick: function (e) { if (e.altKey) toggleExclude(t); else cycleTag(t); },
+          title: (model.defs[t] ? t + ": " + model.defs[t] + "\n" : "") + (inc ? "Showing only " + t + ". Click to stop" + (twice ? ", or click again to hide it" : "") : exc ? "Hiding " + t + ". Click to stop" : "Click to show only " + t) +
+            (twice || exc ? "" : ". Ctrl+click to hide mods with it"),
+          onclick: function (e) { tagClick(t, e); },
           oncontextmenu: function (e) { e.preventDefault(); toggleExclude(t); } },
         h("span", { class: "row1" }, h("span", { class: "name" }, exc ? h("span", { class: "not-mark" }, "not") : null, t), h("span", { class: "count" }, String(area.counts[t])))));
     }
@@ -1998,7 +2004,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         ? shown.map(function (t) {
             var on = state.tags.indexOf(t) >= 0;
             return h("button", { type: "button", class: "chip", style: "--c:" + colorOf(t), "data-action": "filter-tag", "data-tag": t, "aria-pressed": String(on),
-              title: (model.defs[t] ? model.defs[t] + "\n" : "") + (on ? "Click to stop filtering by " + t : "Click to show only mods tagged " + t) + ". Alt+click to hide mods tagged " + t }, t);
+              title: (model.defs[t] ? model.defs[t] + "\n" : "") + (on ? "Click to stop filtering by " + t : "Click to show only mods tagged " + t) + ". Ctrl+click to hide mods tagged " + t }, t);
           })
         : h("span", { class: "none", "aria-label": "No tags" }, "—");
       if (shown.length < topics.length) chips.push(h("span", { class: "chip more", title: topics.slice(shown.length).join(", ") }, "+" + (topics.length - shown.length)));
@@ -2129,6 +2135,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     render();
   }
   // A tag card steps through show only, hide, then off.
+  // A tag card: Ctrl+click (or right-click) hides mods with it; a plain click shows only them, or stops
+  // either. Settings > Mod list can make a second click hide instead (show only -> hide -> off).
+  function tagClick(t, e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) { toggleExclude(t); return; }
+    if (pref("tagHide") === "cycle") { cycleTag(t); return; }
+    if (state.excluded.indexOf(t) >= 0) toggleExclude(t); else toggleTag(t);
+  }
   function cycleTag(t) {
     if (state.tags.indexOf(t) >= 0) toggleExclude(t);
     else if (state.excluded.indexOf(t) >= 0) toggleExclude(t);
@@ -4524,7 +4537,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // settings file) and sends it with every state. A copy in localStorage paints the right theme before
   // the first state arrives.
 
-  var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha",
+  var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha", tagHide: "ctrl",
     worldBackups: false, updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false,
     serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false };
   var localPrefs = {};
@@ -4546,7 +4559,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var look = { "data-theme": theme, "data-accent": pref("accent"), "data-density": pref("density"), "data-tags": pref("tagColors"),
       "data-files": pref("fileNames") ? "on" : "off", "data-actions": pref("rowActions"), "data-blocky": pref("blockyTitle") ? "on" : "off" };
     Object.keys(look).forEach(function (k) { root.setAttribute(k, look[k]); });
-    var sig = JSON.stringify(look) + pref("tagsPerRow");
+    var sig = JSON.stringify(look) + pref("tagsPerRow") + pref("tagHide");
     var changed = sig !== appliedLook;
     appliedLook = sig;
     if (server && server.prefs) {
@@ -4584,6 +4597,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "rowActions", label: "Row buttons", desc: "Update, on / off and delete stay visible, or only show strongly on hover. Updates always show.", choices: [["hover", "On hover"], ["always", "Always"]] },
       { key: "tagsPerRow", label: "Tags per row", desc: "Extra tags fold into +N (hover to see them).", choices: [["3", "3"], ["5", "5"], ["all", "All"]] },
       { key: "whatChanged", label: "What changed, on opening", desc: "A short note of new updates and added or removed jars since the folder was last open here." },
+      { key: "tagHide", label: "Hiding a tag", desc: "How to filter out the mods with a tag. Right-click a tag hides it either way.", choices: [["ctrl", "Ctrl+click"], ["cycle", "Click twice"]] },
       { key: "tagOrder", label: "Tag order", desc: "How tags are listed in the side panel, on rows and when picking tags for a mod.", choices: [["alpha", "A to Z"], ["file", "As in the file"]] },
       { key: "confirmDelete", label: "Ask before deleting", desc: "Off sends mods straight to the Recycle Bin, where they can still be restored." }
     ] },
@@ -4792,6 +4806,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }
     // Everything missing in one go: turn on what's off, copy what the server has, download the rest.
     var missing = res.side === "client" && connected ? res.issues.filter(function (is) { return is.fix && /^(install|enable|copy-from-server)$/.test(is.fix.action) && !(is.fix.action === "install" && notFound[is.fix.id]); }).map(function (is) { return is.fix; }) : [];
+    var versions = res.side === "client" && connected ? res.issues.filter(function (is) { return is.fix && is.fix.action === "version"; }).map(function (is) { return is.fix; }) : [];
+    if (versions.length > 1) {
+      body.append(h("div", { class: "dup-all" },
+        h("span", null, count(versions.length, "mod has", "mods have") + " the wrong version. The app can look for versions that fit together and show you the switches first."),
+        btn("Fix all versions", function (e) { e.currentTarget.disabled = true; fixVersions(versions, opts); }, "primary")));
+    }
     if (missing.length > 1) {
       body.append(h("div", { class: "dup-all" },
         h("span", null, count(missing.length, "mod is", "mods are") + " missing. The app can turn on the ones that are off, copy the ones the server has, and find and download the rest."),
@@ -4810,6 +4830,45 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   // Fixes missing mods: turns on the ones that are off, copies the ones the server has, then finds and
   // downloads the rest (MissingDeps.cs). Afterwards the check runs again and its dialog shows what's left.
+  // Version problems: the app works out which versions to switch to (FixVersions.cs), shows that plan,
+  // and applies it once confirmed. Afterwards the check runs again.
+  function fixVersions(fixes, opts) {
+    var items = fixes.map(function (f) { return { file: f.file, dep: f.dep || null, provider: f.provider || null, nestedIn: f.nestedIn || null }; });
+    trackStoppable(fixes.length === 1 ? "Looking for a version that fits" : "Looking for versions that fit", function (job) {
+      return api("POST", "/api/check/fix-versions", { items: items, dryRun: true }, job);
+    }).then(function (res) {
+      var doable = res.plan.filter(function (x) { return !x.error && !x.covered; });
+      var covered = res.plan.filter(function (x) { return x.covered; });
+      var body = h("div");
+      if (doable.length) {
+        body.append(h("p", { class: "hint", style: "margin:0 0 6px" }, "Each version was opened and checked against every mod here that depends on it."));
+        doable.forEach(function (x) {
+          body.append(h("div", { class: "dep" },
+            h("div", null, h("div", null, h("strong", null, x.title), " ", x.newJar ? "add " + x.to : (x.from || "?") + " → " + x.to),
+              h("div", { class: "sub" }, (x.newJar ? "A new jar: " : "") + x.reason + (x["for"] && x["for"] !== x.title ? " (for " + x["for"] + ")" : "") + " · " + (x.site === "curseforge" ? "CurseForge" : "Modrinth")))));
+        });
+      }
+      if (covered.length) body.append(h("p", { class: "hint" }, "Also fixed by these: " + covered.map(function (x) { return x.title; }).join(", ") + "."));
+      var bad = res.plan.filter(function (x) { return x.error; });
+      if (bad.length) {
+        body.append(h("h3", { style: "margin:12px 0 4px;font:700 15px/1.3 var(--font-display)" }, "No fix found"));
+        bad.forEach(function (x) { body.append(h("div", { class: "dep" }, h("div", null, h("div", null, nameOf(x.file)), h("div", { class: "sub" }, x.error)))); });
+      }
+      openBig(doable.length ? "Switch " + count(doable.length, "mod", "mods") + "?" : "No version fixes found",
+        doable.length ? "The old jars go to the Recycle Bin; tags and on / off carry over." + (doable.length > 1 ? " A snapshot is taken first." : "") : null, body,
+        [btn("Cancel", closeBig), doable.length ? btn("Switch " + count(doable.length, "mod", "mods"), function () {
+          closeBig();
+          trackStoppable("Switching mod versions", function (job) { return api("POST", "/api/check/fix-versions", { items: items }, job); }).then(function (done) {
+            var ok = (done.results || []).filter(function (r) { return !r.error; });
+            var failed = (done.results || []).filter(function (r) { return r.error; });
+            toast((ok.length ? "Switched " + ok.map(function (r) { return r.title + " to " + r.to; }).join(", ") + "." : "Nothing was switched.") +
+              (failed.length ? " " + failed.map(function (r) { return r.title + ": " + r.error; }).join(" ") : ""));
+            return refresh(true).then(runCheck).then(function (again) { if (again && (again.errors || again.warnings)) problemsDialog(again, opts || {}); });
+          }, function (e) { toast(e.message); });
+        }, "primary") : null].filter(Boolean));
+    }, function (e) { toast(e.message); });
+  }
+
   var notFound = {}; // ids neither site turned up this session, left out of "Add all missing"
   function addMissing(fixes, opts) {
     var turnOn = fixes.filter(function (f) { return f.action === "enable"; }).map(function (f) { return f.file; });
@@ -4881,6 +4940,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           api("POST", "/api/check/copy-from-server", { file: fix.file }).then(function () {
             return after("Copied " + fix.file + " into the game's mods folder.");
           }, function (err) { toast(err.message); });
+        }, "primary"));
+      } else if (fix.action === "version") {
+        fixes.append(btn("Fix version", function (e) {
+          e.currentTarget.disabled = true;
+          fixVersions([fix], opts);
         }, "primary"));
       } else if (fix.action === "install") {
         fixes.append(btn("Install it", function (e) {
@@ -6534,7 +6598,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (kind === "toggle") setEnabled([hit.row], hit.row.status === "disabled");
       else if (kind === "update") updateMods([hit.row]);
       else if (kind === "details") openDetails(hit.row);
-      else if (kind === "filter-tag") (e.altKey ? toggleExclude : toggleTag)(action.getAttribute("data-tag"));
+      else if (kind === "filter-tag") (e.ctrlKey || e.metaKey || e.altKey ? toggleExclude : toggleTag)(action.getAttribute("data-tag"));
       else if (kind === "delete") askDelete([hit.row]);
       return;
     }
