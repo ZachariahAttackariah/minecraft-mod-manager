@@ -452,6 +452,11 @@ namespace MinecraftModManager
                     SendJson(ctx, 200, ReceiveDroppedFile(req));
                     return;
                 }
+                if (path == "/api/modpack/import")
+                {
+                    SendJson(ctx, 200, ImportModpack(req));
+                    return;
+                }
                 Dictionary<string, object> body = ReadBody(req);
                 switch (path)
                 {
@@ -548,6 +553,9 @@ namespace MinecraftModManager
                         return;
                     case "/api/prefs":
                         SendJson(ctx, 200, SetPrefs(body));
+                        return;
+                    case "/api/modpack/export":
+                        SendJson(ctx, 200, ExportModpack(body));
                         return;
                     case "/api/worlds/backup":
                         SendJson(ctx, 200, BackupWorld(Str(body, "side"), Str(body, "name"), Str(body, "reason")));

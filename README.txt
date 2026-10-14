@@ -198,6 +198,16 @@ Auto-tag (by the Tags panel's Manage button)
   with a tick per mod. Only tags that already exist here are suggested, and only to mods without them;
   categories with no matching tag are listed so you can make one. Add tags has Undo.
 
+Modpacks
+  Export (dots menu or Ctrl+K) saves this instance as a Modrinth .mrpack or a CurseForge .zip in your
+  Downloads folder. Mods that are on are listed by where they're published (Modrinth file links with
+  their hashes; CurseForge project and file ids), so the pack stays small. Jars the site doesn't list,
+  and the config folder, can go inside the pack (check those mods' licences before sharing publicly).
+  Import (Add mods arrow, or Ctrl+K) takes a .mrpack or CurseForge .zip and makes a new instance with
+  its Minecraft and loader versions, downloads every mod (checked against the pack's hashes; Modrinth
+  packs only from the hosts the format allows), unpacks its files, and switches to it. CurseForge mods
+  whose authors only allow website downloads are listed with an Open page button.
+
 Compare with another folder (dots menu, or Ctrl+K)
   Pick an instance or a folder you've used: every mod is matched by mod id across both, and listed as only
   here, only there, another version, on in one and off in the other, or with different tags (the tags only
@@ -341,6 +351,7 @@ Files
   source\DepTree.cs                       The dependency tree in mod details.
   source\Worlds.cs                        World backups.
   source\ServerSchedule.cs                Scheduled server restarts and backups.
+  source\Modpack.cs                       Modpack export and import.
   source\Loose.cs                         Matching jars by mod id and name when no file matches exactly.
   source\Sides.cs                         Detecting client / server / both.
   source\Duplicates.cs                    Finding duplicate jars.

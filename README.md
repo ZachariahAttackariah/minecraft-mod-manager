@@ -43,6 +43,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
 - **Drag and drop:** `.jar` files dropped on the window go into the mods folder; pack `.zip` files are sorted by what's inside them.
 - **Command palette (Ctrl+K)** to jump to any mod, tag, page or action; **?** lists every shortcut.
 - **Auto-tag:** suggests your existing tags from each mod's Modrinth / CurseForge categories, reviewed per tag before anything changes, with Undo.
+- **Modpacks:** export as `.mrpack` or CurseForge `.zip` (mods listed by where they're published, optional overrides and configs); import either into a new Prism instance with hash-checked downloads.
 - **Compare two folders:** what each has, version, on/off and tag differences, matched by mod id. Read-only.
 - **On/off presets:** named sets of which mods are on, switched in one click (with a preview, a snapshot first, and Undo).
 - **Crash reader:** after a crash, a banner offers to read the newest crash report (or `latest.log`) and lists the mods it points at, most likely first, with one-click Turn off or Find for a missing dependency.
@@ -132,6 +133,7 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/DepTree.cs` | The dependency tree in mod details |
 | `source/Worlds.cs` | World backups |
 | `source/ServerSchedule.cs` | Scheduled server restarts and backups |
+| `source/Modpack.cs` | Modpack export (.mrpack / CurseForge zip) and import |
 | `source/Loose.cs` | Matching jars by mod id and name when no file matches exactly |
 | `source/Crash.cs` | Reading the last crash report and naming the mods it points at |
 | `source/ModExtras.cs` | Notes, pinned versions, skipped updates and release channels |

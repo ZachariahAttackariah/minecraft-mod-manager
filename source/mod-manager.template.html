@@ -581,6 +581,11 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .cmp-side .chip { padding: 2px 5px; font-size: 11px; }
 .cmp-side .chip.only { box-shadow: 0 0 0 1px var(--c); }
 @media (max-width: 640px) { .cmp-row { grid-template-columns: minmax(0, 1fr); } }
+/* Export */
+.export-form { display: grid; gap: 10px; }
+.export-form > label:not(.ds-option) { display: grid; grid-template-columns: 90px minmax(0, 1fr); align-items: center; gap: 10px; }
+.export-form input[type=text] { padding: 7px 9px; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
+.export-form > div { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 /* World backups */
 .world { padding: 10px 0; border-top: 1px solid var(--line); }
 .w-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
@@ -985,11 +990,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <div class="pop-menu" id="add-menu" role="menu" hidden>
           <button type="button" role="menuitem" data-add="search">Search for mods<span class="k">Modrinth and CurseForge together</span></button>
           <button type="button" role="menuitem" data-add="files">Add .jar or .zip files…<span class="k">or drop them on the window</span></button>
+          <button type="button" role="menuitem" data-add="pack">Import a modpack…<span class="k">.mrpack or CurseForge .zip, as a new instance</span></button>
           <hr>
           <button type="button" role="menuitem" data-browse="https://modrinth.com/mods">Browse modrinth.com</button>
           <button type="button" role="menuitem" data-browse="https://www.curseforge.com/minecraft/search?class=mc-mods">Browse curseforge.com</button>
         </div>
         <input type="file" id="add-files" multiple accept=".jar,.zip" hidden>
+        <input type="file" id="pack-file" accept=".mrpack,.zip" hidden>
       </div>
       <button class="btn quiet" type="button" id="open-presets" title="Saved sets of which mods are on, switched in one click">Presets</button>
     </div>
@@ -1055,6 +1062,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <div class="pop-menu right" id="tb-menu" role="menu" hidden>
           <button type="button" role="menuitem" id="show-missing">Not in folder<span class="k" id="missing-k"></span></button>
           <button type="button" role="menuitem" id="copy">Copy filenames</button>
+          <button type="button" role="menuitem" id="open-export">Export as a modpack…<span class="k">.mrpack or CurseForge .zip</span></button>
           <button type="button" role="menuitem" id="open-compare">Compare with another folder…<span class="k">what each has, versions, tags</span></button>
           <button type="button" role="menuitem" id="read-crash">Read the last crash<span class="k">which mods it points at</span></button>
         </div>
@@ -3973,6 +3981,67 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
   $("open-compare").addEventListener("click", compareDialog);
 
+  // ---------- Modpacks (Modpack.cs): export this instance, import one as a new instance ----------
+
+  function exportDialog() {
+    var cf = !!(server && server.curseforge);
+    var nameIn = h("input", { type: "text", maxlength: "60", value: (server && server.prism && server.prism.instanceName) || "My pack", "aria-label": "Pack name" });
+    var verIn = h("input", { type: "text", maxlength: "20", value: "1.0.0", "aria-label": "Pack version" });
+    var fmt = "mrpack";
+    var seg = h("div", { class: "seg-control", role: "group", "aria-label": "Format" });
+    var drawSeg = function () {
+      seg.replaceChildren();
+      [["mrpack", "Modrinth (.mrpack)"], ["curseforge", "CurseForge (.zip)"]].forEach(function (f) {
+        seg.append(h("button", { type: "button", "aria-pressed": String(fmt === f[0]), disabled: f[0] === "curseforge" && !cf, title: f[0] === "curseforge" && !cf ? "Needs a CurseForge key (Settings)" : null,
+          onclick: function () { fmt = f[0]; drawSeg(); } }, f[1]));
+      });
+    };
+    drawSeg();
+    var other = h("input", { type: "checkbox", checked: true }), configs = h("input", { type: "checkbox", checked: true });
+    var body = h("div", { class: "export-form" },
+      h("label", null, h("span", null, "Name"), nameIn), h("label", null, h("span", null, "Version"), verIn),
+      h("div", null, h("span", { class: "hint" }, "Format"), seg),
+      h("label", { class: "ds-option" }, other, h("span", null, h("strong", null, "Include jars the site doesn't list"), h("span", { class: "sub" }, "They go into the pack itself. Check those mods' licences before sharing the pack publicly."))),
+      h("label", { class: "ds-option" }, configs, h("span", null, h("strong", null, "Include the config folder"), h("span", { class: "sub" }, "So the pack plays the same, settings and all."))),
+      h("p", { class: "hint" }, "Mods that are on are listed by where they're published, so the pack stays small. The file lands in your Downloads folder."));
+    openBig("Export as a modpack", null, body, [btn("Cancel", closeBig), btn("Export", function () {
+      closeBig();
+      track("Exporting " + nameIn.value, api("POST", "/api/modpack/export", { format: fmt, name: nameIn.value, version: verIn.value, includeOther: other.checked, includeConfigs: configs.checked })).then(function (res) {
+        toast("Exported " + res.path.split("\\").pop() + ": " + res.listed + " listed" + (res.included ? ", " + res.included + " included" : "") + (res.leftOut.length ? ", " + res.leftOut.length + " left out" : "") + ". It's selected in Explorer.");
+      }, function (e) { toast(e.message); });
+    }, "primary")]);
+  }
+  $("open-export").addEventListener("click", exportDialog);
+
+  $("pack-file").addEventListener("change", function () {
+    var f = $("pack-file").files && $("pack-file").files[0];
+    $("pack-file").value = "";
+    if (!f || !connected) return;
+    confirmDialog({
+      title: "Import " + f.name + "?", items: [],
+      body: "Makes a new instance with the pack's Minecraft and loader versions, downloads its mods and unpacks its files, then switches to it. Your current instance isn't touched.",
+      ok: "Import", okClass: "primary",
+      onOk: function () {
+        track("Importing " + f.name, fetch("/api/modpack/import?name=" + encodeURIComponent(f.name), { method: "POST", headers: { "X-Mod-Manager-Token": TOKEN, "Content-Type": "application/octet-stream" }, body: f })
+          .then(function (res) { return res.json().then(function (d) { if (!res.ok) throw new Error(d.error || "Couldn't import it."); return d; }); }))
+          .then(function (res) {
+            folderChanged({});
+            var body = h("div", null, h("p", null, "Downloaded " + count(res.downloaded, "file", "files") + ", unpacked " + count(res.extracted, "file", "files") + " from the pack."));
+            if (res.manual.length) {
+              body.append(h("h3", { style: "margin:12px 0 4px;font:700 15px/1.3 var(--font-display)" }, "Download these from CurseForge yourself"),
+                h("p", { class: "hint" }, "Their authors only allow downloads from CurseForge's website. Open each page and download the file: it lands in the new instance's mods folder."));
+              res.manual.forEach(function (m) { body.append(h("div", { class: "dep" }, h("div", null, h("div", null, m.name), h("div", { class: "sub" }, m.file)), m.url ? btn("Open page", function () { openTab(m.url); }) : null)); });
+            }
+            if (res.failed.length) {
+              body.append(h("h3", { style: "margin:12px 0 4px;font:700 15px/1.3 var(--font-display)" }, "Couldn't get these"));
+              res.failed.forEach(function (x) { body.append(h("div", { class: "dep" }, h("div", null, h("div", null, x.file), h("div", { class: "sub" }, x.error)))); });
+            }
+            openBig("Imported " + res.name, "It's now the instance you're managing. Press Check mods before playing.", body, [btn("Close", closeBig)]);
+          }, function (e) { toast(e.message); });
+      }
+    });
+  });
+
   // ---------- World backups (Worlds.cs) ----------
 
   function loadWorlds() {
@@ -4175,6 +4244,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     go("Read the last crash", "which mods it points at", crashDialog);
     go("On/off presets", "saved sets of mods that are on", presetsDialog);
     go("Auto-tag", "suggest tags from Modrinth and CurseForge categories", autoTagDialog);
+    go("Export as a modpack", ".mrpack or CurseForge .zip", exportDialog);
+    go("Import a modpack", "as a new instance", function () { $("pack-file").click(); });
     go("Compare with another folder", "instances and folders you've used", compareDialog);
     (presetCache || []).forEach(function (p) { go("Switch to preset " + p.name, p.on + " on", function () { applyPreset(p.name); }); });
     if (model) {
@@ -4338,6 +4409,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var what = b.getAttribute("data-add");
     if (what === "search") openSearch();
     else if (what === "files") $("add-files").click();
+    else if (what === "pack") $("pack-file").click();
   });
   $("add-menu").addEventListener("keydown", function (e) {
     var items = Array.prototype.slice.call($("add-menu").querySelectorAll("button"));
