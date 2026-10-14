@@ -248,6 +248,7 @@ namespace MinecraftModManager
             foreach (Dictionary<string, object> f in A(Get(index, "files")).Select(D).Where(f => f != null))
             {
                 string rel = Str(f, "path");
+                if (JobStopped()) { failed.Add(Obj("file", rel, "error", "stopped before this one")); continue; }
                 if (Str(D(Get(f, "env")), "client") == "unsupported") continue; // server-only files stay out of a game instance
                 string path = SafeGamePath(gameDir, rel);
                 Uri url = A(Get(f, "downloads")).OfType<string>().Select(u => { Uri x; return Uri.TryCreate(u, UriKind.Absolute, out x) ? x : null; })
@@ -286,6 +287,7 @@ namespace MinecraftModManager
             {
                 Dictionary<string, object> mod = CfMod(CfId(Get(f, "modId")));
                 string fileName = Path.GetFileName(S(f, "fileName") ?? "");
+                if (JobStopped()) { failed.Add(Obj("file", fileName, "error", "stopped before this one")); continue; }
                 string address = S(f, "downloadUrl");
                 Uri url;
                 if (mod != null && !CfDownloadsAllowed(mod) || string.IsNullOrEmpty(address))

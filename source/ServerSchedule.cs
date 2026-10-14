@@ -16,6 +16,7 @@ namespace MinecraftModManager
         static DateTime lastScheduledBackup = DateTime.MinValue;
         static int warnedAt; // minutes-before already announced for the current cycle (5, 1), 0 = none
         static int scheduleBusy;
+        static double restartMinutesOverride; // --restart-minutes, for testing the cycle without waiting hours
 
         static void StartServerSchedule()
         {
@@ -37,14 +38,14 @@ namespace MinecraftModManager
                 int hours;
                 if (int.TryParse(every, out hours) && hours > 0)
                 {
-                    DateTime due = scheduleRunningSince.Value.AddHours(hours);
+                    DateTime due = restartMinutesOverride > 0 ? scheduleRunningSince.Value.AddMinutes(restartMinutesOverride) : scheduleRunningSince.Value.AddHours(hours);
                     double minutesLeft = (due - DateTime.UtcNow).TotalMinutes;
-                    if (minutesLeft <= 5 && minutesLeft > 1 && warnedAt == 0) { Say("The server restarts in 5 minutes."); warnedAt = 5; }
+                    if (minutesLeft <= 5 && minutesLeft > 1 && warnedAt == 0) { Say("The server restarts in " + (int)Math.Ceiling(minutesLeft) + " minutes."); warnedAt = 5; }
                     else if (minutesLeft <= 1 && minutesLeft > 0 && warnedAt != 1) { Say("The server restarts in 1 minute."); warnedAt = 1; }
                     else if (minutesLeft <= 0) ScheduledRestart(backups);
                     return;
                 }
-                if (backups && DateTime.UtcNow - lastScheduledBackup > TimeSpan.FromHours(24)) LiveBackup();
+                if (backups && DateTime.UtcNow - lastScheduledBackup > (restartMinutesOverride > 0 ? TimeSpan.FromMinutes(restartMinutesOverride) : TimeSpan.FromHours(24))) LiveBackup();
             }
             finally { Interlocked.Exchange(ref scheduleBusy, 0); }
         }

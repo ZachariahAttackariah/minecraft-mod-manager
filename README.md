@@ -47,7 +47,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
 - **Compare two folders:** what each has, version, on/off and tag differences, matched by mod id. Read-only.
 - **On/off presets:** named sets of which mods are on, switched in one click (with a preview, a snapshot first, and Undo).
 - **Crash reader:** after a crash, a banner offers to read the newest crash report (or `latest.log`) and lists the mods it points at, most likely first, with one-click Turn off or Find for a missing dependency.
-- **Jobs:** a thin progress bar under the tabs while anything runs, and a list of running and recent jobs. Messages stack with Undo where it applies.
+- **Jobs:** a thin progress bar under the tabs while anything runs, and a list of running and recent jobs; updates, pack imports, world backups and multi-file adds can be stopped between steps. Messages stack with Undo where it applies.
 - **Check before Play** (optional): the pre-launch check runs first and only interrupts when something would stop the game.
   - What a mod needs and what needs it, including mods bundled inside jars, as a list or a full dependency tree.
   - Its config files, and whether the server's copies match.

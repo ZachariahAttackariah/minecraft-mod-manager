@@ -103,6 +103,7 @@ namespace MinecraftModManager
                 else if (args[i] == "--server-installer" && i + 1 < args.Length) serverInstallerOverride = Path.GetFullPath(args[++i]);
                 else if (args[i] == "--port" && i + 1 < args.Length) port = int.Parse(args[++i]);
                 else if (args[i] == "--no-window" || args[i] == "--no-browser") showWindow = false;
+                else if (args[i] == "--restart-minutes" && i + 1 < args.Length) restartMinutesOverride = double.Parse(args[++i], CultureInfo.InvariantCulture);
             }
             origin = "http://localhost:" + port;
 
@@ -293,11 +294,22 @@ namespace MinecraftModManager
             }
         }
 
+        // Jobs the page can stop: a long request names its job, and loops ask JobStopped() between steps.
+        [ThreadStatic] static string currentJob;
+        static readonly HashSet<string> stoppedJobs = new HashSet<string>();
+        static bool JobStopped()
+        {
+            if (currentJob == null) return false;
+            lock (stoppedJobs) return stoppedJobs.Contains(currentJob);
+        }
+
         static void Handle(HttpListenerContext ctx)
         {
             HttpListenerRequest req = ctx.Request;
             string path = req.Url.AbsolutePath;
             string method = req.HttpMethod;
+            currentJob = req.Headers["X-Mod-Manager-Job"];
+            if (currentJob != null && (currentJob.Length > 40 || !Regex.IsMatch(currentJob, "^[A-Za-z0-9-]+$"))) currentJob = null;
             try
             {
                 if (method == "GET" && (path == "/" || path == "/index.html"))
@@ -562,6 +574,23 @@ namespace MinecraftModManager
                     case "/api/prefs":
                         SendJson(ctx, 200, SetPrefs(body));
                         return;
+                    case "/api/open-path":
+                    {
+                        // Only the app's own folders: its data folder (snapshots, backups, extras) and where the exe is.
+                        string which = Str(body, "which");
+                        string folder = which == "data" ? dataDir : which == "app" ? AppDir : which == "server" ? serverDir : null;
+                        if (folder == null || !Directory.Exists(folder)) throw new UserError("That folder isn't there.");
+                        Process.Start("explorer.exe", "\"" + folder.TrimEnd('\\') + "\"");
+                        SendJson(ctx, 200, Obj("ok", true));
+                        return;
+                    }
+                    case "/api/jobs/stop":
+                    {
+                        string id = Str(body, "id") ?? "";
+                        lock (stoppedJobs) { if (stoppedJobs.Count > 200) stoppedJobs.Clear(); stoppedJobs.Add(id); }
+                        SendJson(ctx, 200, Obj("ok", true));
+                        return;
+                    }
                     case "/api/modpack/export":
                         SendJson(ctx, 200, ExportModpack(body));
                         return;
@@ -808,6 +837,7 @@ namespace MinecraftModManager
             }
             string[] prism = PrismInstanceFor(dir);
             return Obj("modsDir", dir, "folderExists", exists, "files", files, "tagsText", tagsText, "tagsLinked", tagsLinked, "curseforge", CfReady, "prefs", PrefsCopy(), "extras", ExtrasFor(dir), "lastCrash", exists ? LastCrashInfo() : null, "target", TargetObj(),
+                "paths", Obj("server", serverDir, "data", dataDir, "app", AppDir.TrimEnd('\\')),
                 "prism", Obj("installed", FindPrism() != null, "instanceId", prism == null ? null : prism[0], "instanceName", prism == null ? null : prism[1]),
                 "server", Obj("configured", serverDir != null, "state", serverState, "players", PlayerCount()),
                 "bisect", BisectSummary());
@@ -1460,6 +1490,7 @@ namespace MinecraftModManager
                 var plan = new List<PlanItem>();
                 foreach (string name in files)
                 {
+                    if (JobStopped()) { results.Add(Obj("file", name, "error", "Stopped before this one.")); continue; }
                     try
                     {
                         string path = ResolveModFile(dir, name);

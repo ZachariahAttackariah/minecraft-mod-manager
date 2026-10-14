@@ -13,6 +13,8 @@ Settings (the gear at the right end of the section tabs)
   Look .............. theme (dark, light, or follow Windows), accent colour (PLAY, switches that are on, the
                       current tab), row spacing (comfortable / compact), tag colours (vivid / soft), blocky
                       lettering for the title, PLAY and headings.
+  Folders ........... the mods folder and the server folder (open or change), the app's data folder
+                      (snapshots, backups, notes, presets) and the app's own folder (settings, actions.log).
   Mod list .......... show file names, row buttons always or on hover, tags per row (3, 5 or all; the rest
                       fold into +N), ask before deleting.
   Sources ........... where Add mods searches (both sites, Modrinth or CurseForge), and the CurseForge API
@@ -232,7 +234,10 @@ When the game crashes
 What the app is doing
   While something runs (checking mods, looking for updates, updating, installing, detecting sides, adding
   files), a thin bar moves under the section tabs and its name shows by the server chip. Click it for
-  what's running and the last few jobs, with how long they took and whether they worked.
+  what's running and the last few jobs, with how long they took and whether they worked. Updates, pack
+  imports, world backups and adding several files have Stop: they stop after the current step (an update
+  finishes the mod it's on; a backup in progress is thrown away). A message right after a long or failed
+  job has "Job details".
   Messages stack at the bottom right; hover one to keep it, x to close it, and Undo where it applies.
 
 Command palette and shortcuts
@@ -368,4 +373,5 @@ Files
   source\make-icon.ps1, app.ico           The icon (the grass block from the instance picker).
 
 Command line (optional): MinecraftModManager.exe --mods "D:\some\mods" --server "D:\server" --port 8737 --no-window
+  (--restart-minutes N makes scheduled server restarts and backups come every N minutes, for testing.)
 A mod-manager.html placed next to the exe replaces the built-in page, for quick edits without rebuilding.

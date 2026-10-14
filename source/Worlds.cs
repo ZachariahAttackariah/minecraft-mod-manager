@@ -108,6 +108,7 @@ namespace MinecraftModManager
                         foreach (string file in Directory.EnumerateFiles(w.Dir, "*", SearchOption.AllDirectories))
                         {
                             if (Path.GetFileName(file).Equals("session.lock", StringComparison.OrdinalIgnoreCase)) continue;
+                            if (JobStopped()) throw new UserError("Stopped, so no backup was kept.");
                             try
                             {
                                 using (var input = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
@@ -122,6 +123,7 @@ namespace MinecraftModManager
                 catch (Exception ex)
                 {
                     try { if (File.Exists(temp)) File.Delete(temp); } catch { }
+                    if (ex is UserError) throw;
                     throw new UserError("Couldn't back up " + w.Name + " (" + ex.Message + ").");
                 }
                 // Keep the newest few; older ones go to the Recycle Bin.
