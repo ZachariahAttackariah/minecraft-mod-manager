@@ -510,6 +510,12 @@ namespace MinecraftModManager
                     case "/api/check/remove-duplicates":
                         SendJson(ctx, 200, RemoveDuplicates(body));
                         return;
+                    case "/api/prefs":
+                        SendJson(ctx, 200, SetPrefs(body));
+                        return;
+                    case "/api/curseforge/key":
+                        SendJson(ctx, 200, SetCurseForgeKey(Str(body, "key")));
+                        return;
                     case "/api/curseforge/install":
                         SendJson(ctx, 200, CurseForgeInstall(Str(body, "projectId")));
                         return;
@@ -707,7 +713,7 @@ namespace MinecraftModManager
                 else if (File.Exists(tagsPath)) tagsText = File.ReadAllText(tagsPath, Encoding.UTF8);
             }
             string[] prism = PrismInstanceFor(dir);
-            return Obj("modsDir", dir, "folderExists", exists, "files", files, "tagsText", tagsText, "tagsLinked", tagsLinked, "curseforge", CfReady, "target", TargetObj(),
+            return Obj("modsDir", dir, "folderExists", exists, "files", files, "tagsText", tagsText, "tagsLinked", tagsLinked, "curseforge", CfReady, "prefs", PrefsCopy(), "target", TargetObj(),
                 "prism", Obj("installed", FindPrism() != null, "instanceId", prism == null ? null : prism[0], "instanceName", prism == null ? null : prism[1]),
                 "server", Obj("configured", serverDir != null, "state", serverState, "players", PlayerCount()),
                 "bisect", BisectSummary());
@@ -1756,6 +1762,8 @@ namespace MinecraftModManager
                         if (folder is string) knownServers.Add((string)folder);
                     savedWindow = D(Get(settings, "window"));
                     curseforgeKey = Str(settings, "curseforgeKey"); // CurseForge.cs; kept only in this local file
+                    Dictionary<string, object> savedPrefs = D(Get(settings, "prefs"));
+                    if (savedPrefs != null) lock (prefs) foreach (KeyValuePair<string, object> p in savedPrefs) prefs[p.Key] = p.Value;
                 }
             }
             catch { }
@@ -1770,7 +1778,7 @@ namespace MinecraftModManager
             {
                 File.WriteAllText(SettingsPath, new JavaScriptSerializer().Serialize(Obj("modsFolder", modsDir, "gameVersion", gameVersion, "loader", loader,
                     "serverFolder", serverDir, "window", savedWindow, "recentFolders", RecentFoldersCopy(), "servers", KnownServersCopy(),
-                    "curseforgeKey", string.IsNullOrEmpty(curseforgeKey) ? null : curseforgeKey)), new UTF8Encoding(false));
+                    "curseforgeKey", string.IsNullOrEmpty(curseforgeKey) ? null : curseforgeKey, "prefs", PrefsCopy())), new UTF8Encoding(false));
             }
             catch { }
         }

@@ -336,7 +336,7 @@ namespace MinecraftModManager
                 if (mod == null) continue;
                 lock (CfModById) CfModById[CfId(Get(mod, "id"))] = mod;
                 Dictionary<string, object> author = D(A(Get(mod, "authors")).FirstOrDefault());
-                hits.Add(Obj("source", "curseforge", "projectId", "cf:" + CfId(Get(mod, "id")), "title", S(mod, "name"), "author", S(author, "name"),
+                hits.Add(Obj("source", "curseforge", "projectId", "cf:" + CfId(Get(mod, "id")), "slug", S(mod, "slug"), "title", S(mod, "name"), "author", S(author, "name"),
                     "description", S(mod, "summary"), "icon", CfIcon(mod), "downloads", Get(mod, "downloadCount"), "updated", S(mod, "dateModified"),
                     "url", CfUrl(mod), "downloadsAllowed", CfDownloadsAllowed(mod), "installed", installed.Contains(CfId(Get(mod, "id")))));
             }

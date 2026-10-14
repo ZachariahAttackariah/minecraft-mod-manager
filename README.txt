@@ -6,7 +6,18 @@ Close the window to quit. Opening the exe again while it's running just brings t
 The window remembers its size and position. Like Firefox, the tabs sit in the window's title bar:
 drag the empty part of it to move the window, double-click it to maximize.
 
-Sections (along the top): Mods, Packs, Server, Snapshots, Cleanup.
+Sections (along the top): Mods, Libraries, Packs, Server, Snapshots, Cleanup, and Settings (the gear).
+
+Settings (the gear at the right end of the section tabs)
+  The defaults are the intended look, so nothing here needs changing. Saved in the app's settings file.
+  Look .............. theme (dark, light, or follow Windows), accent colour (PLAY, switches that are on, the
+                      current tab), row spacing (comfortable / compact), tag colours (vivid / soft), blocky
+                      lettering for the title, PLAY and headings.
+  Mod list .......... show file names, row buttons always or on hover, tags per row (3, 5 or all; the rest
+                      fold into +N), ask before deleting.
+  Sources ........... where Add mods searches (both sites, Modrinth or CurseForge), and the CurseForge API
+                      key (tested before it's kept; Turn off removes it).
+  Detect sides ...... whether client mods that add features on the server are marked both sides.
 
 Top right (like the Minecraft Launcher)
   Instance picker ... next to PLAY. Lists every instance with its Minecraft version, loader
@@ -37,10 +48,16 @@ Mods and Libraries
   Counts, the side chart and tag counts follow the tab you're on.
 
 Mods page
-  One bar above the list: getting mods (Search Modrinth, the Modrinth and CurseForge websites) on the left,
+  One bar above the list: getting mods (Add mods, the Modrinth and CurseForge websites) on the left,
   and the Minecraft version Modrinth looks for, the update count and Update all / Check for updates on the right.
+  Add mods searches Modrinth and CurseForge in one list (with a CurseForge key; Both / Modrinth /
+  CurseForge at its top). A mod on both sites shows once, marked with both, and installs from Modrinth;
+  if Modrinth has no file for your version and loader, CurseForge's is used instead.
   The list is in the middle, with "Where each jar installs" (client / server) on the left and the tags
   on the right; click either to filter the list. Hover over a tag to see what it means.
+  Tag filters: click a tag card to show only mods with it, click again to hide mods with it instead
+  (the card turns dashed and says NOT), and a third time to stop. Right-click a tag card, or Alt+click a
+  tag on a row, to hide it straight away. Hidden tags beat shown ones.
   Detect (by "Where each jar installs") works out client only, server only or both for every jar: first
   from the jar itself (some say they're client or server only), then from Modrinth's client / server info.
   It lists what it found before anything changes: new side tags are ticked, best guesses and changes to

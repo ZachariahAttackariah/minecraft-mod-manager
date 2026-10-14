@@ -10,13 +10,13 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Turn mods on and off. Disabling renames `X.jar` to `X.jar.disabled`, the same as launchers do.
   - Delete mods to the Recycle Bin.
   - Select several mods at once, file-manager style.
-  - Tag mods (client / server, plus your own tags), stored in `mod-tags.json` next to the jars. Click a tag on a row to filter by it; sort the list by name or by side.
+  - Tag mods (client / server, plus your own tags), stored in `mod-tags.json` next to the jars. Click a tag to show only mods with it, again to hide mods with it (right-click hides straight away); sort the list by name or by side.
   - Detect sides: works out client only, server only or both for every jar, from the jar's own metadata (a client-only `displayTest`, `clientSideOnly`, or a Fabric `environment`) and then Modrinth's client / server flags. Results are listed for review before any tag changes, with Undo after.
   - Each mod shows its icon: Modrinth's when Modrinth knows the jar, else the logo inside the jar. Turned-off mods show OFF on the icon; updates are an arrow among the row's actions.
   - Another tool's `.mod-tags.json` (keyed by mod id) in the same folder is shown live, matched to jars by mod id. It's read-only: nothing is written in that folder, since that tool merges any `mod-tags.json` it finds.
 - **CurseForge** (with an API key in the local settings file, never in this repository)
   - Jars Modrinth doesn't know are recognised by CurseForge's file fingerprint: names, icons, update checks and updates.
-  - The Add mods dialog searches CurseForge too, and installs mods with their required dependencies.
+  - Add mods searches Modrinth and CurseForge in one list. A mod on both sites shows once and downloads from Modrinth (CurseForge's file is used only when Modrinth has none for the game version and loader). Mods install with their required dependencies.
   - Authors who turn off third-party downloads are respected: their mods are never downloaded by the app; their CurseForge page opens instead.
   - CurseForge data is kept in memory for the current run only.
 - **Modrinth**
@@ -66,15 +66,17 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Shader packs and resource packs: one shared folder each, linked into every sharing instance with a directory junction. Opting in merges the instance's packs into the shared folder without losing any; opting out gives it its own copy.
   - Game settings (`options.txt`): merged into a shared copy and handed back out on every Play. Keys an instance doesn't know (another version's options, key binds of mods it doesn't have) are kept for the instances that use them.
 
+- **Settings** (the gear): theme (dark, light or follow Windows), accent colour, row spacing, vivid or soft tag colours, blocky lettering, file names, row buttons, tags per row, delete confirmation, search sources, the CurseForge key, and Detect's server-extras rule. The defaults are the intended look; only changes are saved, in the local settings file.
+
 ## CurseForge
 
-CurseForge API support is planned, pending an API key. The intended scope:
+With a CurseForge API key (pasted in Settings, kept in the local settings file, never in this repository):
 
-- recognise jars that are already in the mods folder (fingerprint lookup);
-- check them for updates and show changelogs;
-- download an update only when the author allows distribution through the API, using the download link the API provides. Otherwise the app opens the mod's CurseForge page instead.
+- jars that are already in the mods folder are recognised by fingerprint;
+- they are checked for updates, with changelogs;
+- a file is downloaded only when the author allows distribution through the API, using the download link the API provides. Otherwise the app opens the mod's CurseForge page instead.
 
-The app won't save or cache API data, and the key will be kept in the local settings file, never in this repository. Until then, the CurseForge website can be opened in a tab, and jars downloaded there go straight into the mods folder.
+The app doesn't save or cache API data. Without a key, the CurseForge website can still be opened in a tab, and jars downloaded there go straight into the mods folder.
 
 ## Requirements
 
@@ -105,6 +107,11 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/Sync.cs` | Comparing and syncing the game and the server |
 | `source/JarMeta.cs` | Reading jar metadata, and the pre-launch check |
 | `source/Details.cs` | Mod details, versions and changelogs |
+| `source/CurseForge.cs` | CurseForge: fingerprints, updates, search and install |
+| `source/Prefs.cs` | The Settings page's preferences |
+| `source/Sides.cs` | Detecting which side (client, server, both) each jar belongs on |
+| `source/Duplicates.cs` | Finding duplicate jars and picking the copy to keep |
+| `source/LinkedTags.cs` | Showing another tool's `.mod-tags.json`, read-only |
 | `source/Snapshots.cs` | Snapshots and finding a problem mod |
 | `source/Cleanup.cs` | Disk cleanup |
 | `source/mod-manager.template.html` | The page shown in the window |

@@ -1,75 +1,126 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark" data-blocky="on">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Minecraft Mod Manager</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@600;700&family=Pixelify+Sans:wght@500;600;700&display=swap">
 <style>
 /* Layout: one working column. Live folder header, filters on either side (side split, tags), a sticky filter + selection bar, then a dense, selectable mod list with row actions that folds into cards on phones. */
+/* Look: neutral charcoal (or light) surfaces, blocky bevelled buttons and panels that nod to Minecraft
+   without copying any of its screens, and colour only where it means something: the accent for the main
+   action and "on", vivid tag and side colours, red for danger. Settings (on <html>): data-theme
+   dark | light, data-accent, data-density, data-tags vivid | soft, data-files, data-actions, data-blocky. */
 :root {
-  /* Minecraft Launcher look: charcoal panels, white text, Minecraft green, bevelled buttons. Dark only, like the launcher. */
-  --bg: #262626;
-  --surface: #313233;
-  --sunken: #1b1b1b;
-  --ink: #ffffff;
-  --muted: #b1b2b5;
-  --line: #3e3f41;
-  --accent: #3c8527;
-  --accent-hover: #46972f;
-  --accent-deep: #1d4d13;
-  --accent-fg: #74c654;
+  --bg: #1c1e21;
+  --surface: #25282c;
+  --raised: #2c3035;
+  --sunken: #15171a;
+  --ink: #eef1f3;
+  --muted: #9da3aa;
+  --line: #33373c;
+  --accent: #2fb465;
+  --accent-fg: #5fe39a;
+  --accent-hover: color-mix(in srgb, var(--accent) 86%, #fff);
+  --accent-deep: color-mix(in srgb, var(--accent) 52%, #000);
   --accent-ink: #ffffff;
-  --btn: #48494a;
-  --btn-hover: #58595b;
-  --danger: #c33a32;
-  --danger-fg: #ff8a80;
+  --btn: #33373c;
+  --btn-hover: #3e4248;
+  --danger: #d9443b;
+  --danger-fg: #ff8f86;
   --danger-ink: #ffffff;
-  --scrim: rgba(0, 0, 0, 0.65);
-  --slot-ink: #111111;
-  --bevel-hi: rgba(255, 255, 255, 0.16);
+  --warn: #f5b83d;
+  --scrim: rgba(6, 8, 10, 0.68);
+  --slot-ink: #101214;
+  --bevel-hi: rgba(255, 255, 255, 0.09);
   --bevel-lo: rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 14px 36px -12px rgba(0, 0, 0, 0.8), 0 2px 6px rgba(0, 0, 0, 0.5);
-  --c-client: #6ea8ff;
-  --c-server: #f0a35e;
-  --c-worldgen: #7fc85a;
-  --c-horses: #d2a679;
-  --c-enchanting: #c39bff;
-  --c-x1: #5fc8c8;
-  --c-x2: #ef8fb2;
-  --c-x3: #aab8cb;
-  --c-x4: #c7d65f;
+  --shadow-lg: 0 16px 40px -14px rgba(0, 0, 0, 0.85), 0 2px 6px rgba(0, 0, 0, 0.5);
+  --glow-a: color-mix(in srgb, var(--accent) 13%, transparent);
+  --glow-b: rgba(74, 168, 255, 0.07);
+  /* Vivid, shader-lit colours, kept for things that mean something. */
+  --c-client: #4aa8ff;
+  --c-server: #ff9b42;
+  --c-worldgen: #4fdc7c;
+  --c-horses: #e0ad74;
+  --c-enchanting: #b98cff;
+  --c-x1: #3fd6d0;
+  --c-x2: #ff7fae;
+  --c-x3: #a9b6c6;
+  --c-x4: #c9e04a;
   --font-display: "Noto Sans", "Segoe UI", system-ui, sans-serif;
   --font-body: "Noto Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
   --font-title: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-blocky: "Pixelify Sans", "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --row-pad: 9px;
+  --icon: 36px;
   --gutter: clamp(16px, 4vw, 32px);
   --bar-h: 0px; /* the old bottom bar is gone; kept for the toasts and sticky footers that leave room for it */
   color-scheme: dark;
 }
+html[data-accent="sky"] { --accent: #2b8ce0; --accent-fg: #6cc4ff; }
+html[data-accent="amethyst"] { --accent: #8b5cf6; --accent-fg: #c3a6ff; }
+html[data-accent="gold"] { --accent: #d4960f; --accent-fg: #ffd056; }
+html[data-accent="redstone"] { --accent: #d9443b; --accent-fg: #ff8f86; }
+html[data-theme="light"] {
+  --bg: #eceff2;
+  --surface: #ffffff;
+  --raised: #ffffff;
+  --sunken: #e2e6ea;
+  --ink: #15181b;
+  --muted: #59616a;
+  --line: #d3d8de;
+  --accent-fg: color-mix(in srgb, var(--accent) 72%, #000);
+  --btn: #e2e5e9;
+  --btn-hover: #d6dade;
+  --danger-fg: #c2342b;
+  --scrim: rgba(20, 24, 28, 0.42);
+  --bevel-hi: rgba(255, 255, 255, 0.95);
+  --bevel-lo: rgba(0, 0, 0, 0.16);
+  --shadow-lg: 0 16px 40px -16px rgba(20, 30, 40, 0.35), 0 2px 6px rgba(20, 30, 40, 0.12);
+  --glow-a: color-mix(in srgb, var(--accent) 10%, transparent);
+  --glow-b: rgba(43, 140, 224, 0.06);
+  --c-client: #1f86e8;
+  --c-server: #e8761a;
+  --c-worldgen: #1fae4e;
+  --c-horses: #b57a35;
+  --c-enchanting: #8452e0;
+  --c-x1: #0f9e98;
+  --c-x2: #d6437a;
+  --c-x3: #6f7d8f;
+  --c-x4: #7f9a12;
+  color-scheme: light;
+}
+html[data-density="compact"] { --row-pad: 4px; --icon: 28px; }
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; }
-body { background: var(--bg); color: var(--ink); font: 400 15px/1.5 var(--font-body); }
+body { min-height: 100vh; color: var(--ink); font: 400 15px/1.5 var(--font-body);
+  background: radial-gradient(1100px 460px at 12% -8%, var(--glow-a), transparent 70%), radial-gradient(900px 380px at 100% 0%, var(--glow-b), transparent 70%), var(--bg);
+  background-attachment: fixed; }
+html[data-density="compact"] body { font-size: 14px; }
 button, input { font: inherit; color: inherit; }
 [hidden] { display: none !important; }
 :focus-visible { outline: 2px solid var(--accent-fg); outline-offset: 2px; }
 code { font-family: var(--font-mono); font-size: 0.92em; }
 
-.wrap { max-width: 1560px; margin: 0 auto; padding-inline: var(--gutter); padding-block: 26px 56px; }
+.wrap { max-width: 1560px; margin: 0 auto; padding-inline: var(--gutter); padding-block: 16px 56px; }
 
-.top { display: grid; gap: 0; margin-bottom: 14px; }
-.brand-row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 16px; }
-.brand-row .wordmark { min-height: 52px; }
-.launch { display: grid; gap: 8px; justify-items: stretch; min-width: 0; max-width: 100%; }
+/* Slim title bar: the mark + wordmark on the left; the pre-launch check, instance and PLAY on one row at the right. */
+.top { display: grid; gap: 0; margin-bottom: 12px; }
+.brand-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.launch { display: flex; align-items: stretch; justify-content: flex-end; gap: 8px; min-width: 0; max-width: 100%; flex-wrap: wrap; }
 .launch-row { display: flex; align-items: stretch; justify-content: flex-end; gap: 8px; min-width: 0; }
-.launch .inst-btn { max-width: 340px; }
-.launch .check-bar { margin-top: 0; padding: 6px 10px; font-size: 12.5px; justify-content: flex-end; }
+.launch .inst-btn { max-width: 320px; padding-block: 6px; }
+.launch .check-bar { margin: 0; padding: 6px 8px 6px 12px; font-size: 12.5px; flex-wrap: nowrap; max-width: 380px; }
 .launch .check-bar .btn { padding: 6px 10px 7px; font-size: 12.5px; }
-.launch .check-bar .grow { flex: 1; min-width: 0; }
-@media (max-width: 640px) { .launch { width: 100%; } .launch-row { justify-content: stretch; } .launch .inst-btn { flex: 1; max-width: none; } }
-.wordmark { margin: 0; display: flex; align-items: center; font: 700 clamp(24px, 3vw, 31px)/1 var(--font-title); letter-spacing: -0.015em; }
+.launch .check-bar .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 900px) { .launch .check-bar { order: 3; flex-basis: 100%; max-width: none; } }
+@media (max-width: 640px) { .launch { width: 100%; } .launch-row { flex: 1; justify-content: stretch; } .launch .inst-btn { flex: 1; max-width: none; } }
+.wordmark { margin: 0; display: flex; align-items: center; gap: 12px; font: 700 clamp(20px, 2.2vw, 25px)/1 var(--font-title); letter-spacing: -0.01em; }
+html[data-blocky="on"] .wordmark { font-family: var(--font-blocky); font-weight: 600; letter-spacing: 0.01em; }
+.wordmark .mark { width: 30px; height: 30px; }
 .block { flex: none; display: inline-block; width: 36px; height: 36px; border-radius: 3px; background: linear-gradient(180deg, #74b84b 0 30%, #4f8f34 30% 38%, #8b5d3b 38% 100%); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.18); }
 .block.folder { background: linear-gradient(180deg, #9a9a9a 0 30%, #7a7a7a 30% 100%); }
 .block.sm { width: 28px; height: 28px; }
@@ -99,8 +150,12 @@ h1 { margin: 0; }
 .mb-updates { flex: 1 1 560px; padding-left: 20px; border-left: 1px solid var(--line); }
 @media (max-width: 1240px) { .mb-updates { flex-basis: 100%; padding: 10px 0 0; border-left: 0; border-top: 1px solid var(--line); } }
 
-.btn.play { justify-content: center; min-width: min(200px, 34vw); height: 52px; padding: 0 26px; font: 800 20px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: #fff; background: var(--accent); border-radius: 3px; box-shadow: inset 0 -4px 0 var(--accent-deep), inset 0 2px 0 rgba(255, 255, 255, 0.2); }
-.btn.play:hover { background: var(--accent-hover); }
+/* PLAY: the one loud thing on the page, lit from above like a block under shaders. */
+.btn.play { justify-content: center; min-width: min(176px, 34vw); height: 46px; padding: 0 24px; font: 800 18px/1 var(--font-body); letter-spacing: 0.1em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 78%, #fff) 0%, var(--accent) 45%, color-mix(in srgb, var(--accent) 88%, #000) 100%); border-radius: 3px;
+  box-shadow: inset 0 -4px 0 var(--accent-deep), inset 0 2px 0 rgba(255, 255, 255, 0.28), 0 6px 18px -8px color-mix(in srgb, var(--accent) 70%, transparent); }
+html[data-blocky="on"] .btn.play { font-family: var(--font-blocky); font-weight: 700; letter-spacing: 0.12em; }
+.btn.play:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 66%, #fff) 0%, var(--accent-hover) 45%, var(--accent) 100%); }
 .btn.play:disabled { background: var(--btn); box-shadow: inset 0 -4px 0 var(--bevel-lo); color: var(--muted); opacity: 1; }
 
 .target { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -157,6 +212,12 @@ h1 { margin: 0; }
 .result-desc { margin: 3px 0 4px; font-size: 13.5px; line-height: 1.4; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .result-meta { font: 400 12px/1.4 var(--font-mono); color: var(--muted); }
 .result .btn { align-self: center; }
+.src-marks { display: inline-flex; gap: 4px; }
+.src { padding: 2px 6px; font: 600 10.5px/1.2 var(--font-mono); letter-spacing: 0.02em; text-decoration: none; border-radius: 3px; border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); color: color-mix(in srgb, var(--c) 82%, var(--ink)); background: color-mix(in srgb, var(--c) 12%, transparent); }
+.src.mr { --c: #1bd96a; }
+.src.cf { --c: #f16436; }
+a.src:hover { border-color: var(--c); }
+.search-warn { margin: 8px; }
 .search-empty { margin: 18px 8px; color: var(--muted); }
 .drawer-scrim.centered { justify-content: center; align-items: center; padding: 24px; }
 .drawer.modal { width: min(780px, 100%); height: min(880px, 100%); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
@@ -197,7 +258,12 @@ h1 { margin: 0; }
   .side-col .tag-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
   .side-col .side-legend { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
 }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 16px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 16px; min-width: 0; box-shadow: inset 0 1px 0 var(--bevel-hi); }
+.mods-bar, .selection-bar, .check-bar, .menu, .dialog, .inst-pop { box-shadow: inset 0 1px 0 var(--bevel-hi); }
+.menu, .dialog, .inst-pop { box-shadow: inset 0 1px 0 var(--bevel-hi), var(--shadow-lg); }
+/* Settings that change the list's look */
+html[data-files="off"] .row .file { display: none; }
+html[data-actions="always"] .act { opacity: 1; }
 .section-label { margin: 0 0 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font: 600 14px/1.2 var(--font-display); letter-spacing: 0.01em; }
 .hint { font: 400 12px/1.2 var(--font-body); color: var(--muted); }
 
@@ -229,6 +295,12 @@ h1 { margin: 0; }
 .tag-card .name::before { content: ""; width: 9px; height: 9px; border-radius: 2px; background: var(--c); }
 .tag-card .count { font: 600 18px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
 .tag-card .desc { font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+/* A hidden (excluded) tag: dashed, struck through, marked "not". */
+.tag-card.not { border-style: dashed; border-color: var(--c); background: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--c) 7%, transparent) 6px 12px), var(--surface); }
+.tag-card.not .name { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--c) 70%, transparent); }
+.tag-card.not .count { opacity: 0.5; }
+.not-mark { padding: 1px 4px; font: 700 10px/1.2 var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink); background: color-mix(in srgb, var(--c) 35%, transparent); border-radius: 2px; text-decoration: none; display: inline-block; }
+.pill.not { border-style: dashed; }
 
 .toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-inline: calc(-1 * var(--gutter)); padding: 10px var(--gutter); background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
 .search { position: relative; flex: 1 1 220px; min-width: 0; }
@@ -269,7 +341,7 @@ h1 { margin: 0; }
 .check:disabled { opacity: 0.4; cursor: default; }
 
 .list { margin-top: 6px; }
-.list-head, .row { display: grid; grid-template-columns: 22px minmax(0, 1.25fr) 64px minmax(0, 1fr) 100px; gap: 14px; align-items: center; padding: 9px 12px; }
+.list-head, .row { display: grid; grid-template-columns: 22px minmax(0, 1.25fr) 64px minmax(0, 1fr) 100px; gap: 14px; align-items: center; padding: var(--row-pad) 12px; }
 .list-head { padding-block: 12px 8px; font: 600 11.5px/1 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
 .list-head .r { text-align: right; }
 .row { border-bottom: 1px solid var(--line); cursor: default; }
@@ -280,7 +352,7 @@ h1 { margin: 0; }
 .c-check { display: flex; align-items: center; }
 .c-name { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
 .c-name-text { min-width: 0; }
-.mod-icon { flex: none; width: 36px; height: 36px; border-radius: 6px; object-fit: contain; background: var(--sunken); }
+.mod-icon { flex: none; width: var(--icon); height: var(--icon); border-radius: 4px; object-fit: contain; background: var(--sunken); image-rendering: auto; }
 .mod-icon.letter { display: grid; place-items: center; font: 700 15px/1 var(--font-title); color: var(--muted); }
 .row.is-disabled .mod-icon, .row.is-missing .mod-icon { opacity: 0.45; filter: grayscale(1); }
 .icon-wrap { position: relative; flex: none; display: inline-flex; }
@@ -301,6 +373,7 @@ a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--acce
 .chips { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; }
 .chip { --c: var(--c-x3); padding: 4px 7px; font: 500 12px/1 var(--font-mono); white-space: nowrap; color: color-mix(in srgb, var(--c) 80%, var(--ink)); background: color-mix(in srgb, var(--c) 13%, transparent); border: 1px solid color-mix(in srgb, var(--c) 36%, transparent); border-radius: 3px; }
 .chips .none { color: var(--muted); font-size: 13px; }
+.chip.more { --c: var(--muted); cursor: default; }
 button.chip { cursor: pointer; }
 button.chip:hover { border-color: var(--c); }
 button.chip[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 32%, transparent); border-color: var(--c); }
@@ -384,7 +457,7 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .copy-fallback { position: fixed; inset: auto var(--gutter) calc(var(--bar-h) + 16px); z-index: 25; display: grid; gap: 8px; max-width: 560px; margin: 0 auto; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; box-shadow: var(--shadow-lg); }
 .copy-fallback p { margin: 0; font-size: 13.5px; }
 .copy-fallback textarea { width: 100%; height: 140px; font: 400 12px/1.4 var(--font-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 8px; resize: vertical; }
-.toast { position: fixed; left: 50%; bottom: calc(var(--bar-h) + 16px); z-index: 50; display: flex; align-items: center; gap: 14px; transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 14px; font-size: 13.5px; color: var(--ink); background: #3a3b3c; border: 1px solid #111; border-radius: 6px; box-shadow: var(--shadow-lg); }
+.toast { position: fixed; right: 16px; bottom: calc(var(--bar-h) + 16px); z-index: 50; display: flex; align-items: center; gap: 14px; max-width: min(520px, calc(100% - 32px)); padding: 11px 14px; font-size: 13.5px; color: var(--ink); background: var(--raised); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 4px; box-shadow: var(--shadow-lg); }
 .toast button { padding: 0; font-weight: 600; color: var(--accent-fg); background: none; border: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; white-space: nowrap; }
 @media (prefers-reduced-motion: no-preference) {
   .tag-card, .legend-item, .btn, .pill, .act, .check, .row { transition: border-color 120ms ease, background-color 120ms ease, opacity 120ms ease; }
@@ -404,6 +477,31 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .view-nav button[aria-current="page"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -2px; height: 3px; background: var(--accent-hover); }
 .view-nav .nav-right { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; padding-bottom: 6px; }
 .view-nav .server-chip { padding: 7px 12px; font-size: 13px; }
+.view-nav .nav-gear { display: inline-grid; place-items: center; width: 34px; height: 32px; padding: 0; color: var(--muted); background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
+.view-nav .nav-gear:hover, .view-nav .nav-gear[aria-current="page"] { color: var(--ink); background: var(--btn); }
+.view-nav .nav-gear[aria-current="page"]::after { display: none; }
+/* Settings page */
+.set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; align-items: start; }
+.set-card { display: grid; gap: 4px; }
+.set-card h2 { margin: 0 0 6px; font: 700 15px/1.2 var(--font-display); }
+html[data-blocky="on"] .set-card h2 { font-family: var(--font-blocky); font-weight: 600; letter-spacing: 0.02em; }
+.set-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.set-row:first-of-type { border-top: 0; }
+.set-row .l { font-weight: 600; font-size: 14px; }
+.set-row .d { grid-column: 1; font-size: 12.5px; color: var(--muted); }
+.set-row .c { grid-column: 2; grid-row: 1 / span 2; justify-self: end; }
+@media (max-width: 560px) { .set-row { grid-template-columns: minmax(0, 1fr); } .set-row .c { grid-column: 1; grid-row: auto; justify-self: start; } }
+.swatches { display: inline-flex; gap: 8px; }
+.swatch-btn { width: 28px; height: 28px; padding: 0; border: 2px solid transparent; border-radius: 4px; cursor: pointer; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.25); }
+.swatch-btn[aria-pressed="true"] { border-color: var(--ink); }
+.toggle { display: inline-flex; align-items: center; padding: 4px; background: none; border: 0; cursor: pointer; }
+.toggle .sw { width: 38px; height: 22px; border-radius: 11px; }
+.toggle .sw::after { top: 3px; left: 3px; width: 16px; height: 16px; }
+.toggle.on .sw::after { transform: translateX(16px); }
+.set-row.wide { grid-template-columns: minmax(0, 1fr); }
+.set-row.wide .d { margin-top: 2px; }
+.set-key { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+.set-key input { flex: 1 1 220px; min-width: 0; padding: 7px 9px; font: 400 13px/1.2 var(--font-mono); color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; }
 .view-nav .nav-n { margin-left: 6px; font: 600 11px/1 var(--font-mono); letter-spacing: 0; color: var(--muted); }
 .lib-note { margin: -4px 0 14px; font-size: 13px; color: var(--muted); }
 .view-nav .badge-n { margin-left: 6px; padding: 1px 6px; font: 600 11px/1.4 var(--font-mono); color: var(--danger-ink); background: var(--danger); border-radius: 8px; }
@@ -614,7 +712,7 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
 .inst-name { font: 700 15px/1.2 var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inst-sub { font-size: 12px; line-height: 1.2; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .caret { margin-left: 4px; font-size: 12px; color: var(--muted); }
-.inst-pop { position: absolute; top: 0; left: 0; z-index: 41; display: flex; flex-direction: column; width: min(480px, calc(100vw - 32px)); max-height: min(70vh, 560px); background: #202020; border: 1px solid #111; border-radius: 4px; box-shadow: var(--shadow-lg); }
+.inst-pop { position: absolute; top: 0; left: 0; z-index: 41; display: flex; flex-direction: column; width: min(480px, calc(100vw - 32px)); max-height: min(70vh, 560px); background: var(--raised); border: 1px solid var(--line); border-radius: 4px; box-shadow: var(--shadow-lg); }
 .inst-pop .head { padding: 12px 14px; font: 700 12px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
 .inst-list { overflow: auto; padding: 6px; }
 .inst-group { padding: 10px 8px 4px; font: 700 11px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
@@ -676,9 +774,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 <div class="wrap">
   <header class="top">
     <div class="brand-row">
-      <h1 class="wordmark">Minecraft Mod Manager</h1>
-      <!-- Top right, like a launcher: which instance, PLAY, and the pre-launch check under them. -->
+      <h1 class="wordmark"><span class="block mark" aria-hidden="true"></span>Minecraft Mod Manager</h1>
+      <!-- Top right, like a launcher, on one row: the pre-launch check, which instance, PLAY. -->
       <div class="launch">
+        <div class="check-bar" id="check-bar" hidden></div>
         <div class="launch-row">
           <button class="inst-btn" type="button" id="inst-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="inst-pop" title="Choose an instance">
             <span class="block" id="inst-icon" aria-hidden="true"></span>
@@ -687,7 +786,6 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           </button>
           <button class="btn play" type="button" id="play">Play</button>
         </div>
-        <div class="check-bar" id="check-bar" hidden></div>
       </div>
     </div>
     <nav class="view-nav" id="view-nav" aria-label="Sections">
@@ -700,6 +798,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <span class="nav-right">
         <span class="eyebrow"><span class="live-dot" id="live-dot"></span><span id="eyebrow">Connecting</span></span>
         <button class="server-chip" type="button" id="server-chip" title="Open the Server page"><span class="dot" id="server-dot"></span><span id="server-chip-text">Server</span></button>
+        <button class="nav-gear" type="button" data-view="settings" title="Settings" aria-label="Settings"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.6 1.5h2.8l.4 1.9 1.3.7 1.8-.7 1.4 2.4-1.4 1.3v1.6l1.4 1.3-1.4 2.4-1.8-.7-1.3.7-.4 1.9H6.6l-.4-1.9-1.3-.7-1.8.7-1.4-2.4 1.4-1.3V7.1L1.7 5.8l1.4-2.4 1.8.7 1.3-.7z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><circle cx="8" cy="8" r="2.2" stroke="currentColor" stroke-width="1.3"/></svg></button>
       </span>
     </nav>
     <div class="folder-bar">
@@ -725,7 +824,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     <div class="mods-bar">
     <div class="mb-group">
       <span class="get-label">Get mods</span>
-      <button class="btn primary" type="button" id="open-search">Search Modrinth</button>
+      <button class="btn primary" type="button" id="open-search">Add mods</button>
       <!-- Their tooltip (set below) says where downloads go. -->
       <button class="btn" type="button" data-browse="https://modrinth.com/mods">Modrinth <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4.5 2H2.5a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5V7.5M7 2h3v3M10 2 5.5 6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button class="btn" type="button" data-browse="https://www.curseforge.com/minecraft/search?class=mc-mods">CurseForge <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4.5 2H2.5a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5V7.5M7 2h3v3M10 2 5.5 6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -771,6 +870,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     <div class="panel">
       <h2 class="section-label"><span>Tags</span><button class="btn" type="button" id="manage-tags">Manage</button></h2>
       <div class="tag-grid" id="tag-grid"></div>
+      <p class="hint" style="margin:10px 0 0">Click a tag to show only it, click again to hide it. Right-click hides it straight away.</p>
     </div>
   </aside>
   <div class="main-col">
@@ -902,6 +1002,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <div class="sticky-foot"><span class="grow" id="clean-total"></span><button class="btn danger" type="button" id="clean-run" disabled>Move to Recycle Bin</button></div>
     </div>
   </section>
+
+  <!-- Settings: built by renderPrefs() from the SETTINGS list in the script. -->
+  <section class="view" id="view-settings" aria-label="Settings" hidden>
+    <div class="set-grid" id="settings-body"></div>
+  </section>
 </div>
 
 
@@ -990,7 +1095,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     </header>
     <form class="drawer-search" id="search-form">
       <div class="seg-control" id="search-source" role="group" aria-label="Search on" hidden>
-        <button type="button" data-src="modrinth" aria-pressed="true">Modrinth</button>
+        <button type="button" data-src="both" aria-pressed="true" title="Both sites in one list. A mod on both shows once and installs from Modrinth.">Both</button>
+        <button type="button" data-src="modrinth" aria-pressed="false">Modrinth</button>
         <button type="button" data-src="curseforge" aria-pressed="false">CurseForge</button>
       </div>
       <input id="search-q" type="search" placeholder="Search Modrinth" aria-label="Search Modrinth" autocomplete="off" spellcheck="false">
@@ -1094,7 +1200,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       i = n % 64;
     }
     var hue = (i * 137.508 + 185) % 360;
-    return "hsl(" + hue.toFixed(1) + " " + (i % 3 === 2 ? 50 : 66) + "% " + (i % 2 ? 61 : 71) + "%)";
+    // Vivid (the default) is saturated like the game under shaders; Soft is calmer. Light theme goes darker to read on white.
+    var soft = pref("tagColors") === "soft", light = document.documentElement.getAttribute("data-theme") === "light";
+    var sat = soft ? (i % 3 === 2 ? 30 : 42) : (i % 3 === 2 ? 70 : 86);
+    var lig = light ? (i % 2 ? 36 : 44) : soft ? (i % 2 ? 66 : 74) : (i % 2 ? 60 : 68);
+    return "hsl(" + hue.toFixed(1) + " " + sat + "% " + lig + "%)";
   }
   function prettify(file) {
     var base = file.replace(/\.jar(\.disabled)?$/i, "");
@@ -1144,7 +1254,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   var tagBusy = false;
   var mr = { data: null, loading: false, error: null, again: null }; // Modrinth scan
   var lastFilesSig = "";
-  var state = { q: "", sides: [], status: "all", tags: [], match: "all", untagged: false, sort: "name", sortDir: 1 };
+  var state = { q: "", sides: [], status: "all", tags: [], excluded: [], match: "all", untagged: false, sort: "name", sortDir: 1 };
   var selected = {};
   var anchorKey = null;
 
@@ -1267,6 +1377,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var has = function (t) { return r.tags.indexOf(t) >= 0; };
       if (state.match === "all" ? !state.tags.every(has) : !state.tags.some(has)) return false;
     }
+    // Excluded tags hide every jar that has any of them.
+    for (var x = 0; x < state.excluded.length; x++) if (r.tags.indexOf(state.excluded[x]) >= 0) return false;
     if (state.q && r.haystack.indexOf(state.q) < 0) return false;
     return true;
   }
@@ -1436,9 +1548,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     grid.replaceChildren();
     model.topics.forEach(function (t) {
       // One line each in the side column; what a tag means shows on hover.
-      grid.append(h("button", { type: "button", class: "tag-card", style: "--c:" + colorOf(t), "aria-pressed": String(state.tags.indexOf(t) >= 0),
-          title: model.defs[t] ? t + ": " + model.defs[t] : t, onclick: function () { toggleTag(t); } },
-        h("span", { class: "row1" }, h("span", { class: "name" }, t), h("span", { class: "count" }, String(area.counts[t])))));
+      // Click: show only these, click again: hide these, again: off. Right-click or Alt+click hides straight away.
+      var inc = state.tags.indexOf(t) >= 0, exc = state.excluded.indexOf(t) >= 0;
+      grid.append(h("button", { type: "button", class: "tag-card" + (exc ? " not" : ""), style: "--c:" + colorOf(t), "aria-pressed": inc ? "true" : exc ? "mixed" : "false",
+          title: (model.defs[t] ? t + ": " + model.defs[t] + "\n" : "") + (inc ? "Showing only " + t + ". Click to hide " + t + " instead" : exc ? "Hiding " + t + ". Click to stop" : "Click to show only " + t + ", right-click to hide it"),
+          onclick: function (e) { if (e.altKey) toggleExclude(t); else cycleTag(t); },
+          oncontextmenu: function (e) { e.preventDefault(); toggleExclude(t); } },
+        h("span", { class: "row1" }, h("span", { class: "name" }, exc ? h("span", { class: "not-mark" }, "not") : null, t), h("span", { class: "count" }, String(area.counts[t])))));
     });
     var untagged = area.present.filter(function (r) { return !r.topics.length; }).length;
     grid.append(h("button", { type: "button", class: "tag-card", style: "--c:var(--muted)", "aria-pressed": String(state.untagged), onclick: toggleUntagged,
@@ -1482,7 +1598,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
     var active = $("active");
     active.replaceChildren();
-    var any = state.tags.length || state.untagged || state.q || state.sides.length || state.status !== "all";
+    var any = state.tags.length || state.excluded.length || state.untagged || state.q || state.sides.length || state.status !== "all";
     active.hidden = !any;
     if (!any) return;
     append(active, "Filters:");
@@ -1494,6 +1610,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (state.sides.indexOf(s.key) >= 0) active.append(pill(s.label, null, function () { setSide(s.key); }));
     });
     state.tags.forEach(function (t) { active.append(pill(t, colorOf(t), function () { toggleTag(t); })); });
+    state.excluded.forEach(function (t) { active.append(pill("not " + t, colorOf(t), function () { toggleExclude(t); }, true)); });
     if (state.untagged) active.append(pill("untagged", "var(--muted)", toggleUntagged));
     if (state.q) active.append(pill("“" + state.q + "”", null, function () { $("q").value = ""; state.q = ""; render(); }));
     if (state.tags.length > 1) {
@@ -1503,8 +1620,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     active.append(h("button", { type: "button", class: "linkish", onclick: clearAll }, "Clear filters"));
   }
 
-  function pill(text, color, onRemove) {
-    return h("button", { type: "button", class: "pill", style: color ? "--c:" + color : null, onclick: onRemove, "aria-label": "Remove filter " + text },
+  function pill(text, color, onRemove, excluded) {
+    return h("button", { type: "button", class: "pill" + (excluded ? " not" : ""), style: color ? "--c:" + color : null, onclick: onRemove, "aria-label": "Remove filter " + text },
       text, h("span", { class: "x", "aria-hidden": "true" }, "×"));
   }
 
@@ -1540,13 +1657,18 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var badges = [];
       if (r.status === "missing") badges.push(h("span", { class: "badge missing", title: "Listed in mod-tags.json, but the jar isn't in the folder" }, "not in folder"));
       if (!r.tracked && r.status !== "missing") badges.push(h("span", { class: "badge untracked", title: "This jar has no entry in mod-tags.json" }, "not in mod-tags.json"));
+      // Tags being filtered on come first; past the Settings limit the rest fold into "+N" (hover lists them).
+      var limit = pref("tagsPerRow") === "all" ? Infinity : Number(pref("tagsPerRow"));
+      var topics = r.topics.slice().sort(function (a, b) { return (state.tags.indexOf(b) >= 0) - (state.tags.indexOf(a) >= 0); });
+      var shown = topics.length > limit ? topics.slice(0, limit - 1) : topics;
       var chips = r.topics.length
-        ? r.topics.map(function (t) {
+        ? shown.map(function (t) {
             var on = state.tags.indexOf(t) >= 0;
             return h("button", { type: "button", class: "chip", style: "--c:" + colorOf(t), "data-action": "filter-tag", "data-tag": t, "aria-pressed": String(on),
-              title: (model.defs[t] ? model.defs[t] + "\n" : "") + (on ? "Click to stop filtering by " + t : "Click to show only mods tagged " + t) }, t);
+              title: (model.defs[t] ? model.defs[t] + "\n" : "") + (on ? "Click to stop filtering by " + t : "Click to show only mods tagged " + t) + ". Alt+click to hide mods tagged " + t }, t);
           })
         : h("span", { class: "none", "aria-label": "No tags" }, "—");
+      if (shown.length < topics.length) chips.push(h("span", { class: "chip more", title: topics.slice(shown.length).join(", ") }, "+" + (topics.length - shown.length)));
       var actions = h("div", { class: "c-actions", role: "cell" });
       if (r.status !== "missing") {
         var isBusy = !!busy[r.key];
@@ -1578,7 +1700,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
     $("rows").replaceChildren(frag);
     $("empty").hidden = rows.length > 0 || !model;
-    var onlyStatus = !state.q && !state.tags.length && !state.sides.length && !state.untagged;
+    var onlyStatus = !state.q && !state.tags.length && !state.excluded.length && !state.sides.length && !state.untagged;
     var noLibs = currentView === "libraries" && model && !model.rows.some(isLibrary);
     $("empty-text").textContent = noLibs ? "No mods are tagged library yet. Right-click a mod in the Mods list and give it the library tag to move it here."
       : onlyStatus && state.status === "disabled" ? "No jars are disabled."
@@ -1663,7 +1785,21 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     state.untagged = false;
     var i = state.tags.indexOf(t);
     if (i >= 0) state.tags.splice(i, 1); else state.tags.push(t);
+    state.excluded = state.excluded.filter(function (x) { return x !== t; });
     render();
+  }
+  // Hides jars with this tag (or stops hiding them).
+  function toggleExclude(t) {
+    var i = state.excluded.indexOf(t);
+    if (i >= 0) state.excluded.splice(i, 1); else state.excluded.push(t);
+    state.tags = state.tags.filter(function (x) { return x !== t; });
+    render();
+  }
+  // A tag card steps through show only, hide, then off.
+  function cycleTag(t) {
+    if (state.tags.indexOf(t) >= 0) toggleExclude(t);
+    else if (state.excluded.indexOf(t) >= 0) toggleExclude(t);
+    else toggleTag(t);
   }
   function toggleUntagged() {
     state.untagged = !state.untagged;
@@ -1671,7 +1807,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     render();
   }
   function clearAll() {
-    state.q = ""; state.sides = []; state.status = "all"; state.tags = []; state.untagged = false; state.match = "all";
+    state.q = ""; state.sides = []; state.status = "all"; state.tags = []; state.excluded = []; state.untagged = false; state.match = "all";
     $("q").value = "";
     render();
   }
@@ -1695,10 +1831,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       s.checkedAt = new Date();
       var sig = s.modsDir + "|" + s.files.map(function (f) { return f.name + ":" + f.size; }).join(",") + "|" + hash(s.tagsText || "");
       server = s;
-      if (force || sig !== lastSignature || !model) {
+      var lookChanged = applyPrefs();
+      if (currentView === "settings") renderPrefs();
+      if (force || lookChanged || sig !== lastSignature || !model) {
         lastSignature = sig;
         model = buildModel(s);
         state.tags = state.tags.filter(function (t) { return model.topics.indexOf(t) >= 0; });
+        state.excluded = state.excluded.filter(function (t) { return model.topics.indexOf(t) >= 0; });
         if (state.status === "missing" && !model.byStatus.missing) state.status = "all";
         Object.keys(selected).forEach(function (k) { if (!model.byKey[k]) delete selected[k]; });
         if (anchorKey && !model.byKey[anchorKey]) anchorKey = null;
@@ -1790,21 +1929,35 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   // The same drawer searches for mods or, from the Packs page, for one kind of pack.
-  var search = { kind: "mods", source: "modrinth", hits: [], total: 0, offset: 0, loading: false, error: null, seq: 0 };
-  // Mods can come from Modrinth or, once a key is set up, CurseForge (packs are Modrinth only).
-  function searchSite() { return search.kind === "mods" && search.source === "curseforge" ? "CurseForge" : "Modrinth"; }
+  // Mods come from Modrinth and, once a key is set up, CurseForge too: both sites' results in one list,
+  // with a mod that's on both shown once and downloaded from Modrinth. Each site pages on its own.
+  var search = { kind: "mods", source: null, hits: [], total: 0, loading: false, error: null, warn: null, seq: 0, mr: null, cf: null };
+  function searchSource() {
+    if (search.kind !== "mods" || !(server && server.curseforge)) return "modrinth";
+    return search.source || pref("searchSources");
+  }
+  function searchSite() {
+    var s = searchSource();
+    return s === "both" ? "Modrinth and CurseForge" : s === "curseforge" ? "CurseForge" : "Modrinth";
+  }
+  function resetSearch() {
+    search.hits = []; search.total = 0; search.error = null; search.warn = null; search.loading = false; search.seq++;
+    search.mr = { offset: 0, total: 0, done: false };
+    search.cf = { offset: 0, total: 0, done: false };
+  }
+  resetSearch();
   function setSearchSource(src) {
-    if (search.source === src) return;
+    if (searchSource() === src) return;
     search.source = src;
-    search.hits = []; search.total = 0; search.offset = 0; search.seq++; search.loading = false;
+    savePref("searchSources", src);
+    resetSearch();
     labelSearch();
     runSearch(true);
   }
   function labelSearch() {
     var cf = search.kind === "mods" && server && server.curseforge;
-    if (!cf) search.source = "modrinth";
     $("search-source").hidden = !cf;
-    Array.prototype.forEach.call(document.querySelectorAll("#search-source button"), function (b) { b.setAttribute("aria-pressed", String(b.dataset.src === search.source)); });
+    Array.prototype.forEach.call(document.querySelectorAll("#search-source button"), function (b) { b.setAttribute("aria-pressed", String(b.dataset.src === searchSource())); });
     $("search-q").placeholder = "Search " + searchSite();
     $("search-q").setAttribute("aria-label", "Search " + searchSite());
   }
@@ -1818,7 +1971,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function openSearch(kind) {
     if (!connected) return;
     kind = typeof kind === "string" ? kind : "mods";
-    if (search.kind !== kind) { search.kind = kind; search.hits = []; search.total = 0; search.offset = 0; search.seq++; search.loading = false; }
+    if (search.kind !== kind) { search.kind = kind; resetSearch(); }
     labelSearch();
     $("search-title").textContent = kind === "mods" ? "Add mods" : "Add " + PACK_NOUNS[kind] + " from Modrinth";
     $("search-target").textContent = kind === "mods" ? "Showing mods for " + targetText() + ". Installing also adds the mods it needs."
@@ -1834,8 +1987,51 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     $(search.kind === "mods" ? "open-search" : "packs-search").focus();
   }
 
+  // The same mod on both sites: the same slug or name, and the same author (or both slug and name agree).
+  function normName(s) {
+    return String(s || "").toLowerCase().replace(/[\(\[](neo)?forge[\)\]]|[\(\[](fabric|quilt)[\)\]]/g, "").replace(/[^a-z0-9]/g, "");
+  }
+  function sameMod(mr, cf) {
+    var slug = !!(mr.slug && cf.slug && mr.slug.toLowerCase() === cf.slug.toLowerCase());
+    var title = !!normName(mr.title) && normName(mr.title) === normName(cf.title);
+    if (!slug && !title) return false;
+    var a = normName(mr.author), b = normName(cf.author);
+    return (a && b && (a === b || a.indexOf(b) >= 0 || b.indexOf(a) >= 0)) || (slug && title);
+  }
+  function mergedHit(mr, cf) {
+    var m = Object.assign({}, mr);
+    m.also = cf;
+    m.downloads = (Number(mr.downloads) || 0) + (Number(cf.downloads) || 0);
+    if (cf.updated && (!mr.updated || cf.updated > mr.updated)) m.updated = cf.updated;
+    m.installed = mr.installed || cf.installed;
+    return m;
+  }
+  // Results alternate between the sites, so each one's best matches sit near the top.
+  function addHits(mrHits, cfHits) {
+    var n = Math.max(mrHits.length, cfHits.length);
+    for (var i = 0; i < n; i++) {
+      [mrHits[i], cfHits[i]].forEach(function (hit) {
+        if (!hit) return;
+        var isCf = hit.source === "curseforge";
+        for (var j = 0; j < search.hits.length; j++) {
+          var x = search.hits[j];
+          if (x.also) continue;
+          var xCf = x.source === "curseforge";
+          if (isCf === xCf) continue;
+          if (isCf ? sameMod(x, hit) : sameMod(hit, x)) { search.hits[j] = isCf ? mergedHit(x, hit) : mergedHit(hit, x); return; }
+        }
+        search.hits.push(hit);
+      });
+    }
+  }
+
+  function searchDone() {
+    var src = searchSource();
+    return search.kind !== "mods" || src === "modrinth" ? search.mr.done : src === "curseforge" ? search.cf.done : search.mr.done && search.cf.done;
+  }
+
   function runSearch(reset) {
-    if (reset) { search.hits = []; search.offset = 0; search.total = 0; }
+    if (reset) resetSearch();
     var seq = ++search.seq;
     var q = $("search-q").value.trim();
     var sort = $("search-sort").value;
@@ -1843,17 +2039,32 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     search.loading = true;
     search.error = null;
     renderSearch();
-    var url = search.kind === "mods" ? "/api/" + (search.source === "curseforge" ? "curseforge" : "modrinth") + "/search?q=" + encodeURIComponent(q)
-      : "/api/packs/search?kind=" + search.kind + "&place=" + encodeURIComponent(packs.places[search.kind] || "") + "&q=" + encodeURIComponent(q);
-    api("GET", url + "&offset=" + search.offset + "&sort=" + sort).then(function (res) {
+    var src = searchSource();
+    var sites = search.kind !== "mods" ? ["packs"] : src === "both" ? ["modrinth", "curseforge"] : [src];
+    var failed = [];
+    var calls = sites.map(function (site) {
+      var st = site === "curseforge" ? search.cf : search.mr;
+      if (st.done) return Promise.resolve([]);
+      var url = site === "packs" ? "/api/packs/search?kind=" + search.kind + "&place=" + encodeURIComponent(packs.places[search.kind] || "") + "&q=" + encodeURIComponent(q)
+        : "/api/" + site + "/search?q=" + encodeURIComponent(q);
+      return api("GET", url + "&offset=" + st.offset + "&sort=" + sort).then(function (res) {
+        st.total = Number(res.total) || 0;
+        st.offset += res.hits.length;
+        st.done = !res.hits.length || st.offset >= st.total;
+        return res.hits;
+      }, function (e) {
+        failed.push((site === "curseforge" ? "CurseForge" : "Modrinth") + ": " + e.message);
+        if (sites.length > 1) st.done = true;
+        return [];
+      });
+    });
+    Promise.all(calls).then(function (lists) {
       if (seq !== search.seq) return;
-      search.hits = search.hits.concat(res.hits);
-      search.total = res.total || 0;
-      search.offset += res.hits.length;
-    }, function (e) {
-      if (seq === search.seq) search.error = e.message;
-    }).then(function () {
-      if (seq !== search.seq) return;
+      var cfAt = sites.indexOf("curseforge");
+      addHits(cfAt === 0 ? [] : lists[0], cfAt < 0 ? [] : lists[cfAt]);
+      search.total = sites.reduce(function (n, site) { return n + (site === "curseforge" ? search.cf : search.mr).total; }, 0);
+      if (failed.length === sites.length) search.error = failed.join(" ");
+      else if (failed.length) search.warn = "Only showing one site. " + failed.join(" ");
       search.loading = false;
       renderSearch();
     });
@@ -1878,6 +2089,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function renderSearch() {
     var list = $("search-results");
     list.replaceChildren();
+    if (search.warn) list.append(h("p", { class: "hint search-warn" }, search.warn));
     search.hits.forEach(function (hit) { list.append(resultCard(hit)); });
     if (search.error) list.append(h("p", { class: "search-empty" }, search.error));
     else if (search.loading) list.append(h("p", { class: "search-empty" }, search.hits.length ? "Loading more…" : "Searching " + searchSite() + "…"));
@@ -1892,7 +2104,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // Loads the next page when the list is scrolled near its end, or when it doesn't fill the window yet.
   function maybeLoadMore() {
     var list = $("search-results");
-    if ($("search-scrim").hidden || search.loading || search.error || !search.hits.length || search.hits.length >= search.total) return;
+    if ($("search-scrim").hidden || search.loading || search.error || !search.hits.length || searchDone()) return;
     if (list.scrollTop + list.clientHeight >= list.scrollHeight - 320) runSearch(false);
   }
   $("search-results").addEventListener("scroll", maybeLoadMore);
@@ -1905,12 +2117,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var isMod = search.kind === "mods", cf = hit.source === "curseforge";
     // A CurseForge author can switch off downloads through other apps: then the button opens their page.
     var pageOnly = cf && hit.downloadsAllowed === false && !hit.installed;
+    var sites = isMod && server && server.curseforge
+      ? h("span", { class: "src-marks" },
+          cf ? null : h("span", { class: "src mr", title: hit.also ? "On Modrinth and CurseForge. Installs from Modrinth." : "From Modrinth" }, "Modrinth"),
+          cf || hit.also ? h("a", { class: "src cf", href: (hit.also || hit).url, target: "_blank", rel: "noopener", title: "Open its CurseForge page" }, "CurseForge") : null)
+      : null;
     return h("article", { class: "result" },
       hit.icon ? h("img", { class: "result-icon", src: hit.icon, alt: "", loading: "lazy" }) : h("span", { class: "result-icon" }),
       h("div", null,
         h("div", { class: "result-top" },
-          h("a", { class: "result-title", href: hit.url || "https://modrinth.com/" + MODRINTH_PATH[search.kind] + "/" + encodeURIComponent(hit.slug), target: "_blank", rel: "noopener" }, hit.title),
-          hit.author ? h("span", { class: "result-author" }, "by " + hit.author) : null),
+          h("a", { class: "result-title", href: cf ? hit.url : "https://modrinth.com/" + MODRINTH_PATH[search.kind] + "/" + encodeURIComponent(hit.slug), target: "_blank", rel: "noopener" }, hit.title),
+          hit.author ? h("span", { class: "result-author" }, "by " + hit.author) : null, sites),
         h("p", { class: "result-desc" }, hit.description || ""),
         h("div", { class: "result-meta" }, formatNum(hit.downloads) + " downloads" + (isMod && !cf ? " · " + (sides.join(" + ") || "side unknown") : "") + (hit.updated ? " · updated " + ago(hit.updated) : "") +
           (pageOnly ? " · download from CurseForge's site only" : ""))),
@@ -1920,10 +2137,20 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         hit.installed ? "Installed" : busyNow ? "Installing…" : pageOnly ? "Open page" : "Install"));
   }
 
+  // A mod on both sites installs from Modrinth; if Modrinth has no fitting file, CurseForge's copy is tried.
   function installMod(hit) {
     installing[hit.projectId] = true;
     renderSearch();
-    api("POST", "/api/" + (hit.source === "curseforge" ? "curseforge" : "modrinth") + "/install", { projectId: hit.projectId }).then(function (res) {
+    function attempt(src) {
+      return api("POST", "/api/" + (src.source === "curseforge" ? "curseforge" : "modrinth") + "/install", { projectId: src.projectId });
+    }
+    var fellBack = false;
+    attempt(hit).then(null, function (e) {
+      var cf = hit.also;
+      if (!cf || cf.downloadsAllowed === false || /already in this mods folder/.test(e.message)) throw e;
+      fellBack = true;
+      return attempt(cf);
+    }).then(function (res) {
       if (res.manual) {
         if (res.url) window.open(res.url, "_blank", "noopener");
         toast(res.title + "'s author only allows downloads from CurseForge's website. Its page is open in a tab: download it there and it goes straight into this mods folder.");
@@ -1931,10 +2158,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       }
       var deps = res.added.filter(function (a) { return a.dependency; });
       res.added.forEach(function (a) {
-        search.hits.forEach(function (x) { if (x.projectId === a.projectId) x.installed = true; });
+        search.hits.forEach(function (x) { if (x.projectId === a.projectId || (x.also && x.also.projectId === a.projectId)) x.installed = true; });
       });
       var msg = res.added.length
-        ? "Installed " + hit.title + (deps.length ? " and " + deps.map(function (d) { return d.title; }).join(", ") + ", which it needs" : "") + "."
+        ? "Installed " + hit.title + (fellBack ? " from CurseForge (Modrinth has no file for " + targetText() + ")" : "") +
+          (deps.length ? " and " + deps.map(function (d) { return d.title; }).join(", ") + ", which it needs" : "") + "."
         : "Nothing was installed.";
       if (res.notes && res.notes.length) msg += " " + res.notes.join(" ");
       toast(msg);
@@ -2282,6 +2510,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       editDraft = null;
       var i = state.tags.indexOf(name);
       if (i >= 0) state.tags[i] = res.name; // keep a tag filter pointing at the renamed tag
+      var j = state.excluded.indexOf(name);
+      if (j >= 0) state.excluded[j] = res.name;
       toast(res.name !== name ? "Renamed " + name + " to " + res.name + (res.mods ? " on " + count(res.mods, "mod", "mods") : "") + "." : "Saved " + name + ".");
     }, function (e) {
       toast(e.message);
@@ -2383,6 +2613,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function askDelete(rows) {
     rows = rows.filter(function (r) { return r.status !== "missing"; });
     if (!rows.length || !connected) return;
+    // With the Settings switch off, delete goes straight to the Recycle Bin (still restorable from there).
+    if (!pref("confirmDelete")) { deleteMods(rows); return; }
     var single = rows.length === 1;
     confirmDialog({
       title: single ? "Delete " + rows[0].name + "?" : "Delete " + rows.length + " mods?",
@@ -2980,7 +3212,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     renderCheckBar();
     snaps.data = null;
     srv.sync = null;
-    search.hits = [];
+    resetSearch();
     inst.data = null;
     packs.data = null;
     packs.places = {};
@@ -3120,7 +3352,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   // ---------- Sections (Mods / Server / Snapshots / Cleanup) ----------
 
-  var VIEWS = ["mods", "libraries", "packs", "server", "snapshots", "cleanup"];
+  var VIEWS = ["mods", "libraries", "packs", "server", "snapshots", "cleanup", "settings"];
   var currentView = "mods";
   function setView(name, initial) {
     if (VIEWS.indexOf(name) < 0) name = "mods";
@@ -3128,7 +3360,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     currentView = name;
     // Libraries is the Mods page showing only mods tagged library.
     var section = name === "libraries" ? "mods" : name;
-    ["mods", "packs", "server", "snapshots", "cleanup"].forEach(function (v) { $("view-" + v).hidden = v !== section; });
+    ["mods", "packs", "server", "snapshots", "cleanup", "settings"].forEach(function (v) { $("view-" + v).hidden = v !== section; });
     if (section === "mods" && was !== name && model) {
       Object.keys(selected).forEach(function (k) { delete selected[k]; });
       anchorKey = null;
@@ -3141,6 +3373,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       try { history.replaceState(null, "", name === "mods" ? location.pathname : "#" + name); } catch (e) {}
     }
     if (!menuEl.hidden) closeMenu();
+    if (name === "settings") renderPrefs();
     if (!hasToken) return;
     if (name === "server") { refreshServer(); startConsole(); }
     if (name === "packs") loadPacks(false);
@@ -3151,6 +3384,129 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     b.addEventListener("click", function () { setView(b.getAttribute("data-view")); });
   });
   $("server-chip").addEventListener("click", function () { setView("server"); });
+
+  // ---------- Settings ----------
+  // The defaults are the intended look; the app stores only what the user changes (under "prefs" in its
+  // settings file) and sends it with every state. A copy in localStorage paints the right theme before
+  // the first state arrives.
+
+  var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "5",
+    updateChannel: "release", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false,
+    serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false };
+  var localPrefs = {};
+  try { localPrefs = JSON.parse(localStorage.getItem("mmm.prefs") || "{}") || {}; } catch (e) {}
+  function pref(k) {
+    var p = server && server.prefs ? server.prefs : localPrefs;
+    return p && p[k] !== undefined ? p[k] : PREF_DEFAULTS[k];
+  }
+  var ACCENTS = [
+    { key: "emerald", label: "Emerald", color: "#2fb465" }, { key: "sky", label: "Sky", color: "#2b8ce0" },
+    { key: "amethyst", label: "Amethyst", color: "#8b5cf6" }, { key: "gold", label: "Gold", color: "#d4960f" },
+    { key: "redstone", label: "Redstone", color: "#d9443b" }
+  ];
+  var systemDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  var appliedLook = "";
+  function applyPrefs() {
+    var root = document.documentElement;
+    var theme = pref("theme") === "system" ? (systemDark && !systemDark.matches ? "light" : "dark") : pref("theme");
+    var look = { "data-theme": theme, "data-accent": pref("accent"), "data-density": pref("density"), "data-tags": pref("tagColors"),
+      "data-files": pref("fileNames") ? "on" : "off", "data-actions": pref("rowActions"), "data-blocky": pref("blockyTitle") ? "on" : "off" };
+    Object.keys(look).forEach(function (k) { root.setAttribute(k, look[k]); });
+    var sig = JSON.stringify(look) + pref("tagsPerRow");
+    var changed = sig !== appliedLook;
+    appliedLook = sig;
+    if (server && server.prefs) {
+      try { localStorage.setItem("mmm.prefs", JSON.stringify(server.prefs)); } catch (e) {}
+    }
+    return changed;
+  }
+  applyPrefs();
+  if (systemDark && systemDark.addEventListener) systemDark.addEventListener("change", function () { if (pref("theme") === "system" && applyPrefs() && model) render(); });
+
+  function savePref(key, value) {
+    var body = {};
+    body[key] = value;
+    if (server) { server.prefs = server.prefs || {}; server.prefs[key] = value; }
+    if (applyPrefs() && model) render();
+    if (currentView === "settings") renderPrefs();
+    return api("POST", "/api/prefs", body).then(function (res) {
+      if (server) server.prefs = res.prefs;
+    }, function (e) { toast("Couldn't save that setting (" + e.message + ")."); });
+  }
+
+  // Each card is a group; each item is a choice (segmented), a switch, or the accent swatches.
+  var SETTINGS = [
+    { title: "Look", items: [
+      { key: "theme", label: "Theme", desc: "Dark suits the game's own screens. System follows Windows.", choices: [["dark", "Dark"], ["light", "Light"], ["system", "System"]] },
+      { key: "accent", label: "Accent colour", desc: "Used for PLAY, switches that are on, and the selected tab. Nothing else.", swatches: true },
+      { key: "density", label: "Row spacing", desc: "Compact fits more mods on screen.", choices: [["comfortable", "Comfortable"], ["compact", "Compact"]] },
+      { key: "tagColors", label: "Tag colours", desc: "Vivid tags stand out like the game under shaders; soft ones are calmer.", choices: [["vivid", "Vivid"], ["soft", "Soft"]] },
+      { key: "blockyTitle", label: "Blocky lettering", desc: "The title, PLAY and headings in a pixel font." }
+    ] },
+    { title: "Mod list", items: [
+      { key: "fileNames", label: "Show file names", desc: "The jar's file name under each mod's name." },
+      { key: "rowActions", label: "Row buttons", desc: "Update, on / off and delete stay visible, or only show strongly on hover. Updates always show.", choices: [["hover", "On hover"], ["always", "Always"]] },
+      { key: "tagsPerRow", label: "Tags per row", desc: "Extra tags fold into +N (hover to see them).", choices: [["3", "3"], ["5", "5"], ["all", "All"]] },
+      { key: "confirmDelete", label: "Ask before deleting", desc: "Off sends mods straight to the Recycle Bin, where they can still be restored." }
+    ] },
+    { title: "Sources", items: [
+      { key: "searchSources", label: "Search", desc: "Where Add mods looks. Mods on both sites show once, and download from Modrinth.", choices: [["both", "Both"], ["modrinth", "Modrinth"], ["curseforge", "CurseForge"]] },
+      { key: "curseforgeKey", label: "CurseForge API key", desc: "", custom: curseforgeKeyControl }
+    ] },
+    { title: "Detect sides", items: [
+      { key: "serverExtras", label: "Server copies that add features", desc: "Client mods that also do something on the server (multiplayer sync and the like) are marked both sides." }
+    ] }
+  ];
+
+  function curseforgeKeyControl() {
+    var on = !!(server && server.curseforge);
+    var input = h("input", { type: "password", placeholder: on ? "A key is saved. Paste a new one to replace it" : "Paste your CurseForge API key", autocomplete: "off", spellcheck: "false", "aria-label": "CurseForge API key" });
+    var save = btn("Save key", function () {
+      if (!input.value.trim()) return;
+      save.disabled = true;
+      api("POST", "/api/curseforge/key", { key: input.value }).then(function () {
+        toast("CurseForge is on");
+        return refresh(true);
+      }, function (e) { toast(e.message); }).then(function () { save.disabled = false; renderPrefs(); });
+    });
+    var off = on ? btn("Turn off", function () {
+      api("POST", "/api/curseforge/key", { key: "" }).then(function () { toast("CurseForge is off"); return refresh(true); }, function (e) { toast(e.message); }).then(renderPrefs);
+    }) : null;
+    return h("div", null,
+      h("div", { class: "d" }, on ? "CurseForge is on: jars Modrinth doesn't know are recognised and updated, and Add mods searches it." :
+        "Without a key the app only uses Modrinth. The key stays in this computer's settings file."),
+      h("div", { class: "set-key" }, input, save, off));
+  }
+
+  function renderPrefs() {
+    var root = $("settings-body");
+    root.replaceChildren();
+    SETTINGS.forEach(function (card) {
+      var el = h("section", { class: "panel set-card" }, h("h2", null, card.title));
+      card.items.forEach(function (s) {
+        if (s.custom) { el.append(h("div", { class: "set-row wide" }, h("div", { class: "l" }, s.label), s.custom())); return; }
+        var control;
+        if (s.swatches) {
+          control = h("div", { class: "swatches", role: "group", "aria-label": s.label });
+          ACCENTS.forEach(function (a) {
+            control.append(h("button", { type: "button", class: "swatch-btn", style: "background:" + a.color, title: a.label, "aria-label": a.label,
+              "aria-pressed": String(pref("accent") === a.key), onclick: function () { savePref("accent", a.key); } }));
+          });
+        } else if (s.choices) {
+          control = h("div", { class: "seg-control", role: "group", "aria-label": s.label });
+          s.choices.forEach(function (c) {
+            control.append(h("button", { type: "button", "aria-pressed": String(pref(s.key) === c[0]), onclick: function () { savePref(s.key, c[0]); } }, c[1]));
+          });
+        } else {
+          var on = !!pref(s.key);
+          control = h("button", { type: "button", class: "toggle sw-btn" + (on ? " on" : ""), role: "switch", "aria-checked": String(on), "aria-label": s.label,
+            onclick: function () { savePref(s.key, !on); } }, h("span", { class: "sw", "aria-hidden": "true" }));
+        }
+        el.append(h("div", { class: "set-row" }, h("div", { class: "l" }, s.label), h("div", { class: "d" }, s.desc), h("div", { class: "c" }, control)));
+      });
+      root.append(el);
+    });
+  }
 
   // ---------- Big dialog (changelogs, problem lists, previews) ----------
 
@@ -3296,7 +3652,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           }, function (err) { toast(err.message); });
         }, "primary"));
       } else if (fix.action === "search") {
-        fixes.append(btn("Search Modrinth", function () {
+        fixes.append(btn("Search for it", function () {
           closeBig();
           $("search-q").value = fix.query;
           openSearch();
@@ -3697,7 +4053,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (connected && dep.status === "off") fix = btn("Turn it on", function () {
         api("POST", "/api/set-enabled", { files: [dep.file], enabled: true }).then(function () { toast("Turned on " + nameOf(dep.file) + "."); return refresh(true); }, function (e) { toast(e.message); }).then(loadDetails);
       }, "primary");
-      if (connected && dep.status === "missing" && !optional) fix = btn("Search Modrinth", function () { closeDetails(); $("search-q").value = dep.id; openSearch(); runSearch(true); });
+      if (connected && dep.status === "missing" && !optional) fix = btn("Search for it", function () { closeDetails(); $("search-q").value = dep.id; openSearch(); runSearch(true); });
       body.append(h("div", { class: "dep" },
         h("div", null, h("div", null, dep.id === "minecraft" ? "Minecraft" : dep.id === "neoforge" ? "NeoForge" : dep.file ? nameOf(dep.file.replace(/ \(bundled\)$/, "")) : dep.id),
           h("div", { class: "sub" }, dep.id + " · " + dep.range + (optional ? " · " + dep.type : "") + (dep.side && dep.side !== "BOTH" ? " · " + dep.side.toLowerCase() + " only" : "") + (dep.file ? " · " + dep.file : ""))),
@@ -3827,8 +4183,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       body, [btn("Cancel", closeBig), go]);
 
     // Whether client mods whose server copy is optional (it adds features) go on both. Remembered here only.
-    var extras = true;
-    try { extras = localStorage.getItem("mmm.detect.serverExtras") !== "0"; } catch (e) {}
+    var extras = pref("serverExtras");
     function load() {
       picks = {};
       label();
@@ -3862,7 +4217,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         var opt = h("input", { type: "checkbox", checked: extras ? true : null });
         opt.addEventListener("change", function () {
           extras = opt.checked;
-          try { localStorage.setItem("mmm.detect.serverExtras", extras ? "1" : "0"); } catch (e) {}
+          savePref("serverExtras", extras);
           load();
         });
         body.append(h("label", { class: "ds-option" }, opt, h("span", null,
@@ -4857,7 +5212,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (kind === "toggle") setEnabled([hit.row], hit.row.status === "disabled");
       else if (kind === "update") updateMods([hit.row]);
       else if (kind === "details") openDetails(hit.row);
-      else if (kind === "filter-tag") toggleTag(action.getAttribute("data-tag"));
+      else if (kind === "filter-tag") (e.altKey ? toggleExclude : toggleTag)(action.getAttribute("data-tag"));
       else if (kind === "delete") askDelete([hit.row]);
       return;
     }
@@ -5104,7 +5459,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     api("POST", "/api/settings", { gameVersion: $("target-version").value, loader: $("target-loader").value }).then(function (res) {
       server.target = res.target;
       closeTargetForm();
-      search.hits = [];
+      resetSearch();
       mr.data = null;
       lastFilesSig = "";
       toast("Modrinth now looks for " + targetText() + " versions.");
