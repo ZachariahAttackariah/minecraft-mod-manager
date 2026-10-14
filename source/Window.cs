@@ -356,6 +356,11 @@ namespace MinecraftModManager
                 return tab == null || tab.View == null ? null : tab.View.CoreWebView2;
             }
 
+            public void SetPageZoom(double factor)
+            {
+                if (manager.View != null && Math.Abs(manager.View.ZoomFactor - factor) > 0.001) manager.View.ZoomFactor = factor;
+            }
+
             // Messages the page listens for: see NotifyPage.
             public void Notify(string message)
             {

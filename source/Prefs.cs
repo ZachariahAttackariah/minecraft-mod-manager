@@ -15,7 +15,13 @@ namespace MinecraftModManager
         static readonly Dictionary<string, string[]> PrefChoices = new Dictionary<string, string[]>
         {
             { "theme", new[] { "dark", "light", "system" } },
-            { "accent", new[] { "emerald", "sky", "amethyst", "gold", "redstone" } },
+            { "accent", new[] { "emerald", "sky", "amethyst", "gold", "redstone", "custom" } },
+            { "background", new[] { "glow", "plain", "blocks" } },
+            { "corners", new[] { "round", "square" } },
+            { "textSize", new[] { "90", "100", "110", "120" } },
+            { "tagStyle", new[] { "tint", "solid", "outline" } },
+            { "motion", new[] { "system", "reduce" } },
+            { "rowStyle", new[] { "lines", "zebra" } },
             { "density", new[] { "comfortable", "compact" } },
             { "tagColors", new[] { "vivid", "soft" } },
             { "rowActions", new[] { "hover", "always" } },
@@ -26,7 +32,7 @@ namespace MinecraftModManager
             { "searchSources", new[] { "both", "modrinth", "curseforge" } },
             { "serverRestart", new[] { "off", "6", "12", "24" } },
         };
-        static readonly string[] PrefFlags = { "fileNames", "blockyTitle", "checkBeforePlay", "serverExtras", "confirmDelete", "whatChanged", "serverBackups", "worldBackups" };
+        static readonly string[] PrefFlags = { "fileNames", "blockyTitle", "checkBeforePlay", "serverExtras", "confirmDelete", "whatChanged", "serverBackups", "worldBackups", "showIcons" };
 
         static Dictionary<string, object> PrefsCopy()
         {
@@ -45,6 +51,12 @@ namespace MinecraftModManager
                         string v = Convert.ToString(p.Value, System.Globalization.CultureInfo.InvariantCulture);
                         if (!choices.Contains(v)) throw new UserError("\"" + v + "\" isn't a choice for " + p.Key + ".");
                         prefs[p.Key] = v;
+                    }
+                    else if (p.Key == "accentColor")
+                    {
+                        string v = p.Value as string;
+                        if (v == null || !System.Text.RegularExpressions.Regex.IsMatch(v, "^#[0-9a-fA-F]{6}$")) throw new UserError("The accent colour has to look like #2fb465.");
+                        prefs[p.Key] = v.ToLowerInvariant();
                     }
                     else if (PrefFlags.Contains(p.Key))
                     {

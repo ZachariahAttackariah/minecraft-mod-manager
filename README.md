@@ -45,6 +45,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
 - **Auto-tag:** suggests your existing tags from each mod's Modrinth / CurseForge categories, reviewed per tag before anything changes, with Undo.
 - **Modpacks:** export as `.mrpack` or CurseForge `.zip` (mods listed by where they're published, optional overrides and configs); import either into a new Prism instance with hash-checked downloads.
 - **Compare two folders:** what each has, version, on/off and tag differences, matched by mod id. Read-only.
+- **List conveniences:** arrow keys, Enter, Space and Delete in the list; double-click for details; search shortcuts (`#tag`, `-#tag`, `is:off`, `is:update`, `is:new`, `is:unneeded`, `side:client`…); sort by newest or largest; filters remembered per folder; "new" marks; libraries nobody requires marked "not needed"; Show in folder; copy the mod list with links; a recent-changes history from `actions.log`.
 - **On/off presets:** named sets of which mods are on, switched in one click (with a preview, a snapshot first, and Undo).
 - **Crash reader:** after a crash, a banner offers to read the newest crash report (or `latest.log`) and lists the mods it points at, most likely first, with one-click Turn off or Find for a missing dependency.
 - **Jobs:** a thin progress bar under the tabs while anything runs, and a list of running and recent jobs; updates, pack imports, world backups and multi-file adds can be stopped between steps. Messages stack with Undo where it applies.
@@ -82,7 +83,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Shader packs and resource packs: one shared folder each, linked into every sharing instance with a directory junction. Opting in merges the instance's packs into the shared folder without losing any; opting out gives it its own copy.
   - Game settings (`options.txt`): merged into a shared copy and handed back out on every Play. Keys an instance doesn't know (another version's options, key binds of mods it doesn't have) are kept for the instances that use them.
 
-- **Settings** (the gear): theme (dark, light or follow Windows), accent colour, row spacing, vivid or soft tag colours, blocky lettering, file names, row buttons, tags per row, delete confirmation, search sources, the CurseForge key, and Detect's server-extras rule. The defaults are the intended look; only changes are saved, in the local settings file.
+- **Settings** (the gear): quick looks (Overworld, Nether, The End, Deep Dark, Snowy), theme (dark, light or follow Windows), accent colour (or any colour), background (glow, plain, block grid), square or rounded corners, text size, tag style (tinted, solid, outline), row stripes, mod icons, reduced motion, row spacing, vivid or soft tag colours, blocky lettering, file names, row buttons, tags per row, delete confirmation, search sources, the CurseForge key, and Detect's server-extras rule. The defaults are the intended look; only changes are saved, in the local settings file.
 
 ## CurseForge
 

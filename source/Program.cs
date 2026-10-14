@@ -414,6 +414,14 @@ namespace MinecraftModManager
                                 return (object)Obj("file", f.Name, "dist", c.Dist, "modClasses", c.ModClasses, "mixins", c.MixinSide, "blocksOrItems", c.AddsBlocksOrItems, "content", c.ContentKind, "serverData", c.HasServerData, "registers", c.Registers, "networking", c.Networking);
                             }).ToList());
                             break;
+                        case "/api/history":
+                        {
+                            // The last lines of actions.log, newest first.
+                            var lines = new List<string>();
+                            try { if (File.Exists(LogPath)) lines = File.ReadAllLines(LogPath).Reverse().Take(400).ToList(); } catch (IOException) { }
+                            result = Obj("ok", true, "lines", lines);
+                            break;
+                        }
                         case "/api/worlds":
                             result = ListWorlds();
                             break;
@@ -581,6 +589,22 @@ namespace MinecraftModManager
                         string folder = which == "data" ? dataDir : which == "app" ? AppDir : which == "server" ? serverDir : null;
                         if (folder == null || !Directory.Exists(folder)) throw new UserError("That folder isn't there.");
                         Process.Start("explorer.exe", "\"" + folder.TrimEnd('\\') + "\"");
+                        SendJson(ctx, 200, Obj("ok", true));
+                        return;
+                    }
+                    case "/api/reveal":
+                    {
+                        string jarPath = ResolveModFile(modsDir, Str(body, "file"));
+                        Process.Start("explorer.exe", "/select,\"" + jarPath + "\"");
+                        SendJson(ctx, 200, Obj("ok", true));
+                        return;
+                    }
+                    case "/api/zoom":
+                    {
+                        // Text size (Settings > Look): the window's own zoom, so menus and clicks stay lined up.
+                        double factor = Convert.ToDouble(Get(body, "factor") ?? 1.0, CultureInfo.InvariantCulture);
+                        factor = Math.Max(0.8, Math.Min(1.4, factor));
+                        if (window != null && !window.IsDisposed) ui.Post(delegate { window.SetPageZoom(factor); }, null);
                         SendJson(ctx, 200, Obj("ok", true));
                         return;
                     }
@@ -826,12 +850,24 @@ namespace MinecraftModManager
                 var jars = new DirectoryInfo(dir).GetFiles()
                     .Where(f => JarName.IsMatch(f.Name))
                     .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase);
+                // How many mods that are on require each jar (by the mod ids it has), so the page can tell
+                // a library nobody needs any more.
+                var providerOf = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (FileInfo file in jars)
+                    foreach (ModInfo m in GetJarMeta(file).Mods) if (!providerOf.ContainsKey(m.Id)) providerOf[m.Id] = file.Name;
+                var requiredBy = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                foreach (FileInfo file in jars.Where(f => !f.Name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)))
+                    foreach (string target in GetJarMeta(file).Deps.Where(x => x.Type == "required" && x.Id != null).Select(x => { string t; return providerOf.TryGetValue(x.Id, out t) ? t : null; })
+                        .Where(t => t != null && t != file.Name).Distinct())
+                    { int n; requiredBy.TryGetValue(target, out n); requiredBy[target] = n + 1; }
                 foreach (FileInfo file in jars)
                 {
                     string[] info = GetJarInfo(file);
                     ModInfo main = GetJarMeta(file).Mods.FirstOrDefault();
+                    int needers;
+                    requiredBy.TryGetValue(file.Name, out needers);
                     files.Add(Obj("name", file.Name, "size", file.Length, "modified", file.LastWriteTimeUtc.ToString("o"),
-                        "modId", info[0], "displayName", info[1], "logo", main != null && main.Logo != null));
+                        "modId", info[0], "displayName", info[1], "logo", main != null && main.Logo != null, "requiredBy", needers));
                 }
                 string tagsPath = Path.Combine(dir, "mod-tags.json");
                 if (HasLinkedTags(dir))

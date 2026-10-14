@@ -592,6 +592,16 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .export-form > label:not(.ds-option) { display: grid; grid-template-columns: 90px minmax(0, 1fr); align-items: center; gap: 10px; }
 .export-form input[type=text] { padding: 7px 9px; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
 .export-form > div { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+/* Recent changes */
+.hist-filter { width: 100%; margin: 4px 0 8px; padding: 7px 9px; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
+.hist { max-height: 320px; overflow: auto; font-size: 12.5px; }
+.hist-row { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 10px; padding: 3px 2px; border-top: 1px solid var(--line); }
+.hist-row .hd { font: 400 11.5px/1.5 var(--font-mono); color: var(--muted); }
+.hist-row .ht { overflow-wrap: anywhere; }
+.hist-row .hf { font-size: 11.5px; color: var(--muted); }
+.badge.new { --c: var(--accent-fg); border-style: solid; }
+.badge.unneeded { --c: var(--warn); }
+.sort-pick { padding: 5px 7px; font: 500 12.5px/1.2 var(--font-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
 /* World backups */
 .world { padding: 10px 0; border-top: 1px solid var(--line); }
 .w-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
@@ -640,6 +650,36 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .drop-title { font: 700 22px/1.2 var(--font-display); color: var(--accent-fg); }
 html[data-blocky="on"] .drop-title { font-family: var(--font-blocky); font-weight: 600; }
 .drop-sub { margin-top: 6px; color: var(--muted); font-size: 13.5px; }
+/* Look options (Settings > Look) */
+html[data-accent="custom"] { --accent-fg: color-mix(in srgb, var(--accent) 62%, #fff); }
+html[data-theme="light"][data-accent="custom"] { --accent-fg: color-mix(in srgb, var(--accent) 72%, #000); }
+html[data-bg="plain"] body { background: var(--bg); }
+html[data-bg="blocks"] body {
+  background: conic-gradient(rgba(255, 255, 255, 0.022) 25%, transparent 0 50%, rgba(255, 255, 255, 0.022) 0 75%, transparent 0) 0 0 / 48px 48px,
+    radial-gradient(1100px 460px at 12% -8%, var(--glow-a), transparent 70%), var(--bg);
+  background-attachment: fixed; }
+html[data-theme="light"][data-bg="blocks"] body {
+  background: conic-gradient(rgba(0, 0, 0, 0.03) 25%, transparent 0 50%, rgba(0, 0, 0, 0.03) 0 75%, transparent 0) 0 0 / 48px 48px, var(--bg); background-attachment: fixed; }
+html[data-corners="square"] *:not(.sw):not(.spin):not(.live-dot):not(.dot):not(.mark-dot):not(.swatch) { border-radius: 0 !important; }
+html[data-tagstyle="solid"] .chip, html[data-tagstyle="solid"] .tag-opt .box { color: #fff; background: color-mix(in srgb, var(--c) 78%, #000); border-color: transparent; }
+html[data-theme="light"][data-tagstyle="solid"] .chip { background: var(--c); }
+html[data-tagstyle="outline"] .chip { background: transparent; border-color: color-mix(in srgb, var(--c) 75%, transparent); }
+html[data-icons="off"] .mod-icon { display: none; }
+html[data-icons="off"] .off-tag { position: static; transform: none; }
+html[data-rows="zebra"] .row { border-bottom-color: transparent; }
+html[data-rows="zebra"] .row:nth-child(even) { background: color-mix(in srgb, var(--surface) 60%, transparent); }
+html[data-rows="zebra"] .row:hover { background: var(--surface); }
+html[data-motion="reduce"] *, html[data-motion="reduce"] *::before, html[data-motion="reduce"] *::after { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; transition-duration: 0.001s !important; }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.preset-card { display: grid; gap: 6px; width: 104px; padding: 8px; text-align: left; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
+.preset-card:hover { border-color: var(--muted); }
+.preset-card.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.preset-swatch { display: flex; height: 22px; border-radius: 3px; overflow: hidden; }
+.preset-swatch span { flex: 1; }
+.preset-name { font-size: 12.5px; font-weight: 600; }
+.swatch-btn.custom { position: relative; display: inline-grid; place-items: center; background-image: conic-gradient(red, yellow, lime, cyan, blue, magenta, red) !important; }
+.swatch-btn.custom.on { background-image: none !important; border-color: var(--ink); }
+.swatch-pick { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 /* Settings page */
 /* Cards flow down columns (like a masonry wall), so a short card never leaves a hole beside a tall one. */
 .set-grid { columns: 2 440px; column-gap: 16px; }
@@ -1066,6 +1106,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     <div class="seg-control" id="status-control" role="group" aria-label="Filter by status"></div>
     <div class="seg-control" id="side-control" role="group" aria-label="Filter by side"></div>
     <div class="tools">
+      <select id="sort-pick" class="sort-pick" aria-label="Sort by" title="Sort the list (the Mod and Side headings sort too)">
+        <option value="name">Name</option><option value="side">Side</option><option value="added">Newest first</option><option value="size">Largest first</option>
+      </select>
       <span class="count-label" id="count" aria-live="polite"></span>
       <button class="btn danger-outline" id="forget-missing" type="button" hidden title="Remove the leftover tags of jars that aren't in the folder any more">Forget these</button>
       <!-- Less-used list tools sit behind the dots. -->
@@ -1074,6 +1117,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <div class="pop-menu right" id="tb-menu" role="menu" hidden>
           <button type="button" role="menuitem" id="show-missing">Not in folder<span class="k" id="missing-k"></span></button>
           <button type="button" role="menuitem" id="copy">Copy filenames</button>
+          <button type="button" role="menuitem" id="copy-list">Copy mod list with links<span class="k">the mods shown, for sharing</span></button>
           <button type="button" role="menuitem" id="open-export">Export as a modpack…<span class="k">.mrpack or CurseForge .zip</span></button>
           <button type="button" role="menuitem" id="open-compare">Compare with another folder…<span class="k">what each has, versions, tags</span></button>
           <button type="button" role="menuitem" id="read-crash">Read the last crash<span class="k">which mods it points at</span></button>
@@ -1183,6 +1227,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         </form>
         <div id="snap-list"></div>
         <p class="hint" id="snap-store" style="margin-top:10px"></p>
+      </div>
+      <div class="card">
+        <h2>Recent changes</h2>
+        <p class="lead">Everything the app changed, newest first (from actions.log next to the app).</p>
+        <input class="hist-filter" id="hist-filter" type="search" placeholder="Filter, e.g. a mod name or Updated" aria-label="Filter recent changes" autocomplete="off">
+        <div class="hist" id="hist-list"></div>
       </div>
       <div class="card">
         <h2>World backups</h2>
@@ -1636,7 +1686,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       tags: tags ? tags.slice() : [],
       name: known ? known[0] : (f && f.displayName) || prettify(key),
       slug: known && known[1] ? known[1] : null,
-      logo: !!(f && f.logo)
+      logo: !!(f && f.logo),
+      size: f ? f.size : 0,
+      modified: f ? f.modified : null,
+      requiredBy: f ? f.requiredBy || 0 : 0
     };
   }
 
@@ -1667,8 +1720,41 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }
     // Excluded tags hide every jar that has any of them.
     for (var x = 0; x < state.excluded.length; x++) if (r.tags.indexOf(state.excluded[x]) >= 0) return false;
-    if (state.q && r.haystack.indexOf(state.q) < 0) return false;
+    if (state.q && !queryMatches(r, parseQuery(state.q))) return false;
     return true;
+  }
+  // The search box understands a few words besides plain text (the shortcut sheet lists them):
+  //   #tag  -#tag  is:on  is:off  is:update  is:pinned  is:noted  is:new  is:unneeded  side:client|server|both|none
+  var queryCache = { q: null, parsed: null };
+  function parseQuery(q) {
+    if (queryCache.q === q) return queryCache.parsed;
+    var parsed = { text: [], tags: [], notTags: [], is: [], side: [] };
+    q.split(/\s+/).forEach(function (w) {
+      var m;
+      if (!w) return;
+      if ((m = /^-#(.+)$/.exec(w))) parsed.notTags.push(m[1]);
+      else if ((m = /^#(.+)$/.exec(w))) parsed.tags.push(m[1]);
+      else if ((m = /^is:(\w+)$/.exec(w))) parsed.is.push(m[1]);
+      else if ((m = /^side:(\w+)$/.exec(w))) parsed.side.push(m[1]);
+      else parsed.text.push(w);
+    });
+    queryCache = { q: q, parsed: parsed };
+    return parsed;
+  }
+  var NEW_DAYS = 3;
+  function isNewRow(r) { return r.modified && Date.now() - new Date(r.modified).getTime() < NEW_DAYS * 86400000; }
+  function queryMatches(r, p) {
+    var text = p.text.join(" ");
+    if (text && r.haystack.indexOf(text) < 0) return false;
+    var hasTag = function (t) { return r.tags.some(function (x) { return x.indexOf(t) === 0; }); };
+    if (!p.tags.every(hasTag) || p.notTags.some(hasTag)) return false;
+    if (p.side.length && p.side.indexOf(r.side) < 0) return false;
+    var ex = extOf(r);
+    return p.is.every(function (w) {
+      return w === "on" ? r.status === "enabled" : w === "off" ? r.status === "disabled" : w === "update" || w === "updates" ? !!r.update
+        : w === "pinned" ? !!ex.pin : w === "noted" ? !!ex.note : w === "new" ? isNewRow(r) : w === "unneeded" ? r.status !== "missing" && !r.requiredBy
+        : w === "missing" ? r.status === "missing" : true;
+    });
   }
   // model.rows is already by name, so a stable sort by side keeps names in order within each side.
   var SIDE_ORDER = { client: 0, both: 1, server: 2, none: 3 };
@@ -1676,6 +1762,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!model) return [];
     var rows = model.rows.filter(matches), dir = state.sortDir;
     if (state.sort === "side") rows.sort(function (a, b) { return (SIDE_ORDER[a.side] - SIDE_ORDER[b.side]) * dir; });
+    else if (state.sort === "added") rows.sort(function (a, b) { return ((b.modified || "") < (a.modified || "") ? -1 : (b.modified || "") > (a.modified || "") ? 1 : 0) * dir; });
+    else if (state.sort === "size") rows.sort(function (a, b) { return ((b.size || 0) - (a.size || 0)) * dir; });
     else if (dir < 0) rows.reverse();
     return rows;
   }
@@ -1691,6 +1779,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       b.querySelector(".arrow").textContent = on ? (state.sortDir > 0 ? "▲" : "▼") : "";
       $(p[1] + "-col").setAttribute("aria-sort", on ? (state.sortDir > 0 ? "ascending" : "descending") : "none");
     });
+    $("sort-pick").value = state.sort;
   }
   function rowsFor(keys) { return keys.map(function (k) { return model && model.byKey[k]; }).filter(Boolean); }
 
@@ -1733,6 +1822,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // ---------- Rendering ----------
 
   function render() {
+    saveView();
     var rows = visible();
     renderHeader();
     renderSummary();
@@ -1999,6 +2089,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (ex.pin) badges.push(h("span", { class: "mark pin", title: "Pinned: Update all leaves it on this version" + (r.held ? ". " + r.held.versionNumber + " is out" : "") }, icon("pin")));
       if (r.held && r.held.why === "skipped") badges.push(h("span", { class: "mark", title: "Skipping the " + r.held.versionNumber + " update" }, icon("skip")));
       if (ex.note) badges.push(h("span", { class: "mark note", title: ex.note }, icon("note")));
+      if (r.status !== "missing" && isNewRow(r)) badges.push(h("span", { class: "badge new", title: "Added or changed in the last " + NEW_DAYS + " days" }, "new"));
+      if (r.status !== "missing" && currentView === "libraries" && !r.requiredBy)
+        badges.push(h("span", { class: "badge unneeded", title: "No mod that's on lists it as required. It may still be used optionally, so check before removing it. (Search is:unneeded to list them.)" }, "not needed"));
       // Tags being filtered on come first; past the Settings limit the rest fold into "+N" (hover lists them).
       var limit = pref("tagsPerRow") === "all" ? Infinity : Number(pref("tagsPerRow"));
       var topics = r.topics.slice().sort(function (a, b) { return (state.tags.indexOf(b) >= 0) - (state.tags.indexOf(a) >= 0); });
@@ -2184,6 +2277,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (currentView === "settings") renderPrefs();
       if (force || lookChanged || sig !== lastSignature || !model) {
         lastSignature = sig;
+        if (restoredFor !== s.modsDir) restoreView();
         model = buildModel(s);
         state.tags = state.tags.filter(function (t) { return model.topics.indexOf(t) >= 0; });
         state.excluded = state.excluded.filter(function (t) { return model.topics.indexOf(t) >= 0; });
@@ -3183,6 +3277,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     actions.append(menuItem(single ? "Copy filename" : "Copy " + rows.length + " filenames", "copy", function () {
       copyText(rows.map(function (r) { return r.file; }).join("\n"), single ? "Copied " + rows[0].file : "Copied " + rows.length + " filenames");
     }));
+    if (single && rows[0].status !== "missing") actions.append(menuItem("Show in folder", "folder", function () {
+      api("POST", "/api/reveal", { file: rows[0].file }).then(null, function (e) { toast(e.message); });
+    }));
     if (single && rows[0].slug) actions.append(menuItem("Open on Modrinth", "link", function () { window.open("https://modrinth.com/project/" + encodeURIComponent(rows[0].slug), "_blank", "noopener"); }));
     else if (single && rows[0].mr && rows[0].mr.source === "curseforge" && rows[0].mr.url) actions.append(menuItem("Open on CurseForge", "link", function () { window.open(rows[0].mr.url, "_blank", "noopener"); }));
     if (!single) actions.append(menuItem("Clear selection", "clear", clearSelection));
@@ -3813,7 +3910,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!hasToken) return;
     if (name === "server") { refreshServer(); startConsole(); }
     if (name === "packs") loadPacks(false);
-    if (name === "snapshots") { loadSnapshots(); loadWorlds(); }
+    if (name === "snapshots") { loadSnapshots(); loadWorlds(); loadHistory(); }
     if (name === "cleanup") loadCleanup();
   }
   Array.prototype.forEach.call(document.querySelectorAll("#view-nav button[data-view]"), function (b) {
@@ -4139,6 +4236,26 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
   });
 
+  // ---------- Recent changes (actions.log) ----------
+
+  var historyLines = [];
+  function loadHistory() {
+    api("GET", "/api/history").then(function (res) { historyLines = res.lines; drawHistory(); }, function (e) { $("hist-list").replaceChildren(h("p", { class: "search-empty" }, e.message)); });
+  }
+  function drawHistory() {
+    var f = $("hist-filter").value.trim().toLowerCase();
+    var list = $("hist-list");
+    list.replaceChildren();
+    var shown = historyLines.filter(function (l) { return !f || l.toLowerCase().indexOf(f) >= 0; }).slice(0, 200);
+    shown.forEach(function (l) {
+      var m = /^(\d{4}-\d\d-\d\d) (\d\d:\d\d):\d\d\s+(.*?)(?:\s+\(([^)]*)\))?$/.exec(l);
+      list.append(m ? h("div", { class: "hist-row" }, h("span", { class: "hd" }, m[1].slice(5) + " " + m[2]), h("span", { class: "ht" }, m[3]), m[4] ? h("span", { class: "hf" }, m[4]) : null)
+        : h("div", { class: "hist-row" }, h("span", { class: "ht" }, l)));
+    });
+    if (!shown.length) list.append(h("p", { class: "search-empty" }, f ? "Nothing matches." : "Nothing changed yet."));
+  }
+  $("hist-filter").addEventListener("input", drawHistory);
+
   // ---------- World backups (Worlds.cs) ----------
 
   function loadWorlds() {
@@ -4321,6 +4438,16 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }, function (e) { body.replaceChildren(h("p", { class: "search-empty" }, e.message)); });
   }
   $("read-crash").addEventListener("click", crashDialog);
+  // The mods shown, one per line with a link when a site knows them (Markdown, so it pastes nicely in Discord).
+  $("copy-list").addEventListener("click", function () {
+    var rows = visible().filter(function (r) { return r.status !== "missing"; });
+    var text = rows.map(function (r) {
+      var url = r.mr && r.mr.source === "curseforge" ? r.mr.url : r.slug ? "https://modrinth.com/mod/" + r.slug : null;
+      var version = r.mr && r.mr.versionNumber ? " (" + r.mr.versionNumber + ")" : "";
+      return "- " + (url ? "[" + r.name + "](" + url + ")" : r.name) + version + (r.status === "disabled" ? " (off)" : "");
+    }).join("\n");
+    copyText(text, "Copied " + count(rows.length, "mod", "mods") + " with links");
+  });
 
   // ---------- Command palette (Ctrl+K) and the shortcut sheet (?) ----------
 
@@ -4408,8 +4535,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     ["?", "This list"],
     ["Click, Ctrl+click, Shift+click", "Select one mod, add or remove one, select a range"],
     ["Ctrl+A", "Select every mod shown"],
+    ["↑ / ↓", "Move through the list (Shift extends the selection)"],
+    ["Enter", "Details of the selected mod (double-click works too)"],
+    ["Space", "Turn the selected mods off, or on when they're all off"],
+    ["Delete", "Delete the selected mods"],
+    ["Ctrl+click a tag", "Hide mods with that tag"],
     ["Right-click", "A mod's actions and tags (selects it first)"],
-    ["Alt+click a tag", "Hide mods with that tag"],
+    ["#tag  -#tag", "In the search box: with / without a tag. Also is:off, is:update, is:new, is:pinned, is:noted, is:unneeded, side:client"],
     ["Esc", "Close a dialog, or clear the selection"],
     ["Ctrl+Enter", "Save a note"],
     ["Ctrl+T / Ctrl+W", "New tab / close tab"],
@@ -4540,7 +4672,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // settings file) and sends it with every state. A copy in localStorage paints the right theme before
   // the first state arrives.
 
-  var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha", tagHide: "ctrl",
+  var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha", tagHide: "ctrl", accentColor: "#2fb465", background: "glow", corners: "round", textSize: "100", tagStyle: "tint",
+    motion: "system", rowStyle: "lines", showIcons: true,
     worldBackups: false, updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false,
     serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false };
   var localPrefs = {};
@@ -4555,13 +4688,22 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     { key: "redstone", label: "Redstone", color: "#d9443b" }
   ];
   var systemDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
-  var appliedLook = "";
+  var appliedLook = "", appliedZoom = null;
   function applyPrefs() {
     var root = document.documentElement;
     var theme = pref("theme") === "system" ? (systemDark && !systemDark.matches ? "light" : "dark") : pref("theme");
     var look = { "data-theme": theme, "data-accent": pref("accent"), "data-density": pref("density"), "data-tags": pref("tagColors"),
-      "data-files": pref("fileNames") ? "on" : "off", "data-actions": pref("rowActions"), "data-blocky": pref("blockyTitle") ? "on" : "off" };
+      "data-files": pref("fileNames") ? "on" : "off", "data-actions": pref("rowActions"), "data-blocky": pref("blockyTitle") ? "on" : "off",
+      "data-bg": pref("background"), "data-corners": pref("corners"), "data-tagstyle": pref("tagStyle"), "data-icons": pref("showIcons") ? "on" : "off",
+      "data-rows": pref("rowStyle"), "data-motion": pref("motion") };
     Object.keys(look).forEach(function (k) { root.setAttribute(k, look[k]); });
+    if (pref("accent") === "custom") root.style.setProperty("--accent", pref("accentColor")); else root.style.removeProperty("--accent");
+    look.custom = pref("accent") === "custom" ? pref("accentColor") : "";
+    // Text size is the window's own zoom (so menus and clicks stay lined up); only the app window has one.
+    if (pref("textSize") !== appliedZoom && hasToken && server) {
+      appliedZoom = pref("textSize");
+      api("POST", "/api/zoom", { factor: Number(appliedZoom) / 100 }).then(null, function () {});
+    }
     var sig = JSON.stringify(look) + pref("tagsPerRow") + pref("tagHide");
     var changed = sig !== appliedLook;
     appliedLook = sig;
@@ -4589,14 +4731,22 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // Each card is a group; each item is a choice (segmented), a switch, or the accent swatches.
   var SETTINGS = [
     { title: "Look", items: [
+      { key: "preset", label: "Quick looks", desc: "A whole look in one click: theme, accent and background. Change any part afterwards.", custom: presetControl },
       { key: "theme", label: "Theme", desc: "Dark suits the game's own screens. System follows Windows.", choices: [["dark", "Dark"], ["light", "Light"], ["system", "System"]] },
-      { key: "accent", label: "Accent colour", desc: "Used for PLAY, switches that are on, and the selected tab. Nothing else.", swatches: true },
+      { key: "accent", label: "Accent colour", desc: "Used for PLAY, switches that are on, and the selected tab. Nothing else. The last one picks any colour.", swatches: true },
+      { key: "background", label: "Background", desc: "A soft glow of the accent, plain, or a faint block grid.", choices: [["glow", "Glow"], ["plain", "Plain"], ["blocks", "Blocks"]] },
+      { key: "corners", label: "Corners", desc: "Square corners look more like the game.", choices: [["round", "Rounded"], ["square", "Square"]] },
+      { key: "textSize", label: "Text size", desc: "Makes everything in the window bigger or smaller (the app window only).", choices: [["90", "90%"], ["100", "100%"], ["110", "110%"], ["120", "120%"]] },
       { key: "density", label: "Row spacing", desc: "Compact fits more mods on screen.", choices: [["comfortable", "Comfortable"], ["compact", "Compact"]] },
       { key: "tagColors", label: "Tag colours", desc: "Vivid tags stand out like the game under shaders; soft ones are calmer.", choices: [["vivid", "Vivid"], ["soft", "Soft"]] },
+      { key: "tagStyle", label: "Tag style", desc: "Tinted chips, solid colour, or just an outline.", choices: [["tint", "Tinted"], ["solid", "Solid"], ["outline", "Outline"]] },
+      { key: "motion", label: "Animation", desc: "Spinners, slides and fades. Reduce turns them down.", choices: [["system", "Follow Windows"], ["reduce", "Reduce"]] },
       { key: "blockyTitle", label: "Blocky lettering", desc: "The title, PLAY and headings in a pixel font." }
     ] },
     { title: "Mod list", items: [
       { key: "fileNames", label: "Show file names", desc: "The jar's file name under each mod's name." },
+      { key: "showIcons", label: "Show mod icons", desc: "Each mod's icon at the start of its row." },
+      { key: "rowStyle", label: "Rows", desc: "Lines between rows, or alternating stripes.", choices: [["lines", "Lines"], ["zebra", "Stripes"]] },
       { key: "rowActions", label: "Row buttons", desc: "Update, on / off and delete stay visible, or only show strongly on hover. Updates always show.", choices: [["hover", "On hover"], ["always", "Always"]] },
       { key: "tagsPerRow", label: "Tags per row", desc: "Extra tags fold into +N (hover to see them).", choices: [["3", "3"], ["5", "5"], ["all", "All"]] },
       { key: "whatChanged", label: "What changed, on opening", desc: "A short note of new updates and added or removed jars since the folder was last open here." },
@@ -4647,6 +4797,29 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       row("The app itself (settings file, actions.log)", p.app, [btn("Open", function () { api("POST", "/api/open-path", { which: "app" }).then(null, function (e) { toast(e.message); }); })]));
   }
 
+  // Quick looks: each sets the theme, accent and background together, nodding to a place in the game.
+  var PRESETS = [
+    { key: "overworld", label: "Overworld", theme: "dark", accent: "emerald", background: "glow", colors: ["#2fb465", "#3b8c3a", "#6b4a2b"] },
+    { key: "nether", label: "Nether", theme: "dark", accent: "custom", accentColor: "#e0532f", background: "blocks", colors: ["#e0532f", "#7a1f1f", "#2b1414"] },
+    { key: "end", label: "The End", theme: "dark", accent: "amethyst", background: "glow", colors: ["#8b5cf6", "#e7e3a1", "#1c1530"] },
+    { key: "deepdark", label: "Deep Dark", theme: "dark", accent: "custom", accentColor: "#1fb3a8", background: "plain", colors: ["#1fb3a8", "#0f2a33", "#0b1114"] },
+    { key: "snowy", label: "Snowy", theme: "light", accent: "sky", background: "plain", colors: ["#2b8ce0", "#e8f2fb", "#ffffff"] }
+  ];
+  function presetControl() {
+    var box = h("div", { class: "presets" });
+    PRESETS.forEach(function (ps) {
+      var on = pref("theme") === ps.theme && pref("accent") === ps.accent && pref("background") === ps.background && (ps.accent !== "custom" || pref("accentColor") === ps.accentColor);
+      box.append(h("button", { type: "button", class: "preset-card" + (on ? " on" : ""), "aria-pressed": String(on), onclick: function () {
+          var steps = Promise.resolve();
+          if (ps.accentColor) steps = steps.then(function () { return savePref("accentColor", ps.accentColor); });
+          ["theme", "background", "accent"].forEach(function (k) { steps = steps.then(function () { return savePref(k, ps[k]); }); });
+        } },
+        h("span", { class: "preset-swatch" }, ps.colors.map(function (c) { return h("span", { style: "background:" + c }); })),
+        h("span", { class: "preset-name" }, ps.label)));
+    });
+    return box;
+  }
+
   function curseforgeKeyControl() {
     var on = !!(server && server.curseforge);
     var input = h("input", { type: "password", placeholder: on ? "A key is saved. Paste a new one to replace it" : "Paste your CurseForge API key", autocomplete: "off", spellcheck: "false", "aria-label": "CurseForge API key" });
@@ -4681,6 +4854,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
             control.append(h("button", { type: "button", class: "swatch-btn", style: "background:" + a.color, title: a.label, "aria-label": a.label,
               "aria-pressed": String(pref("accent") === a.key), onclick: function () { savePref("accent", a.key); } }));
           });
+          var picker = h("input", { type: "color", class: "swatch-pick", value: pref("accentColor"), title: "Any colour", "aria-label": "Pick any accent colour" });
+          picker.addEventListener("change", function () { savePref("accentColor", picker.value).then(function () { return savePref("accent", "custom"); }); });
+          control.append(h("label", { class: "swatch-btn custom" + (pref("accent") === "custom" ? " on" : ""), style: "background:" + pref("accentColor"), title: "Any colour" }, picker));
         } else if (s.choices) {
           control = h("div", { class: "seg-control", role: "group", "aria-label": s.label });
           s.choices.forEach(function (c) {
@@ -6740,9 +6916,68 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     } else if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault();
       $("q").focus();
+    } else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Arrow keys move through the list (Shift extends the selection), like a file manager.
+      var list = visible();
+      if (!list.length) return;
+      e.preventDefault();
+      var at = cursorKey ? indexOfKey(list, cursorKey) : -1;
+      var next = Math.max(0, Math.min(list.length - 1, at < 0 ? 0 : at + (e.key === "ArrowDown" ? 1 : -1)));
+      cursorKey = list[next].key;
+      if (e.shiftKey && anchorKey) {
+        var a = indexOfKey(list, anchorKey);
+        selected = {};
+        for (var k = Math.min(a, next); k <= Math.max(a, next); k++) selected[list[k].key] = true;
+      } else selectOnly(cursorKey);
+      updateSelectionUI();
+      var el = document.querySelector("#rows .row[data-key=\"" + cssEscape(cursorKey) + "\"]");
+      if (el) el.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && Object.keys(selected).length === 1 && !(t && t.closest && t.closest("button, a, select"))) {
+      var one = selectedRows()[0];
+      if (one && one.status !== "missing") { e.preventDefault(); openDetails(one); }
+    } else if (e.key === " " && Object.keys(selected).length && connected && !(t && t.closest && t.closest("button, a, select"))) {
+      // Space: turn the selected mods off (or on, when they're all off).
+      e.preventDefault();
+      var sel = selectedRows().filter(function (r) { return r.status !== "missing"; });
+      var anyOn = sel.some(function (r) { return r.status === "enabled"; });
+      setEnabled(sel, !anyOn);
+    } else if (e.key === "Delete" && Object.keys(selected).length && connected) {
+      e.preventDefault();
+      askDelete(selectedRows());
     }
   });
+  var cursorKey = null;
+  function cssEscape(s) { return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/["\\]/g, "\\$&"); }
   $("empty-clear").addEventListener("click", clearAll);
+  $("rows").addEventListener("dblclick", function (e) {
+    if (e.target.closest("button, a, .check")) return;
+    var hit = rowFor(e.target);
+    if (hit && hit.row && hit.row.status !== "missing") openDetails(hit.row);
+  });
+  $("sort-pick").addEventListener("change", function () { state.sort = $("sort-pick").value; state.sortDir = 1; render(); });
+
+  // Filters, search and sort are remembered per mods folder in this window.
+  var restoredFor = null;
+  function viewKey() { return "mmm.view." + (server && server.modsDir || "").toLowerCase(); }
+  function saveView() {
+    if (!server || restoredFor !== server.modsDir) return;
+    try {
+      localStorage.setItem(viewKey(), JSON.stringify({ q: $("q").value, sides: state.sides, status: state.status, tags: state.tags, excluded: state.excluded,
+        match: state.match, untagged: state.untagged, sort: state.sort, sortDir: state.sortDir }));
+    } catch (e) {}
+  }
+  function restoreView() {
+    restoredFor = server.modsDir;
+    var v = null;
+    try { v = JSON.parse(localStorage.getItem(viewKey()) || "null"); } catch (e) {}
+    if (!v) return;
+    ["sides", "tags", "excluded"].forEach(function (k) { if (Array.isArray(v[k])) state[k] = v[k]; });
+    if (typeof v.status === "string") state.status = v.status;
+    if (v.match === "any" || v.match === "all") state.match = v.match;
+    state.untagged = !!v.untagged;
+    if (/^(name|side|added|size)$/.test(v.sort)) { state.sort = v.sort; state.sortDir = v.sortDir === -1 ? -1 : 1; }
+    if (typeof v.q === "string") { $("q").value = v.q; state.q = v.q.trim().toLowerCase(); }
+  }
 
   // Play launches straight away, or (Settings > Play) after the pre-launch check, which only interrupts
   // when something would stop the game from starting.

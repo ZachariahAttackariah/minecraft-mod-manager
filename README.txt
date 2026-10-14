@@ -10,12 +10,15 @@ Sections (along the top): Mods, Libraries, Packs, Server, Snapshots, Cleanup, an
 
 Settings (the gear at the right end of the section tabs)
   The defaults are the intended look, so nothing here needs changing. Saved in the app's settings file.
-  Look .............. theme (dark, light, or follow Windows), accent colour (PLAY, switches that are on, the
-                      current tab), row spacing (comfortable / compact), tag colours (vivid / soft), blocky
-                      lettering for the title, PLAY and headings.
+  Look .............. quick looks (Overworld, Nether, The End, Deep Dark, Snowy: theme, accent and
+                      background in one click), theme (dark, light, or follow Windows), accent colour (five,
+                      or any colour), background (glow, plain, or a faint block grid), corners (rounded or
+                      square), text size (90 to 120%, the app window's zoom), row spacing, tag colours
+                      (vivid / soft), tag style (tinted, solid, outline), animation (follow Windows or
+                      reduce), blocky lettering for the title, PLAY and headings.
   Folders ........... the mods folder and the server folder (open or change), the app's data folder
                       (snapshots, backups, notes, presets) and the app's own folder (settings, actions.log).
-  Mod list .......... tag order (A to Z, the default, or as in the file; client and server stay first,
+  Mod list .......... mod icons on or off, rows with lines or stripes, tag order (A to Z, the default, or as in the file; client and server stay first,
                       and a tag keeps its colour either way), show file names, row buttons always or on
                       hover, tags per row (3, 5 or all; the rest
                       fold into +N), ask before deleting.
@@ -90,7 +93,17 @@ Mods page
   Each mod shows its icon (Modrinth's, else the logo inside the jar). On a mod's row, click a tag to filter
   by it (click again to stop). C and S show where it installs; change them from the right-click menu.
   Click the Mod or Side column heading to sort by name or by side (click again to reverse).
-  The dots at the end of the filter row hold "Not in folder" and Copy filenames.
+  The dots at the end of the filter row hold "Not in folder", Copy filenames, and "Copy mod list with
+  links" (the mods shown, as a list with Modrinth / CurseForge links, ready to paste into Discord).
+  The sort menu beside the count sorts by name, side, newest first (when the jar was added or changed) or
+  largest first. Filters, the search and the sort are remembered for each mods folder.
+  Keys in the list: arrow keys move (Shift extends the selection), Enter opens a mod's details (so does a
+  double-click), Space turns the selected mods off (or on), Delete deletes them.
+  The search box also takes #tag and -#tag (with / without a tag), is:on, is:off, is:update, is:new,
+  is:pinned, is:noted, is:unneeded and side:client / server / both / none, mixed with plain words.
+  A jar added or changed in the last three days shows "new". On the Libraries page, a library no mod
+  that's on requires shows "not needed" (it may still be used optionally, so check before removing it).
+  Right-click > Show in folder opens Explorer with the jar selected.
   "Not in folder" lists mods that still have tags in mod-tags.json but whose jar is gone (deleting keeps
   tags, in case the jar comes back). "Forget these" there, or Forget in the right-click menu, removes
   those leftover entries (with Undo); it never touches a jar that's in the folder.
@@ -201,6 +214,9 @@ Notes, pins and skipped updates (right-click a mod)
   Pin this version .. Update all and the update arrow leave it alone (a pin mark shows beside its file name).
   Skip this update .. hides this one update; a newer version shows again. "Show the ... update again" undoes it.
   These are kept per mods folder in mod-extras.json in the app's data folder, and follow a mod through updates.
+
+Recent changes (Snapshots page)
+  Everything the app changed, newest first, from actions.log, with a filter box.
 
 World backups (Snapshots page)
   Every world of this game (and the server's world) with "Back up now", which zips it into the app's
