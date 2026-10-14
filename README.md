@@ -38,6 +38,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Where its updates come from (match what's installed, releases, betas, everything), pin this version, and a note.
 - **Notes, pins and skipped updates:** a note on any mod (shown on hover, found by search), pinning a mod so Update all leaves it alone, and skipping one update until a newer one comes out. Kept per mods folder in the app's data folder.
 - **Turning off or deleting a library** that other mods need says which ones first.
+- **World backups:** zip any world (game or server) with restore; optionally the latest world before updates and before removing worldgen mods.
 - **What changed:** on opening, new updates and jars added or gone since the folder was last open (optional).
 - **Drag and drop:** `.jar` files dropped on the window go into the mods folder; pack `.zip` files are sorted by what's inside them.
 - **Command palette (Ctrl+K)** to jump to any mod, tag, page or action; **?** lists every shortcut.
@@ -128,6 +129,7 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/Compare.cs` | Comparing two mods folders |
 | `source/AutoTag.cs` | Site categories for Auto-tag |
 | `source/DepTree.cs` | The dependency tree in mod details |
+| `source/Worlds.cs` | World backups |
 | `source/Loose.cs` | Matching jars by mod id and name when no file matches exactly |
 | `source/Crash.cs` | Reading the last crash report and naming the mods it points at |
 | `source/ModExtras.cs` | Notes, pinned versions, skipped updates and release channels |

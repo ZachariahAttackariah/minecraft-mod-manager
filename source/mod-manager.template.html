@@ -571,6 +571,14 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .cmp-side .chip { padding: 2px 5px; font-size: 11px; }
 .cmp-side .chip.only { box-shadow: 0 0 0 1px var(--c); }
 @media (max-width: 640px) { .cmp-row { grid-template-columns: minmax(0, 1fr); } }
+/* World backups */
+.world { padding: 10px 0; border-top: 1px solid var(--line); }
+.w-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.w-head .btn { margin-left: auto; }
+.w-name { font-weight: 700; }
+.wb-list { display: grid; gap: 4px; margin-top: 6px; padding-left: 12px; }
+.wb { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 13px; }
+.wb .row-actions { margin-left: auto; }
 /* Presets */
 .preset-new { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .preset-new input { flex: 1 1 220px; min-width: 0; padding: 8px 10px; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
@@ -1144,6 +1152,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         </form>
         <div id="snap-list"></div>
         <p class="hint" id="snap-store" style="margin-top:10px"></p>
+      </div>
+      <div class="card">
+        <h2>World backups</h2>
+        <p class="lead">A world zipped up, so you can go back after an update or a removed mod breaks it. Restoring moves the current world to the Recycle Bin first. The newest five of each world are kept.</p>
+        <div class="row-actions"><button class="btn quiet" type="button" id="worlds-folder">Open backups folder</button><span class="hint" id="worlds-auto"></span></div>
+        <div id="worlds-list"></div>
       </div>
     </div>
   </section>
@@ -2133,8 +2147,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (rows.length) showChangelogs(rows);
   }
 
-  function doUpdate(rows) {
+  function doUpdate(rows, backedUp) {
     if (!rows.length || !connected) return;
+    if (!backedUp && pref("worldBackups")) { worldBackupFirst("before updating mods").then(function () { doUpdate(rows, true); }, function () {}); return; }
     rows.forEach(function (r) { busy[r.key] = true; });
     renderList(visible());
     toast(rows.length === 1 ? "Updating " + rows[0].name + "…" : "Updating " + rows.length + " mods…");
@@ -2807,9 +2822,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
   }
 
-  function setEnabled(rows, enable, checked) {
+  function setEnabled(rows, enable, checked, backedUp) {
     rows = rows.filter(function (r) { return r.status === (enable ? "disabled" : "enabled"); });
     if (!rows.length || !connected) return;
+    if (!enable && checked && !backedUp && pref("worldBackups") && rows.some(function (r) { return r.tags.indexOf("worldgen") >= 0; })) {
+      worldBackupFirst("before turning off worldgen mods", rows).then(function () { setEnabled(rows, false, true, true); }, function () {});
+      return;
+    }
     if (!enable && !checked) {
       dependentsThen(rows, function (deps) {
         if (!deps.length) { setEnabled(rows, false, true); return; }
@@ -2936,7 +2955,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (dialogReturn && document.contains(dialogReturn)) dialogReturn.focus();
     dialogReturn = null;
   }
-  function deleteMods(rows) {
+  function deleteMods(rows, backedUp) {
+    if (!backedUp && pref("worldBackups") && rows.some(function (r) { return r.tags.indexOf("worldgen") >= 0; })) {
+      worldBackupFirst("before deleting worldgen mods", rows).then(function () { deleteMods(rows, true); }, function () {});
+      return;
+    }
     rows.forEach(function (r) { busy[r.key] = true; });
     renderList(visible());
     api("POST", "/api/delete", { files: rows.map(function (r) { return r.file; }) }).then(function (res) {
@@ -3662,7 +3685,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!hasToken) return;
     if (name === "server") { refreshServer(); startConsole(); }
     if (name === "packs") loadPacks(false);
-    if (name === "snapshots") loadSnapshots();
+    if (name === "snapshots") { loadSnapshots(); loadWorlds(); }
     if (name === "cleanup") loadCleanup();
   }
   Array.prototype.forEach.call(document.querySelectorAll("#view-nav button[data-view]"), function (b) {
@@ -3903,6 +3926,59 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     };
   }
   $("open-compare").addEventListener("click", compareDialog);
+
+  // ---------- World backups (Worlds.cs) ----------
+
+  function loadWorlds() {
+    var list = $("worlds-list");
+    $("worlds-auto").textContent = pref("worldBackups") ? "Your latest world is backed up by itself before updates and before removing worldgen mods." : "Automatic backups before risky changes can be switched on in Settings > Worlds.";
+    api("GET", "/api/worlds").then(function (res) {
+      list.replaceChildren();
+      if (!res.worlds.length) { list.append(h("p", { class: "search-empty" }, "No worlds yet in this game" + (server && server.server && server.server.configured ? " or on the server." : "."))); return; }
+      res.worlds.sort(function (a, b) { return b.lastPlayed.localeCompare(a.lastPlayed); }).forEach(function (w) {
+        var backups = h("div", { class: "wb-list" });
+        w.backups.forEach(function (b) {
+          backups.append(h("div", { class: "wb" },
+            h("span", null, dateText(b.time) + " " + clock(new Date(b.time))), h("span", { class: "hint" }, formatBytes(b.size) + (b.reason ? " · " + b.reason : "")),
+            h("span", { class: "row-actions" },
+              btn("Restore", function () {
+                confirmDialog({ title: "Restore " + w.name + " from " + dateText(b.time) + " " + clock(new Date(b.time)) + "?", items: [],
+                  body: "The world as it is now goes to the Recycle Bin, and this backup takes its place. Everything played since the backup is lost (unless you get it back from the Recycle Bin).",
+                  ok: "Restore", onOk: function () {
+                    track("Restoring " + w.name, api("POST", "/api/worlds/restore", { side: w.side, name: w.name, file: b.file }))
+                      .then(function () { toast("Restored " + w.name + ". The previous copy is in the Recycle Bin."); loadWorlds(); }, function (e) { toast(e.message); });
+                  } });
+              }, "", { disabled: w.inUse, title: w.inUse ? "Close the world first" : null }),
+              btn("Delete", function () {
+                api("POST", "/api/worlds/delete", { side: w.side, name: w.name, file: b.file }).then(function () { toast("Moved that backup to the Recycle Bin"); loadWorlds(); }, function (e) { toast(e.message); });
+              }, "danger-outline"))));
+        });
+        if (!w.backups.length) backups.append(h("p", { class: "hint", style: "margin:4px 0 0" }, "No backups yet."));
+        list.append(h("div", { class: "world" },
+          h("div", { class: "w-head" }, h("span", { class: "w-name" }, w.name), h("span", { class: "chip", style: "--c:" + (w.side === "server" ? "var(--c-server)" : "var(--c-client)") }, w.side === "server" ? "server" : "game"),
+            h("span", { class: "hint" }, "played " + ago(w.lastPlayed) + (w.inUse ? " · open right now" : "")),
+            btn("Back up now", function (e) {
+              var b = e.currentTarget; b.disabled = true;
+              track("Backing up " + w.name, api("POST", "/api/worlds/backup", { side: w.side, name: w.name, reason: "by hand" })).then(function (res) {
+                toast("Backed up " + w.name + " (" + formatBytes(res.size) + ")" + (res.skipped ? ". " + count(res.skipped, "file was", "files were") + " in use and left out." : "."));
+                loadWorlds();
+              }, function (err) { toast(err.message); b.disabled = false; });
+            }, "primary")),
+          backups));
+      });
+    }, function (e) { list.replaceChildren(h("p", { class: "search-empty" }, e.message)); });
+  }
+  $("worlds-folder").addEventListener("click", function () { api("POST", "/api/worlds/open-folder").then(null, function (e) { toast(e.message); }); });
+
+  // With Settings > Worlds on: back up the latest world before updates, and before turning off or deleting
+  // worldgen mods. A failed backup stops the change.
+  function worldBackupFirst(reason, rows) {
+    if (!pref("worldBackups")) return Promise.resolve();
+    if (rows && !rows.some(function (r) { return r.tags.indexOf("worldgen") >= 0; })) return Promise.resolve();
+    return track("Backing up your world", api("POST", "/api/worlds/backup-latest", { reason: reason })).then(function (res) {
+      if (res.world) toast("Backed up " + res.world + " first.");
+    }, function (e) { toast("Stopped: the world backup didn't work (" + e.message + "). Switch automatic backups off in Settings to go ahead without one."); throw e; });
+  }
 
   // ---------- On/off presets (Presets.cs) ----------
 
@@ -4248,7 +4324,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // the first state arrives.
 
   var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "5",
-    updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false,
+    worldBackups: false, updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false,
     serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false };
   var localPrefs = {};
   try { localPrefs = JSON.parse(localStorage.getItem("mmm.prefs") || "{}") || {}; } catch (e) {}
@@ -4312,6 +4388,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     { title: "Sources", items: [
       { key: "searchSources", label: "Search", desc: "Where Add mods looks. Mods on both sites show once, and download from Modrinth.", choices: [["both", "Both"], ["modrinth", "Modrinth"], ["curseforge", "CurseForge"]] },
       { key: "curseforgeKey", label: "CurseForge API key", desc: "", custom: curseforgeKeyControl }
+    ] },
+    { title: "Worlds", items: [
+      { key: "worldBackups", label: "Back up before risky changes", desc: "Zips your most recently played world before updates and before turning off or deleting worldgen mods. Backups are on the Snapshots page." }
     ] },
     { title: "Play", items: [
       { key: "checkBeforePlay", label: "Check mods before Play", desc: "Runs the pre-launch check first, and only stops you when something would keep the game from starting." }

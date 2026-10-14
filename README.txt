@@ -170,6 +170,13 @@ Notes, pins and skipped updates (right-click a mod)
   Skip this update .. hides this one update; a newer version shows again. "Show the ... update again" undoes it.
   These are kept per mods folder in mod-extras.json in the app's data folder, and follow a mod through updates.
 
+World backups (Snapshots page)
+  Every world of this game (and the server's world) with "Back up now", which zips it into the app's
+  data folder (world-backups; the newest five per world are kept, older ones go to the Recycle Bin).
+  Restore moves the current world to the Recycle Bin and puts the backup in its place; it waits until
+  the world isn't open. Settings > Worlds can back up the latest world by itself before updates and
+  before turning off or deleting worldgen mods; if that backup fails, the change stops.
+
 What changed
   On opening, a note says what's new since the folder was last open here: new updates, and jars added
   or gone. Show lists them. Switch it off in Settings > Mod list.
@@ -325,6 +332,7 @@ Files
   source\Compare.cs                       Comparing two folders.
   source\AutoTag.cs                       Categories for Auto-tag.
   source\DepTree.cs                       The dependency tree in mod details.
+  source\Worlds.cs                        World backups.
   source\Loose.cs                         Matching jars by mod id and name when no file matches exactly.
   source\Sides.cs                         Detecting client / server / both.
   source\Duplicates.cs                    Finding duplicate jars.

@@ -393,6 +393,9 @@ namespace MinecraftModManager
                         case "/api/modrinth/versions":
                             result = ModrinthVersions(req.QueryString["file"]);
                             break;
+                        case "/api/worlds":
+                            result = ListWorlds();
+                            break;
                         case "/api/mod/deptree":
                             result = DependencyTree(req.QueryString["file"]);
                             break;
@@ -545,6 +548,29 @@ namespace MinecraftModManager
                     case "/api/prefs":
                         SendJson(ctx, 200, SetPrefs(body));
                         return;
+                    case "/api/worlds/backup":
+                        SendJson(ctx, 200, BackupWorld(Str(body, "side"), Str(body, "name"), Str(body, "reason")));
+                        return;
+                    case "/api/worlds/backup-latest":
+                    {
+                        string world = BackupLatestWorld(Str(body, "reason"));
+                        SendJson(ctx, 200, Obj("ok", true, "world", world));
+                        return;
+                    }
+                    case "/api/worlds/restore":
+                        SendJson(ctx, 200, RestoreWorld(Str(body, "side"), Str(body, "name"), Str(body, "file")));
+                        return;
+                    case "/api/worlds/delete":
+                        SendJson(ctx, 200, DeleteWorldBackup(Str(body, "side"), Str(body, "name"), Str(body, "file")));
+                        return;
+                    case "/api/worlds/open-folder":
+                    {
+                        string folder = Path.Combine(dataDir, "world-backups");
+                        Directory.CreateDirectory(folder);
+                        Process.Start("explorer.exe", "\"" + folder + "\"");
+                        SendJson(ctx, 200, Obj("ok", true));
+                        return;
+                    }
                     case "/api/presets/save":
                         SendJson(ctx, 200, SavePreset(Str(body, "name")));
                         return;
