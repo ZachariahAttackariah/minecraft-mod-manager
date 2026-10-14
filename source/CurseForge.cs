@@ -400,18 +400,26 @@ namespace MinecraftModManager
                 "&index=" + Math.Max(0, offset) + "&pageSize=20" + (categoryId > 0 ? "&categoryId=" + categoryId : "") + (string.IsNullOrWhiteSpace(query) ? "" : "&searchFilter=" + Uri.EscapeDataString(query.Trim())), null));
             if (result == null) throw new UserError("CurseForge's search didn't answer. Try again.");
             HashSet<long> installed;
+            HashSet<string> installedOnModrinth;
             lock (ModrinthLock)
-                installed = new HashSet<long>(CfIdentify(new DirectoryInfo(modsDir).GetFiles().Where(f => JarName.IsMatch(f.Name))).Values.Select(m => CfId(Get(m, "id"))));
-            var hits = new List<object>();
-            foreach (object item in A(Get(result, "data")))
             {
-                Dictionary<string, object> mod = D(item);
-                if (mod == null) continue;
+                installed = new HashSet<long>(CfIdentify(new DirectoryInfo(modsDir).GetFiles().Where(f => JarName.IsMatch(f.Name))).Values.Select(m => CfId(Get(m, "id"))));
+                installedOnModrinth = InstalledProjects(modsDir);
+            }
+            List<Dictionary<string, object>> mods = A(Get(result, "data")).Select(D).Where(m => m != null).ToList();
+            // Each result's Modrinth twin, when it has one (CrossSite.cs): the page shows the pair once.
+            Dictionary<long, Dictionary<string, object>> twins = ModrinthTwins(mods);
+            var hits = new List<object>();
+            foreach (Dictionary<string, object> mod in mods)
+            {
+                Dictionary<string, object> twin;
+                twins.TryGetValue(CfId(Get(mod, "id")), out twin);
                 lock (CfModById) CfModById[CfId(Get(mod, "id"))] = mod;
                 Dictionary<string, object> author = D(A(Get(mod, "authors")).FirstOrDefault());
                 hits.Add(Obj("source", "curseforge", "projectId", "cf:" + CfId(Get(mod, "id")), "slug", S(mod, "slug"), "title", S(mod, "name"), "author", S(author, "name"),
                     "description", S(mod, "summary"), "icon", CfIcon(mod), "downloads", Get(mod, "downloadCount"), "updated", S(mod, "dateModified"),
-                    "url", CfUrl(mod), "downloadsAllowed", CfDownloadsAllowed(mod), "installed", installed.Contains(CfId(Get(mod, "id")))));
+                    "url", CfUrl(mod), "downloadsAllowed", CfDownloadsAllowed(mod), "modrinth", twin,
+                    "installed", installed.Contains(CfId(Get(mod, "id"))) || (twin != null && installedOnModrinth.Contains(S(twin, "projectId")))));
             }
             Dictionary<string, object> page = D(Get(result, "pagination"));
             return Obj("ok", true, "target", TargetObj(), "total", Math.Min(CfId(Get(page, "totalCount")), 10000), "offset", offset, "hits", hits);

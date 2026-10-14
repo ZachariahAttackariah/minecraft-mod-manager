@@ -2315,16 +2315,15 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     $(search.kind === "mods" ? "open-search" : "packs-search").focus();
   }
 
-  // The same mod on both sites: the same slug or name, and the same author (or both slug and name agree).
+  // The same mod on both sites. The app works it out for each CurseForge result (CrossSite.cs: the same
+  // file on both, or the same slug with the same name or source repository) and sends its Modrinth twin
+  // along, so a pair merges even when the Modrinth result hasn't loaded yet. Without a twin, only the same
+  // slug and the same name count.
   function normName(s) {
-    return String(s || "").toLowerCase().replace(/[\(\[](neo)?forge[\)\]]|[\(\[](fabric|quilt)[\)\]]/g, "").replace(/[^a-z0-9]/g, "");
+    return String(s || "").toLowerCase().replace(/&/g, "and").replace(/[\(\[](neo)?forge[\)\]]|[\(\[](fabric|quilt)[\)\]]/g, "").replace(/[^a-z0-9]/g, "");
   }
-  function sameMod(mr, cf) {
-    var slug = !!(mr.slug && cf.slug && mr.slug.toLowerCase() === cf.slug.toLowerCase());
-    var title = !!normName(mr.title) && normName(mr.title) === normName(cf.title);
-    if (!slug && !title) return false;
-    var a = normName(mr.author), b = normName(cf.author);
-    return (a && b && (a === b || a.indexOf(b) >= 0 || b.indexOf(a) >= 0)) || (slug && title);
+  function strictSame(mr, cf) {
+    return !!(mr.slug && cf.slug && mr.slug.toLowerCase() === cf.slug.toLowerCase()) && !!normName(mr.title) && normName(mr.title) === normName(cf.title);
   }
   function mergedHit(mr, cf) {
     var m = Object.assign({}, mr);
@@ -2332,27 +2331,42 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     m.downloads = (Number(mr.downloads) || 0) + (Number(cf.downloads) || 0);
     if (cf.updated && (!mr.updated || cf.updated > mr.updated)) m.updated = cf.updated;
     m.installed = mr.installed || cf.installed;
+    m.matchedBy = cf.modrinth ? cf.modrinth.matchedBy : "slug and name";
     return m;
+  }
+  function addHit(hit) {
+    var isCf = hit.source === "curseforge", list = search.hits, j, x;
+    if (isCf && hit.modrinth) {
+      var twin = hit.modrinth;
+      for (j = 0; j < list.length; j++) {
+        x = list[j];
+        if (x.source !== "curseforge" && x.projectId === twin.projectId) { if (!x.also) list[j] = mergedHit(x, hit); return; }
+      }
+      // Its Modrinth result isn't here yet: the twin stands in for it (and that result is skipped when it comes).
+      list.push(mergedHit({ projectId: twin.projectId, slug: twin.slug, title: twin.title, author: hit.author, description: twin.description || hit.description,
+        icon: twin.icon || hit.icon, downloads: twin.downloads, clientSide: twin.clientSide, serverSide: twin.serverSide, updated: twin.updated,
+        installed: hit.installed, categories: [] }, hit));
+      return;
+    }
+    for (j = 0; j < list.length; j++) {
+      x = list[j];
+      if (isCf) {
+        if (x.source !== "curseforge" && !x.also && strictSame(x, hit)) { list[j] = mergedHit(x, hit); return; }
+      } else {
+        if (x.source !== "curseforge" && x.projectId === hit.projectId) return; // already shown through its CurseForge twin
+        if (x.source === "curseforge" && !x.modrinth && strictSame(hit, x)) { list[j] = mergedHit(hit, x); return; }
+      }
+    }
+    list.push(hit);
   }
   // Results alternate between the sites, so each one's best matches sit near the top.
   function addHits(mrHits, cfHits) {
     var n = Math.max(mrHits.length, cfHits.length);
     for (var i = 0; i < n; i++) {
-      [mrHits[i], cfHits[i]].forEach(function (hit) {
-        if (!hit) return;
-        var isCf = hit.source === "curseforge";
-        for (var j = 0; j < search.hits.length; j++) {
-          var x = search.hits[j];
-          if (x.also) continue;
-          var xCf = x.source === "curseforge";
-          if (isCf === xCf) continue;
-          if (isCf ? sameMod(x, hit) : sameMod(hit, x)) { search.hits[j] = isCf ? mergedHit(x, hit) : mergedHit(hit, x); return; }
-        }
-        search.hits.push(hit);
-      });
+      if (mrHits[i]) addHit(mrHits[i]);
+      if (cfHits[i]) addHit(cfHits[i]);
     }
   }
-
   function searchDone() {
     var src = searchSource();
     return search.kind !== "mods" || src === "modrinth" ? search.mr.done : src === "curseforge" ? search.cf.done : search.mr.done && search.cf.done;
@@ -2455,7 +2469,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var pageOnly = cf && hit.downloadsAllowed === false && !hit.installed;
     var sites = isMod && server && server.curseforge
       ? h("span", { class: "src-marks" },
-          cf ? null : h("span", { class: "src mr", title: hit.also ? "On Modrinth and CurseForge. Installs from Modrinth." : "From Modrinth" }, "Modrinth"),
+          cf ? null : h("span", { class: "src mr", title: hit.also ? "On Modrinth and CurseForge (matched by " + (hit.matchedBy === "file" ? "the same file on both" : hit.matchedBy) + "). Installs from Modrinth." : "From Modrinth" }, "Modrinth"),
           cf || hit.also ? h("a", { class: "src cf", href: (hit.also || hit).url, target: "_blank", rel: "noopener", title: "Open its CurseForge page" }, "CurseForge") : null)
       : null;
     return h("article", { class: "result" },

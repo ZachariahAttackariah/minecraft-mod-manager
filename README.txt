@@ -63,8 +63,10 @@ Mods page
   search look for, what's known about the jars, a check-now button, and "N updates", which shows what
   changed and updates them. Updates are checked by themselves every 30 minutes.
   Add mods searches Modrinth and CurseForge in one list (with a CurseForge key; Both / Modrinth /
-  CurseForge at its top). A mod on both sites shows once, marked with both, and installs from Modrinth;
-  if Modrinth has no file for your version and loader, CurseForge's is used instead.
+  CurseForge at its top). A mod on both sites shows once, marked with both, and installs from Modrinth.
+  Pairs are found by the same file on both sites (CurseForge's file hashes looked up on Modrinth), or the
+  same slug with the same name or source repository; hover the Modrinth mark to see which.
+  If Modrinth has no file for your version and loader, CurseForge's is used instead.
   Filters beside the search box: category (both sites), and side (Client only / Works on a server;
   Modrinth only, since CurseForge doesn't say). "More like this" on a result searches its category.
   The list is in the middle, with "Where each jar installs" (client / server) on the left and the tags
