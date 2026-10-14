@@ -254,6 +254,15 @@ a.src:hover { border-color: var(--c); }
 .side-col .tag-grid { grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .side-col .tag-card { padding: 8px 10px; }
 .side-col .tag-card .count { font-size: 15px; }
+.tag-filter { width: 100%; margin-bottom: 8px; padding: 6px 9px; font: 400 13px/1.2 var(--font-body); color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; }
+.tag-group { margin: 6px 0 0; font: 700 10.5px/1.2 var(--font-body); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.tag-group:first-child { margin-top: 0; }
+.fold { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: -4px; padding: 0; color: var(--muted); background: none; border: 0; border-radius: 3px; cursor: pointer; transition: transform 0.15s; }
+.fold:hover { color: var(--ink); background: var(--btn); }
+.panel.folded .fold { transform: rotate(-90deg); }
+.panel.folded > :not(.section-label) { display: none !important; }
+.panel.folded .section-label { margin-bottom: 0; }
+.side-col .section-label > span:first-of-type { flex: 1; }
 .mods-layout .toolbar { margin-inline: 0; padding-inline: 0; }
 @media (max-width: 1180px) {
   /* The list spans both rows; without "auto 1fr" its height was shared between them and the tags panel
@@ -1023,6 +1032,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   <aside class="side-col side-right" aria-label="Tags">
     <div class="panel">
       <h2 class="section-label"><span>Tags</span><span class="sl-actions"><button class="btn" type="button" id="auto-tag" title="Suggest your tags for mods from their Modrinth and CurseForge categories. You review them first.">Auto-tag</button><button class="btn" type="button" id="manage-tags">Manage</button></span></h2>
+      <input class="tag-filter" id="tag-filter" type="search" placeholder="Filter tags" aria-label="Filter tags" autocomplete="off" spellcheck="false" hidden>
       <div class="tag-grid" id="tag-grid"></div>
       <p class="hint" style="margin:10px 0 0">Click a tag to show only it, click again to hide it. Right-click hides it straight away.</p>
     </div>
@@ -1340,7 +1350,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     info: [["circle", { cx: "8", cy: "8", r: "6" }], ["path", { d: "M8 7.3v3.9" }], ["path", { d: "M8 4.9v.1" }]],
     pin: [["path", { d: "M5.5 2.5h5" }], ["path", { d: "M6.6 2.5l-.5 4.3L3.8 9.2h8.4L9.9 6.8l-.5-4.3" }], ["path", { d: "M8 9.2v4.6" }]],
     note: [["path", { d: "M3.5 2.5h6l3 3v8h-9z" }], ["path", { d: "M9.5 2.5v3h3" }], ["path", { d: "M5.5 8.5h5M5.5 11h3.5" }]],
-    skip: [["path", { d: "M3 4l5 4-5 4z" }], ["path", { d: "M8 4l5 4-5 4z" }]]
+    skip: [["path", { d: "M3 4l5 4-5 4z" }], ["path", { d: "M8 4l5 4-5 4z" }]],
+    chev: [["path", { d: "M4 6l4 4 4-4" }]]
   };
 
   function $(id) { return document.getElementById(id); }
@@ -1776,7 +1787,20 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
     var grid = $("tag-grid");
     grid.replaceChildren();
-    model.topics.forEach(function (t) {
+    // Past 20 tags a filter box shows; tags that work as lists (to-do, testing, broken...) get their own group.
+    var many = model.topics.length > 20;
+    $("tag-filter").hidden = !many;
+    var f = many ? $("tag-filter").value.trim().toLowerCase() : "";
+    var shownTags = model.topics.filter(function (t) { return !f || t.indexOf(f) >= 0 || state.tags.indexOf(t) >= 0 || state.excluded.indexOf(t) >= 0; });
+    var lists = shownTags.filter(function (t) { return LIST_TAGS.test(t); });
+    var topics = shownTags.filter(function (t) { return !LIST_TAGS.test(t); });
+    var groups = lists.length && topics.length ? [["Topics", topics], ["Lists", lists]] : [["", shownTags]];
+    if (!shownTags.length) grid.append(h("p", { class: "hint", style: "margin:0" }, "No tag matches “" + f + "”."));
+    groups.forEach(function (g) {
+      if (g[0]) grid.append(h("div", { class: "tag-group" }, g[0]));
+      g[1].forEach(function (t) { tagCard(t); });
+    });
+    function tagCard(t) {
       // One line each in the side column; what a tag means shows on hover.
       // Click: show only these, click again: hide these, again: off. Right-click or Alt+click hides straight away.
       var inc = state.tags.indexOf(t) >= 0, exc = state.excluded.indexOf(t) >= 0;
@@ -1785,12 +1809,33 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           onclick: function (e) { if (e.altKey) toggleExclude(t); else cycleTag(t); },
           oncontextmenu: function (e) { e.preventDefault(); toggleExclude(t); } },
         h("span", { class: "row1" }, h("span", { class: "name" }, exc ? h("span", { class: "not-mark" }, "not") : null, t), h("span", { class: "count" }, String(area.counts[t])))));
-    });
+    }
     var untagged = area.present.filter(function (r) { return !r.topics.length; }).length;
     grid.append(h("button", { type: "button", class: "tag-card", style: "--c:var(--muted)", "aria-pressed": String(state.untagged), onclick: toggleUntagged,
         title: "Jars with no tags besides client / server." },
       h("span", { class: "row1" }, h("span", { class: "name" }, "untagged"), h("span", { class: "count" }, String(untagged)))));
   }
+
+  var LIST_TAGS = /^(to-?do|todo-.*|test(ing)?|to-test|broken|check|to-check|wip|maybe|new|remove|to-remove|keep|fix|to-fix|favou?rites?|disabled|later|review|needs-.*)$/;
+  $("tag-filter").addEventListener("input", function () { renderSummary(); });
+  $("tag-filter").addEventListener("keydown", function (e) { if (e.key === "Escape" && $("tag-filter").value) { e.stopPropagation(); $("tag-filter").value = ""; renderSummary(); } });
+
+  // Side panels fold to their heading; remembered in this window.
+  Array.prototype.forEach.call(document.querySelectorAll(".side-col .panel"), function (panel, i) {
+    var head = panel.querySelector(".section-label");
+    if (!head) return;
+    var id = "mmm.fold." + (panel.parentNode.getAttribute("aria-label") || i);
+    var fold = h("button", { type: "button", class: "fold", "aria-expanded": "true", "aria-label": "Fold " + (panel.parentNode.getAttribute("aria-label") || "panel") }, icon("chev"));
+    var set = function (folded) {
+      panel.classList.toggle("folded", folded);
+      fold.setAttribute("aria-expanded", String(!folded));
+      try { localStorage.setItem(id, folded ? "1" : "0"); } catch (e) {}
+      if (typeof queueFit === "function") queueFit();
+    };
+    fold.addEventListener("click", function () { set(!panel.classList.contains("folded")); });
+    head.insertBefore(fold, head.firstChild);
+    try { if (localStorage.getItem(id) === "1") set(true); } catch (e) {}
+  });
 
   function sideTitle(key) {
     if (key === "client") return model.defs.client || "Client only";

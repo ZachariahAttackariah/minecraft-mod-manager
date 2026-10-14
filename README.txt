@@ -66,7 +66,9 @@ Mods page
   Filters beside the search box: category (both sites), and side (Client only / Works on a server;
   Modrinth only, since CurseForge doesn't say). "More like this" on a result searches its category.
   The list is in the middle, with "Where each jar installs" (client / server) on the left and the tags
-  on the right; click either to filter the list. Hover over a tag to see what it means.
+  on the right; click either to filter the list. Hover over a tag to see what it means. The arrow by
+  each panel's title folds it away. With more than 20 tags, a filter box sits above them, and tags used
+  as lists (to-do, testing, broken, check...) get their own group.
   Tag filters: click a tag card to show only mods with it, click again to hide mods with it instead
   (the card turns dashed and says NOT), and a third time to stop. Right-click a tag card, or Alt+click a
   tag on a row, to hide it straight away. Hidden tags beat shown ones.
