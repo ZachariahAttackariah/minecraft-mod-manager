@@ -394,6 +394,14 @@ namespace MinecraftModManager
                         case "/api/modrinth/versions":
                             result = ModrinthVersions(req.QueryString["file"]);
                             break;
+                        case "/api/sides/clues":
+                            // Diagnostics: what each jar's contents say about its side (SideClues.cs).
+                            result = Obj("ok", true, "jars", new DirectoryInfo(modsDir).GetFiles().Where(f => JarName.IsMatch(f.Name)).Select(f =>
+                            {
+                                SideClues c = GetSideClues(f);
+                                return (object)Obj("file", f.Name, "dist", c.Dist, "modClasses", c.ModClasses, "mixins", c.MixinSide, "blocksOrItems", c.AddsBlocksOrItems, "content", c.ContentKind, "serverData", c.HasServerData, "registers", c.Registers, "networking", c.Networking);
+                            }).ToList());
+                            break;
                         case "/api/worlds":
                             result = ListWorlds();
                             break;

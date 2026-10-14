@@ -72,8 +72,11 @@ Mods page
   Tag filters: click a tag card to show only mods with it, click again to hide mods with it instead
   (the card turns dashed and says NOT), and a third time to stop. Right-click a tag card, or Alt+click a
   tag on a row, to hide it straight away. Hidden tags beat shown ones.
-  Detect (by "Where each jar installs") works out client only, server only or both for every jar: first
-  from the jar itself (some say they're client or server only), then from Modrinth's client / server info.
+  Detect (by "Where each jar installs") works out client only, server only or both for every jar, trusting
+  in this order: the jar's metadata (clientSideOnly, a Fabric environment); its code (an entry point that
+  only loads on the client or the server); Modrinth's client / server info; then what's inside it (block
+  or item models and its own network messages mean both; CurseForge's environment tags); and last, best
+  guesses (registered content: probably both; only client-side patches: probably client only).
   It lists what it found before anything changes: new side tags are ticked, best guesses and changes to
   sides you already set are not. Apply has Undo in the message.
   Each mod shows its icon (Modrinth's, else the logo inside the jar). On a mod's row, click a tag to filter

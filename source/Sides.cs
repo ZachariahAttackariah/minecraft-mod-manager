@@ -1,8 +1,14 @@
 // Detecting where each jar installs (client only, server only or both) for the Detect button by the
-// side chart. A jar that says it belongs on one side only (clientSideOnly, or a Fabric environment) is
-// taken at its word. Otherwise Modrinth's client / server flags decide. Without those it's a guess:
-// a jar whose displayTest says the server needn't have it is probably client only (only probably:
-// Axes Are Weapons, a server-side mod, says the same), anything else is probably needed on both.
+// side chart. In order of trust:
+//   1. The jar's metadata says one side only (clientSideOnly, a Fabric environment).
+//   2. Its code only loads on one side (@Mod dist = CLIENT / DEDICATED_SERVER, SideClues.cs).
+//   3. Modrinth's client / server flags.
+//   4. What's inside it: block states or item models (251 of 255 such jars Modrinth knows are needed on
+//      both) or its own network packets (189 of 198) mean both; then CurseForge's environment tags.
+//   5. Guesses: registered content (DeferredRegister, entities, effects...: 239 of 260) probably both;
+//      client-only mixins with none of the above, or a displayTest saying the server needn't have it,
+//      probably client only (69 of 87); anything else probably both.
+// Checked on a 941-jar folder (2026-10-13).
 // Last, every library is added to the sides of the mods that require it (FollowDependencies).
 // Nothing is changed here; the page shows the results and applies the ones the user keeps as tags.
 
@@ -49,9 +55,17 @@ namespace MinecraftModManager
                 projects.TryGetValue(jar.Name, out project);
                 string side = null, source = null, reason = null;
                 bool sure = true, serverOptional = false;
+                SideClues jarClues = meta.Broken ? null : GetSideClues(jar);
                 if (meta.Side != null)
                 {
                     side = meta.Side; source = "mod file"; reason = "The jar says it's " + side + " only: " + meta.SideReason + ".";
+                }
+                else if (jarClues != null && jarClues.Dist != null)
+                {
+                    // The code itself only loads on one side, whatever a site's flags say.
+                    side = jarClues.Dist; source = "mod file";
+                    reason = "Its code only loads on the " + (side == "client" ? "client" : "server") + " (@Mod dist = " + (side == "client" ? "CLIENT" : "DEDICATED_SERVER") + ")" +
+                        (project != null && ModrinthSide(S(project, "client_side"), S(project, "server_side"), serverExtras) != side ? ", whatever Modrinth's flags say." : ".");
                 }
                 else if (project != null && (side = ModrinthSide(S(project, "client_side"), S(project, "server_side"), serverExtras)) != null)
                 {
@@ -69,15 +83,52 @@ namespace MinecraftModManager
                         reason += " It's a library, so it goes on both to be safe.";
                     }
                 }
-                else if (meta.NoServerNeeded)
-                {
-                    side = "client"; source = "mod file"; sure = false;
-                    reason = "Not on Modrinth" + (project != null ? " with side info" : "") + ". The jar says the server doesn't need it, which usually means client only, but some server-side mods say the same.";
-                }
                 else if (!meta.Broken && (meta.Kind != "none" || meta.Nested.Count > 0))
                 {
-                    side = "both"; source = "mod file"; sure = false;
-                    reason = "Not on Modrinth" + (project != null ? " with side info" : "") + ", and the jar doesn't limit itself to one side, so it's probably needed on both.";
+                    // Neither the metadata nor Modrinth says: look inside the jar (SideClues.cs), then CurseForge.
+                    SideClues clues = jarClues ?? new SideClues();
+                    string cfEnv = CfEnvironment(jar);
+                    string notOn = "Not on Modrinth" + (project != null ? " with side info" : "") + ". ";
+                    source = "mod file";
+                    // Each step below was measured against the jars Modrinth knows (see the top of this file).
+                    bool content = clues.AddsBlocksOrItems || clues.Networking || (clues.ContentKind != null && clues.ContentKind != "item") || clues.Registers;
+                    if (clues.AddsBlocksOrItems)
+                    {
+                        side = "both";
+                        reason = notOn + "It adds blocks or items, which the server and the client both have to know.";
+                    }
+                    else if (clues.Networking)
+                    {
+                        side = "both";
+                        reason = notOn + "It sends its own network messages between the server and the client, so both need it.";
+                    }
+                    else if (cfEnv != null)
+                    {
+                        side = cfEnv; source = "CurseForge";
+                        reason = notOn + "CurseForge lists it for the " + cfEnv + " only.";
+                    }
+                    else if (content)
+                    {
+                        side = "both"; sure = false;
+                        reason = notOn + "It registers its own " + (clues.ContentKind == "entity" ? "creatures or entities" : clues.ContentKind != null ? clues.ContentKind + "s" : "game content") +
+                            ", which usually has to be on the server and the client.";
+                    }
+                    else if ((meta.NoServerNeeded || clues.MixinSide == "client") && !clues.HasServerData)
+                    {
+                        side = "client"; sure = false;
+                        reason = notOn + (meta.NoServerNeeded ? "The jar says the server doesn't need it" : "") + (meta.NoServerNeeded && clues.MixinSide == "client" ? ", and " : "") +
+                            (clues.MixinSide == "client" ? "all its patches (mixins) are client-side" : "") + ", and it adds nothing the server has to know: probably client only.";
+                    }
+                    else if (clues.MixinSide == "server")
+                    {
+                        side = "server"; sure = false;
+                        reason = notOn + "All its patches (mixins) are server-side and it adds nothing the client has to know: probably server only.";
+                    }
+                    else
+                    {
+                        side = "both"; sure = false;
+                        reason = notOn + (clues.HasServerData ? "It has recipes, loot or worldgen data, which the server needs" : "The jar doesn't limit itself to one side") + ", so it's probably needed on both.";
+                    }
                 }
                 else
                 {

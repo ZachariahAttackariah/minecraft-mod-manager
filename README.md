@@ -11,7 +11,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Delete mods to the Recycle Bin.
   - Select several mods at once, file-manager style.
   - Tag mods (client / server, plus your own tags), stored in `mod-tags.json` next to the jars. Click a tag to show only mods with it, again to hide mods with it (right-click hides straight away); sort the list by name or by side.
-  - Detect sides: works out client only, server only or both for every jar, from the jar's own metadata (a client-only `displayTest`, `clientSideOnly`, or a Fabric `environment`) and then Modrinth's client / server flags. Results are listed for review before any tag changes, with Undo after.
+  - Detect sides: works out client only, server only or both for every jar: the jar's metadata (`clientSideOnly`, a Fabric `environment`), its code (`@Mod(dist = ...)`, read from the class files), Modrinth's client / server flags, then what the jar contains (block / item models and its own network packets mean both; CurseForge environment tags; client-only mixins mean probably client). Results are listed for review before any tag changes, with Undo after.
   - Each mod shows its icon: Modrinth's when Modrinth knows the jar, else the logo inside the jar. Turned-off mods show OFF on the icon; updates are an arrow among the row's actions.
   - Another tool's `.mod-tags.json` (keyed by mod id) in the same folder is shown live, matched to jars by mod id. It's read-only: nothing is written in that folder, since that tool merges any `mod-tags.json` it finds.
 - **CurseForge** (with an API key in the local settings file, never in this repository)
@@ -138,6 +138,7 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/Crash.cs` | Reading the last crash report and naming the mods it points at |
 | `source/ModExtras.cs` | Notes, pinned versions, skipped updates and release channels |
 | `source/Sides.cs` | Detecting which side (client, server, both) each jar belongs on |
+| `source/SideClues.cs` | What a jar's classes, mixins and assets say about its side |
 | `source/Duplicates.cs` | Finding duplicate jars and picking the copy to keep |
 | `source/LinkedTags.cs` | Showing another tool's `.mod-tags.json`, read-only |
 | `source/Snapshots.cs` | Snapshots and finding a problem mod |
