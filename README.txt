@@ -166,6 +166,13 @@ Drag and drop
   Drop .jar files anywhere on the window to add them to the mods folder, and resource, shader or data pack
   .zip files to send them where they belong (sorted by what's inside, like a download in a tab).
 
+When the game crashes
+  A red bar under the tabs says the game crashed (for crash reports from the last three days). "What went
+  wrong?" reads the newest crash report, or latest.log when the game died without writing one, and lists
+  the mods it points at, most likely first, with why: NeoForge's own "mod loading issue" lines, its
+  suspected mods, the stack trace, and mixins that failed. For each: Turn it off (with Undo), Details, or
+  "Find ..." when it's missing a mod it needs. Also in the dots menu and Ctrl+K ("Read the last crash").
+
 What the app is doing
   While something runs (checking mods, looking for updates, updating, installing, detecting sides, adding
   files), a thin bar moves under the section tabs and its name shows by the server chip. Click it for
@@ -284,6 +291,7 @@ Files
   source\ModExtras.cs                     Notes, pinned versions, skipped updates and release channels.
   source\Prefs.cs                         The Settings page.
   source\Drop.cs                          Files dropped on the window.
+  source\Crash.cs                         Reading the last crash report.
   source\Sides.cs                         Detecting client / server / both.
   source\Duplicates.cs                    Finding duplicate jars.
   source\LinkedTags.cs                    Showing another tool's .mod-tags.json, read-only.

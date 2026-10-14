@@ -531,6 +531,20 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .view-nav .nav-gear { display: inline-grid; place-items: center; width: 34px; height: 32px; padding: 0; color: var(--muted); background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
 .view-nav .nav-gear:hover, .view-nav .nav-gear[aria-current="page"] { color: var(--ink); background: var(--btn); }
 .view-nav .nav-gear[aria-current="page"]::after { display: none; }
+/* The last crash */
+.crash-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 12px; padding: 10px 14px; background: color-mix(in srgb, var(--danger) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line)); border-left: 4px solid var(--danger); border-radius: 4px; }
+.cb-icon { display: inline-grid; place-items: center; width: 22px; height: 22px; font: 800 14px/1 var(--font-body); color: #fff; background: var(--danger); border-radius: 3px; }
+.cb-text { flex: 1 1 240px; }
+.crash-what { display: grid; gap: 6px; padding: 10px 12px; background: var(--sunken); border-radius: 4px; }
+.crash-what code { font: 400 12.5px/1.4 var(--font-mono); color: var(--danger-fg); overflow-wrap: anywhere; }
+.suspect { display: grid; gap: 6px; margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 4px; }
+.suspect.top { border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
+.s-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.s-name { font-weight: 700; }
+.s-file { font: 400 12px/1.3 var(--font-mono); color: var(--muted); }
+.s-meter { margin-left: auto; width: 90px; height: 6px; background: var(--sunken); border-radius: 3px; overflow: hidden; align-self: center; }
+.s-meter span { display: block; height: 100%; background: var(--danger); }
+.s-why { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); }
 /* Command palette */
 .pal-scrim { position: fixed; inset: 0; z-index: 95; display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; background: var(--scrim); }
 .pal { width: min(620px, 100%); display: grid; grid-template-rows: auto minmax(0, 1fr); max-height: 70vh; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow-lg), inset 0 1px 0 var(--bevel-hi); overflow: hidden; }
@@ -895,6 +909,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   </header>
 
   <div class="notice" id="notice" role="alert" hidden></div>
+  <div class="crash-banner" id="crash-banner" role="region" aria-label="Last crash" hidden></div>
 
   <section class="view" id="view-mods" aria-label="Mods">
     <div class="mods-bar">
@@ -974,6 +989,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <div class="pop-menu right" id="tb-menu" role="menu" hidden>
           <button type="button" role="menuitem" id="show-missing">Not in folder<span class="k" id="missing-k"></span></button>
           <button type="button" role="menuitem" id="copy">Copy filenames</button>
+          <button type="button" role="menuitem" id="read-crash">Read the last crash<span class="k">which mods it points at</span></button>
         </div>
       </div>
     </div>
@@ -2001,6 +2017,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         // The pre-launch check only runs when asked; a result from before this change would be stale.
         if (check.data) { check.data = null; renderCheckBar(); }
       }
+      renderCrashBanner();
       if (!s.folderExists) showNotice(["The mods folder ", h("code", null, s.modsDir), " doesn't exist any more. Use Change folder to pick another one."]);
       else if (model.tagsProblem) showNotice(model.tagsProblem, "info");
       else hideNotice();
@@ -3636,6 +3653,60 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   document.addEventListener("mousedown", function (e) { if (!$("jobs-pop").hidden && !e.target.closest("#jobs-wrap")) { $("jobs-pop").hidden = true; $("jobs-btn").setAttribute("aria-expanded", "false"); clearInterval(jobTick); } });
   $("server-chip").addEventListener("click", function () { setView("server"); });
 
+  // ---------- The last crash: a banner when there's a new crash report, and what it points at ----------
+
+  function crashSeen() { try { return localStorage.getItem("mmm.crashSeen") || ""; } catch (e) { return ""; } }
+  function renderCrashBanner() {
+    var c = server && server.lastCrash, el = $("crash-banner");
+    // Only crashes from the last three days that haven't been looked at or dismissed.
+    var fresh = c && c.time > crashSeen() && Date.now() - new Date(c.time).getTime() < 3 * 86400000;
+    el.hidden = !fresh;
+    if (!fresh) return;
+    el.replaceChildren(h("span", { class: "cb-icon", "aria-hidden": "true" }, "!"),
+      h("span", { class: "cb-text" }, h("strong", null, "The game crashed"), " " + ago(c.time) + " (" + clock(new Date(c.time)) + ")."),
+      btn("What went wrong?", crashDialog, "primary"),
+      btn("Dismiss", function () { markCrashSeen(); renderCrashBanner(); }, "quiet"));
+  }
+  function markCrashSeen() {
+    var c = server && server.lastCrash;
+    if (c) try { localStorage.setItem("mmm.crashSeen", c.time); } catch (e) {}
+  }
+  function crashDialog() {
+    var body = h("div", null, h("p", { class: "search-empty" }, "Reading the crash report…"));
+    openBig("What went wrong", null, body, [btn("Close", closeBig)]);
+    track("Reading the last crash", api("GET", "/api/crash")).then(function (res) {
+      markCrashSeen();
+      renderCrashBanner();
+      body.replaceChildren();
+      if (!res.found) { body.append(h("p", { class: "search-empty" }, "There's no crash report or error log for this game yet.")); return; }
+      $("big-lead").textContent = (res.fromLog ? "From the game's log (no crash report was written), " : "From " + res.name + ", ") + dateText(res.time) + " " + clock(new Date(res.time)) + ".";
+      $("big-lead").hidden = false;
+      if (res.description || res.exception) body.append(h("div", { class: "crash-what" }, res.description ? h("div", { class: "d" }, res.description) : null, res.exception ? h("code", null, res.exception) : null));
+      if (!res.suspects.length) body.append(h("p", { class: "hint" }, "It doesn't name any mod in this folder. The crash may come from Minecraft, the loader, Java or a driver; the report itself has the details."));
+      else body.append(h("p", { class: "hint", style: "margin:12px 0 6px" }, res.suspects.length === 1 ? "It points at this mod:" : "It points at these mods, most likely first:"));
+      var top = res.suspects.length ? res.suspects[0].score : 1;
+      res.suspects.forEach(function (s, i) {
+        var r = s.file ? rowsFor([s.file.replace(/\.disabled$/i, "")])[0] : null;
+        var actions = h("div", { class: "row-actions" });
+        (s.missing || []).forEach(function (id) {
+          actions.append(btn("Find " + id, function () { closeBig(); $("search-q").value = id; openSearch(); runSearch(true); }, i === 0 ? "primary" : ""));
+        });
+        if (r && r.status === "enabled" && !(s.missing || []).length) actions.append(btn("Turn it off", function (e) { e.currentTarget.disabled = true; setEnabled([r], false); }, i === 0 ? "primary" : ""));
+        if (r) actions.append(btn("Details", function () { closeBig(); openDetails(r); }));
+        body.append(h("div", { class: "suspect" + (i === 0 ? " top" : "") },
+          h("div", { class: "s-head" }, h("span", { class: "s-name" }, s.name || s.id || s.file),
+            s.file ? h("span", { class: "s-file" }, s.file) : h("span", { class: "s-file" }, "not in this folder"),
+            h("span", { class: "s-meter", title: "How strongly the report points at it" }, h("span", { style: "width:" + Math.max(8, Math.round(s.score / top * 100)) + "%" }))),
+          h("ul", { class: "s-why" }, s.reasons.map(function (why) { return h("li", null, why); })),
+          actions));
+      });
+      body.append(h("div", { class: "row-actions", style: "margin-top:12px" }, btn("Open the " + (res.fromLog ? "log" : "crash report"), function () {
+        api("POST", "/api/crash/open", { name: res.name }).then(null, function (e) { toast(e.message); });
+      })));
+    }, function (e) { body.replaceChildren(h("p", { class: "search-empty" }, e.message)); });
+  }
+  $("read-crash").addEventListener("click", crashDialog);
+
   // ---------- Command palette (Ctrl+K) and the shortcut sheet (?) ----------
 
   var palette = null;
@@ -3652,6 +3723,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     go("Manage tags", "", openTagManager);
     go("Play", server && server.instance ? server.instance.name : "", function () { playChecked(); });
     go("Keyboard shortcuts", "?", showShortcuts);
+    go("Read the last crash", "which mods it points at", crashDialog);
     if (model) {
       model.topics.forEach(function (t) {
         go("Show only " + t, "tag", function () { setView(currentView === "libraries" ? "libraries" : "mods"); if (state.tags.indexOf(t) < 0) toggleTag(t); }, "tag");

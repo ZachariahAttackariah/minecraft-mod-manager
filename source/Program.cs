@@ -385,6 +385,9 @@ namespace MinecraftModManager
                         case "/api/modrinth/versions":
                             result = ModrinthVersions(req.QueryString["file"]);
                             break;
+                        case "/api/crash":
+                            result = ReadLastCrash();
+                            break;
                         case "/api/curseforge/changelog":
                             result = CfFileChangelog(req.QueryString["file"], req.QueryString["id"]);
                             break;
@@ -521,6 +524,10 @@ namespace MinecraftModManager
                         return;
                     case "/api/prefs":
                         SendJson(ctx, 200, SetPrefs(body));
+                        return;
+                    case "/api/crash/open":
+                        OpenCrashFile(Str(body, "name"));
+                        SendJson(ctx, 200, Obj("ok", true));
                         return;
                     case "/api/check/dependents":
                         SendJson(ctx, 200, DependentsOf(StrList(body, "files")));
@@ -728,7 +735,7 @@ namespace MinecraftModManager
                 else if (File.Exists(tagsPath)) tagsText = File.ReadAllText(tagsPath, Encoding.UTF8);
             }
             string[] prism = PrismInstanceFor(dir);
-            return Obj("modsDir", dir, "folderExists", exists, "files", files, "tagsText", tagsText, "tagsLinked", tagsLinked, "curseforge", CfReady, "prefs", PrefsCopy(), "extras", ExtrasFor(dir), "target", TargetObj(),
+            return Obj("modsDir", dir, "folderExists", exists, "files", files, "tagsText", tagsText, "tagsLinked", tagsLinked, "curseforge", CfReady, "prefs", PrefsCopy(), "extras", ExtrasFor(dir), "lastCrash", exists ? LastCrashInfo() : null, "target", TargetObj(),
                 "prism", Obj("installed", FindPrism() != null, "instanceId", prism == null ? null : prism[0], "instanceName", prism == null ? null : prism[1]),
                 "server", Obj("configured", serverDir != null, "state", serverState, "players", PlayerCount()),
                 "bisect", BisectSummary());
