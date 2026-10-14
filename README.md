@@ -26,7 +26,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Searches and installs mods, together with the mods they require. Filters for category and side, and "more like this".
   - Checks every download against Modrinth's checksum.
 - **Pre-launch check:** on demand (the Check mods button), the app reads every jar's `neoforge.mods.toml` / `mods.toml` / `fabric.mod.json`. It reports what would stop NeoForge from loading, with one-click fixes:
-  - required mods that are missing or turned off;
+  - required mods that are missing or turned off, with Install it / Add all missing (found through the requiring mod's own Modrinth or CurseForge listing, then by id or name; each download checked to contain that mod);
   - library versions outside the required range;
   - the same mod twice, on or off. The copy to keep is picked automatically (made for this Minecraft version, then built for the instance's loader, then the version other mods require, then turned on, then newest), and one click moves the rest to the Recycle Bin and carries their tags over;
   - mods made for another Minecraft version;
@@ -134,6 +134,7 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/Worlds.cs` | World backups |
 | `source/ServerSchedule.cs` | Scheduled server restarts and backups |
 | `source/Modpack.cs` | Modpack export (.mrpack / CurseForge zip) and import |
+| `source/MissingDeps.cs` | Finding and installing mods the pre-launch check finds missing |
 | `source/CrossSite.cs` | Finding the Modrinth twin of each CurseForge search result |
 | `source/Loose.cs` | Matching jars by mod id and name when no file matches exactly |
 | `source/Crash.cs` | Reading the last crash report and naming the mods it points at |

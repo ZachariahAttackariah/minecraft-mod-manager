@@ -157,7 +157,12 @@ Play and the pre-launch check
   the PLAY button). It looks for the things that stop NeoForge from starting: a required mod
   that's missing or turned off, the wrong version of a library, the same mod twice, mods for another
   Minecraft version, Fabric mods without Sinytra Connector. Anything it finds is listed with one-click
-  fixes (turn it on, copy it from the server, search Modrinth).
+  fixes (turn it on, copy it from the server, install it, search for it).
+  Missing mods: "Install it" on one, or "Add all missing" at the top for all of them at once (it turns on
+  the ones that are off and copies the ones the server has too). A missing mod is only an id, so the app
+  looks for it in the requiring mod's own listing (what it says it needs on Modrinth or CurseForge), then a
+  Modrinth project or CurseForge mod with that id or name. Each download is checked to really be that mod;
+  a wrong one goes to the Recycle Bin. Mods neither site has are named so you can find them yourself.
   Duplicates: a mod that's in the folder more than once, on or off, is listed once with the copy to keep
   already picked: the one made for this Minecraft version, then the build for the instance's own loader
   (not a Fabric build run through Connector), then the version your other mods require, then the one

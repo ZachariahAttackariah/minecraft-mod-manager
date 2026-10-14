@@ -4780,6 +4780,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           }, function (err) { toast(err.message); });
         }, "primary", { title: "Moves " + count(extra, "extra jar", "extra jars") + " to the Recycle Bin. A snapshot is taken first." })));
     }
+    // Everything missing in one go: turn on what's off, copy what the server has, download the rest.
+    var missing = res.side === "client" && connected ? res.issues.filter(function (is) { return is.fix && /^(install|enable|copy-from-server)$/.test(is.fix.action) && !(is.fix.action === "install" && notFound[is.fix.id]); }).map(function (is) { return is.fix; }) : [];
+    if (missing.length > 1) {
+      body.append(h("div", { class: "dup-all" },
+        h("span", null, count(missing.length, "mod is", "mods are") + " missing. The app can turn on the ones that are off, copy the ones the server has, and find and download the rest."),
+        btn("Add all missing", function (e) { e.currentTarget.disabled = true; addMissing(missing, opts); }, "primary")));
+    }
     res.issues.forEach(function (is) { body.append(issueRow(is, res.side, opts)); });
     if (!res.issues.length) body.append(h("p", { class: "search-empty" }, "No problems left."));
     if (res.side === "server" && res.issues.length) body.append(h("p", { class: "hint", style: "margin:12px 0" }, "To fix the server, sort it out in the game first, then use Server → Sync from the game."));
@@ -4788,6 +4795,47 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     openBig(res.errors && opts.title ? opts.title : (res.side === "server" ? "Server mod check" : "Game mod check"),
       res.errors && opts.lead ? opts.lead : "Checked " + res.enabled + " jars that are on, for Minecraft " + res.minecraft + (res.neoforge ? " with NeoForge " + res.neoforge : "") + ".",
       body, buttons);
+  }
+
+  // Fixes missing mods: turns on the ones that are off, copies the ones the server has, then finds and
+  // downloads the rest (MissingDeps.cs). Afterwards the check runs again and its dialog shows what's left.
+  var notFound = {}; // ids neither site turned up this session, left out of "Add all missing"
+  function addMissing(fixes, opts) {
+    var turnOn = fixes.filter(function (f) { return f.action === "enable"; }).map(function (f) { return f.file; });
+    var copy = fixes.filter(function (f) { return f.action === "copy-from-server"; }).map(function (f) { return f.file; });
+    var install = fixes.filter(function (f) { return f.action === "install"; }).map(function (f) { return { id: f.id, "for": f["for"] }; });
+    var parts = [], manual = [];
+    var steps = Promise.resolve();
+    turnOn = turnOn.filter(function (f, i) { return turnOn.indexOf(f) === i; });
+    if (turnOn.length) steps = steps.then(function () {
+      return api("POST", "/api/set-enabled", { files: turnOn, enabled: true }).then(function (res) {
+        var ok = res.results.filter(function (x) { return !x.error; }).length;
+        if (ok) parts.push("Turned on " + count(ok, "mod", "mods") + ".");
+      });
+    });
+    copy.filter(function (f, i) { return copy.indexOf(f) === i; }).forEach(function (file) {
+      steps = steps.then(function () {
+        return api("POST", "/api/check/copy-from-server", { file: file }).then(function () { parts.push("Copied " + file + " from the server."); }, function (e) { parts.push(e.message); });
+      });
+    });
+    if (install.length) steps = steps.then(function () {
+      return trackStoppable(install.length === 1 ? "Adding " + install[0].id : "Adding " + install.length + " missing mods", function (job) {
+        return api("POST", "/api/check/install-missing", { items: install }, job);
+      }).then(function (res) {
+        var added = res.results.filter(function (r) { return r.file; });
+        var failed = res.results.filter(function (r) { return r.error; });
+        failed.forEach(function (r) { if (/^Couldn't find /.test(r.error)) notFound[r.id] = true; });
+        manual = res.results.filter(function (r) { return r.manual; });
+        if (added.length) parts.push("Added " + added.map(function (r) { return r.title || r.file; }).join(", ") + ".");
+        if (manual.length) parts.push(count(manual.length, "mod is", "mods are") + " only downloadable from CurseForge's website: " + manual.map(function (r) { return r.title; }).join(", ") + ".");
+        if (failed.length) parts.push(failed.map(function (r) { return r.id + ": " + r.error; }).join(" "));
+      });
+    });
+    steps.then(null, function (e) { parts.push(e.message); }).then(function () {
+      manual.forEach(function (m) { if (m.url) openTab(m.url); });
+      toast(parts.join(" ") || "Nothing needed adding.");
+      return refresh(true).then(runCheck).then(function (again) { if (again) problemsDialog(again, opts || {}); });
+    });
   }
 
   // Removes the extra copies the check picked; resolves with the message to show.
@@ -4823,6 +4871,16 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
             return after("Copied " + fix.file + " into the game's mods folder.");
           }, function (err) { toast(err.message); });
         }, "primary"));
+      } else if (fix.action === "install") {
+        fixes.append(btn("Install it", function (e) {
+          e.currentTarget.disabled = true;
+          addMissing([fix], opts);
+        }, "primary"), btn("Search for it", function () {
+          closeBig();
+          $("search-q").value = fix.query;
+          openSearch();
+          runSearch(true);
+        }));
       } else if (fix.action === "search") {
         fixes.append(btn("Search for it", function () {
           closeBig();

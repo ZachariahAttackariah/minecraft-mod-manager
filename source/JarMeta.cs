@@ -708,7 +708,7 @@ namespace MinecraftModManager
                     }
                     else
                         issues.Add(Issue("error", "missing", owner + " needs " + dep.Id + (dep.Range != null && dep.Range != "*" ? " (" + DescribeRange(dep.Range) + ")" : "") + ", which isn't installed.",
-                            new[] { jar.Name }, Obj("action", "search", "query", dep.Id)));
+                            new[] { jar.Name }, Obj("action", "install", "id", dep.Id, "for", jar.Name, "query", dep.Id)));
                 }
             }
             int errors = issues.Count(i => (string)((Dictionary<string, object>)i)["level"] == "error");
