@@ -490,6 +490,26 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .view-nav .nav-gear { display: inline-grid; place-items: center; width: 34px; height: 32px; padding: 0; color: var(--muted); background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
 .view-nav .nav-gear:hover, .view-nav .nav-gear[aria-current="page"] { color: var(--ink); background: var(--btn); }
 .view-nav .nav-gear[aria-current="page"]::after { display: none; }
+/* Command palette */
+.pal-scrim { position: fixed; inset: 0; z-index: 95; display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; background: var(--scrim); }
+.pal { width: min(620px, 100%); display: grid; grid-template-rows: auto minmax(0, 1fr); max-height: 70vh; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow-lg), inset 0 1px 0 var(--bevel-hi); overflow: hidden; }
+.pal-input { padding: 14px 16px; font: 500 16px/1.3 var(--font-body); color: var(--ink); background: transparent; border: 0; border-bottom: 1px solid var(--line); outline: none; }
+.pal-list { overflow-y: auto; padding: 6px; }
+.pal-item { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; padding: 7px 10px; text-align: left; color: var(--ink); background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.pal-item[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 16%, var(--raised)); }
+.pal-kind { font: 600 10px/1 var(--font-mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); text-align: center; padding: 3px 0; border: 1px solid var(--line); border-radius: 3px; }
+.pal-kind.page { color: var(--accent-fg); }
+.pal-kind.tag { color: var(--c-enchanting); }
+.pal-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.pal-hint { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 12px/1.2 var(--font-mono); color: var(--muted); }
+.kv.keys { gap: 8px 18px; }
+.kv.keys kbd, .hint kbd { padding: 1px 6px; font: 600 12px/1.5 var(--font-mono); color: var(--ink); background: var(--raised); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; }
+/* Drag and drop */
+.drop-zone { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px; background: color-mix(in srgb, var(--bg) 70%, transparent); pointer-events: none; }
+.drop-card { max-width: 460px; padding: 28px 32px; text-align: center; background: var(--surface); border: 3px dashed var(--accent); border-radius: 6px; box-shadow: var(--shadow-lg); }
+.drop-title { font: 700 22px/1.2 var(--font-display); color: var(--accent-fg); }
+html[data-blocky="on"] .drop-title { font-family: var(--font-blocky); font-weight: 600; }
+.drop-sub { margin-top: 6px; color: var(--muted); font-size: 13.5px; }
 /* Settings page */
 .set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; align-items: start; }
 .set-card { display: grid; gap: 4px; }
@@ -3484,6 +3504,161 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   });
   $("server-chip").addEventListener("click", function () { setView("server"); });
 
+  // ---------- Command palette (Ctrl+K) and the shortcut sheet (?) ----------
+
+  var palette = null;
+  function paletteItems() {
+    var items = [];
+    var go = function (label, hint, fn, kind) { items.push({ label: label, hint: hint, fn: fn, kind: kind || "action" }); };
+    [["mods", "Mods"], ["libraries", "Libraries"], ["packs", "Packs"], ["server", "Server"], ["snapshots", "Snapshots"], ["cleanup", "Cleanup"], ["settings", "Settings"]]
+      .forEach(function (v) { go("Go to " + v[1], "page", function () { setView(v[0]); }, "page"); });
+    go("Add mods", "search Modrinth" + (server && server.curseforge ? " and CurseForge" : ""), function () { setView("mods"); openSearch(); });
+    go("Check mods", "pre-launch check", function () { manualCheck(); });
+    go("Check for updates", "", function () { runScan(true); });
+    if (model && model.byStatus.updates) go("Update all", count(model.byStatus.updates, "update", "updates"), function () { $("mr-update-all").click(); });
+    go("Detect sides", "client / server / both", detectSides);
+    go("Manage tags", "", openTagManager);
+    go("Play", server && server.instance ? server.instance.name : "", function () { playChecked(); });
+    go("Keyboard shortcuts", "?", showShortcuts);
+    if (model) {
+      model.topics.forEach(function (t) {
+        go("Show only " + t, "tag", function () { setView(currentView === "libraries" ? "libraries" : "mods"); if (state.tags.indexOf(t) < 0) toggleTag(t); }, "tag");
+        go("Hide " + t, "tag", function () { setView(currentView === "libraries" ? "libraries" : "mods"); if (state.excluded.indexOf(t) < 0) toggleExclude(t); }, "tag");
+      });
+      model.rows.forEach(function (r) {
+        if (r.status !== "missing") go(r.name, r.file, function () { openDetails(r); }, "mod");
+      });
+    }
+    return items;
+  }
+  function openPalette() {
+    if (palette) return;
+    var input = h("input", { type: "text", class: "pal-input", placeholder: "Type a mod, tag, page or action…", "aria-label": "Command", autocomplete: "off", spellcheck: "false" });
+    var list = h("div", { class: "pal-list", role: "listbox" });
+    var all = paletteItems(), shown = [], at = 0;
+    var back = document.activeElement;
+    var draw = function () {
+      var q = input.value.trim().toLowerCase();
+      var words = q.split(/\s+/).filter(Boolean);
+      shown = all.filter(function (it) { var s = (it.label + " " + it.hint).toLowerCase(); return words.every(function (w) { return s.indexOf(w) >= 0; }); });
+      // Exact starts first, then pages and actions before tags and mods.
+      var rank = { page: 0, action: 1, tag: 2, mod: 3 };
+      shown.sort(function (a, b) {
+        var sa = a.label.toLowerCase().indexOf(q) === 0 ? 0 : 1, sb = b.label.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+        return sa - sb || rank[a.kind] - rank[b.kind];
+      });
+      shown = shown.slice(0, 40);
+      at = Math.min(at, Math.max(0, shown.length - 1));
+      list.replaceChildren();
+      shown.forEach(function (it, i) {
+        list.append(h("button", { type: "button", class: "pal-item", role: "option", "aria-selected": String(i === at), tabindex: "-1",
+            onmousemove: function () { if (at !== i) { at = i; draw(); } }, onclick: function () { run(it); } },
+          h("span", { class: "pal-kind " + it.kind }, it.kind === "mod" ? "mod" : it.kind === "tag" ? "tag" : it.kind === "page" ? "go" : "do"),
+          h("span", { class: "pal-label" }, it.label), it.hint ? h("span", { class: "pal-hint" }, it.hint) : null));
+      });
+      if (!shown.length) list.append(h("p", { class: "search-empty" }, "Nothing matches."));
+      var sel = list.children[at];
+      if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: "nearest" });
+    };
+    var run = function (it) { closePalette(); it.fn(); };
+    input.addEventListener("input", function () { at = 0; draw(); });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown") { e.preventDefault(); at = Math.min(at + 1, shown.length - 1); draw(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); at = Math.max(at - 1, 0); draw(); }
+      else if (e.key === "Enter") { e.preventDefault(); if (shown[at]) run(shown[at]); }
+      else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closePalette(); if (back && document.contains(back)) back.focus(); }
+    });
+    var el = h("div", { class: "pal-scrim" }, h("div", { class: "pal", role: "dialog", "aria-label": "Command palette" }, input, list));
+    el.addEventListener("mousedown", function (e) { if (e.target === el) closePalette(); });
+    document.body.append(el);
+    palette = el;
+    draw();
+    input.focus();
+  }
+  function closePalette() { if (palette) { palette.remove(); palette = null; } }
+
+  var SHORTCUTS = [
+    ["Ctrl+K", "Command palette: jump to any mod, tag, page or action"],
+    ["/", "Search the mod list"],
+    ["?", "This list"],
+    ["Click, Ctrl+click, Shift+click", "Select one mod, add or remove one, select a range"],
+    ["Ctrl+A", "Select every mod shown"],
+    ["Right-click", "A mod's actions and tags (selects it first)"],
+    ["Alt+click a tag", "Hide mods with that tag"],
+    ["Esc", "Close a dialog, or clear the selection"],
+    ["Ctrl+Enter", "Save a note"],
+    ["Ctrl+T / Ctrl+W", "New tab / close tab"],
+    ["Ctrl+Tab, Ctrl+1…9", "Next tab, jump to a tab"],
+    ["Ctrl+Shift+T", "Reopen the last closed tab"],
+    ["Ctrl+L or F6", "A tab's address bar"]
+  ];
+  function showShortcuts() {
+    var list = h("dl", { class: "kv keys" });
+    SHORTCUTS.forEach(function (s) {
+      list.append(h("dt", null, s[0].split(/(, | \/ | or )/).map(function (part) { return /^(, | \/ | or )$/.test(part) ? part : h("kbd", null, part); })), h("dd", null, s[1]));
+    });
+    openBig("Keyboard shortcuts", null, list, [btn("Close", closeBig)]);
+  }
+  document.addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === "k" || e.key === "K")) {
+      e.preventDefault();
+      if (palette) closePalette(); else if (hasToken) openPalette();
+      return;
+    }
+    var t = e.target;
+    var typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+    if (e.key === "?" && !typing && !palette && $("big-scrim").hidden) { e.preventDefault(); showShortcuts(); }
+  }, true);
+
+  // ---------- Drag and drop: .jar files into the mods folder, pack .zip files sorted by what's inside ----------
+
+  var dropDepth = 0;
+  var dropEl = h("div", { class: "drop-zone", hidden: true, "aria-hidden": "true" },
+    h("div", { class: "drop-card" }, h("div", { class: "drop-title" }, "Drop to add"), h("div", { class: "drop-sub" }, ".jar files go into the mods folder; resource, shader and data pack .zip files go where they belong.")));
+  document.body.append(dropEl);
+  function hasFiles(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") >= 0; }
+  document.addEventListener("dragenter", function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dropDepth++;
+    dropEl.hidden = !connected;
+  });
+  document.addEventListener("dragover", function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = connected ? "copy" : "none";
+  });
+  document.addEventListener("dragleave", function (e) {
+    if (!hasFiles(e)) return;
+    if (--dropDepth <= 0) { dropDepth = 0; dropEl.hidden = true; }
+  });
+  document.addEventListener("drop", function (e) {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dropDepth = 0;
+    dropEl.hidden = true;
+    if (!connected) return;
+    var files = Array.prototype.slice.call(e.dataTransfer.files || []);
+    var wrong = files.filter(function (f) { return !/\.(jar|zip)$/i.test(f.name); });
+    files = files.filter(function (f) { return wrong.indexOf(f) < 0; });
+    if (wrong.length) toast(count(wrong.length, "file isn't", "files aren't") + " a .jar or .zip, so " + (wrong.length === 1 ? "it was" : "they were") + " left out.");
+    if (!files.length) return;
+    toast(files.length === 1 ? "Adding " + files[0].name + "…" : "Adding " + files.length + " files…");
+    var added = 0, messages = [], packs = false;
+    // One at a time, so the folder never sees two writes at once.
+    files.reduce(function (p, f) {
+      return p.then(function () {
+        return fetch("/api/upload?name=" + encodeURIComponent(f.name), { method: "POST", headers: { "X-Mod-Manager-Token": TOKEN, "Content-Type": "application/octet-stream" }, body: f })
+          .then(function (res) { return res.json().then(function (d) { if (!res.ok) throw new Error(d.error || "Couldn't add " + f.name + "."); return d; }); })
+          .then(function (d) { if (d.kind === "pack") packs = true; else if (!d.skipped) added++; messages.push(d.message); }, function (err) { messages.push(err.message); });
+      });
+    }, Promise.resolve()).then(function () {
+      toast(files.length === 1 ? messages[0] : (added ? "Added " + count(added, "jar", "jars") + " to the mods folder. " : "") + messages.filter(function (m) { return !/^Added .*\.jar to the mods folder\.$/.test(m); }).join(" "));
+      if (packs && currentView === "packs") loadPacks(false);
+      return refresh(true);
+    });
+  });
+
   // ---------- Settings ----------
   // The defaults are the intended look; the app stores only what the user changes (under "prefs" in its
   // settings file) and sends it with every state. A copy in localStorage paints the right theme before
@@ -3553,6 +3728,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     { title: "Sources", items: [
       { key: "searchSources", label: "Search", desc: "Where Add mods looks. Mods on both sites show once, and download from Modrinth.", choices: [["both", "Both"], ["modrinth", "Modrinth"], ["curseforge", "CurseForge"]] },
       { key: "curseforgeKey", label: "CurseForge API key", desc: "", custom: curseforgeKeyControl }
+    ] },
+    { title: "Play", items: [
+      { key: "checkBeforePlay", label: "Check mods before Play", desc: "Runs the pre-launch check first, and only stops you when something would keep the game from starting." }
     ] },
     { title: "Updates", items: [
       { key: "updateChannel", label: "Updates come from", desc: "Match keeps a release on releases and lets a beta move to newer betas. Each mod can override this in its details.",
@@ -5506,9 +5684,21 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   });
   $("empty-clear").addEventListener("click", clearAll);
 
-  // Play launches straight away; the pre-launch check is the "Check mods" button.
+  // Play launches straight away, or (Settings > Play) after the pre-launch check, which only interrupts
+  // when something would stop the game from starting.
   $("play").addEventListener("click", function () { playChecked(); });
   function playChecked() {
+    if (!pref("checkBeforePlay")) { launchGame(); return; }
+    $("play").disabled = true;
+    renderCheckBar(true);
+    runCheck().then(function (res) {
+      $("play").disabled = !canPlay();
+      if (res && res.errors) problemsDialog(res, { action: launchGame, actionLabel: "Play anyway", title: "This would stop the game from starting",
+        lead: "Found by the check that runs before Play. Fix these first, or play anyway." });
+      else launchGame();
+    });
+  }
+  function launchGame() {
     var btn = $("play");
     btn.disabled = true;
     api("POST", "/api/play").then(function (res) {

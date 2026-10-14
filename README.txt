@@ -17,6 +17,9 @@ Settings (the gear at the right end of the section tabs)
                       fold into +N), ask before deleting.
   Sources ........... where Add mods searches (both sites, Modrinth or CurseForge), and the CurseForge API
                       key (tested before it's kept; Turn off removes it).
+  Play .............. check mods before Play: runs the pre-launch check first and only stops you when
+                      something would keep the game from starting ("Play anyway" is there too).
+  Updates ........... where updates come from (see Updates).
   Detect sides ...... whether client mods that add features on the server are marked both sides.
 
 Top right (like the Minecraft Launcher)
@@ -156,6 +159,14 @@ Notes, pins and skipped updates (right-click a mod)
   Skip this update .. hides this one update; a newer version shows again. "Show the ... update again" undoes it.
   These are kept per mods folder in mod-extras.json in the app's data folder, and follow a mod through updates.
 
+Drag and drop
+  Drop .jar files anywhere on the window to add them to the mods folder, and resource, shader or data pack
+  .zip files to send them where they belong (sorted by what's inside, like a download in a tab).
+
+Command palette and shortcuts
+  Ctrl+K ............ type to jump to any mod (opens its details), tag (show only / hide), page or action.
+  ? ................. every keyboard shortcut.
+
 Turning off or deleting a mod others need
   If a mod that stays on requires it, the app says which ones first, and asks before going ahead.
 
@@ -263,6 +274,7 @@ Files
   source\CurseForgeDetails.cs             Mod details, versions and switching for CurseForge mods.
   source\ModExtras.cs                     Notes, pinned versions, skipped updates and release channels.
   source\Prefs.cs                         The Settings page.
+  source\Drop.cs                          Files dropped on the window.
   source\Sides.cs                         Detecting client / server / both.
   source\Duplicates.cs                    Finding duplicate jars.
   source\LinkedTags.cs                    Showing another tool's .mod-tags.json, read-only.

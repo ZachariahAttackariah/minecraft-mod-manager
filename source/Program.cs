@@ -419,6 +419,12 @@ namespace MinecraftModManager
                     return;
                 }
 
+                // A file dropped on the window arrives as raw bytes, not JSON (Drop.cs).
+                if (path == "/api/upload")
+                {
+                    SendJson(ctx, 200, ReceiveDroppedFile(req));
+                    return;
+                }
                 Dictionary<string, object> body = ReadBody(req);
                 switch (path)
                 {
