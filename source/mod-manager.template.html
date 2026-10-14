@@ -373,6 +373,8 @@ html[data-actions="always"] .act { opacity: 1; }
 .list-head { padding-block: 12px 8px; font: 600 11.5px/1 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
 .list-head .r { text-align: right; }
 .row { border-bottom: 1px solid var(--line); cursor: default; }
+/* Rows off screen skip layout and painting, so a long list filters and scrolls without stutter. */
+.row:not(.skel) { content-visibility: auto; contain-intrinsic-size: auto 62px; }
 .row:hover { background: var(--surface); }
 .row.is-selected { background: color-mix(in srgb, var(--accent) 11%, transparent); }
 .row.is-selected:hover { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); }
@@ -505,6 +507,20 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .toasts { position: fixed; right: 16px; bottom: calc(var(--bar-h) + 16px); z-index: 50; display: grid; justify-items: end; gap: 8px; max-width: min(520px, calc(100% - 32px)); pointer-events: none; }
 .toast { pointer-events: auto; animation: toast-in 0.18s ease-out; display: flex; align-items: center; gap: 14px; max-width: min(520px, calc(100% - 32px)); padding: 11px 14px; font-size: 13.5px; color: var(--ink); background: var(--raised); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 4px; box-shadow: var(--shadow-lg); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+.toast.leaving { animation: toast-out 0.16s ease-in forwards; pointer-events: none; }
+@keyframes toast-out { to { opacity: 0; transform: translateX(12px); } }
+/* Dialogs, drawers, menus and pages ease in instead of popping up (off with reduced motion). */
+@media (prefers-reduced-motion: no-preference) {
+  .scrim:not([hidden]), .drawer-scrim:not([hidden]), .pal-scrim { animation: fade-in 0.14s ease-out; }
+  .scrim:not([hidden]) > .dialog, .drawer-scrim:not([hidden]) > .drawer, .pal-scrim > .pal { animation: rise-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .menu:not([hidden]), .pop-menu:not([hidden]), .inst-pop:not([hidden]) { animation: pop-in 0.11s ease-out; }
+  section.view:not([hidden]) { animation: fade-in 0.16s ease-out; }
+  .lightbox { animation: fade-in 0.14s ease-out; }
+}
+@keyframes fade-in { from { opacity: 0; } }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.22s; }
+@keyframes rise-in { from { opacity: 0; transform: translateY(10px) scale(0.985); } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } }
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
 .toast .msg { flex: 1 1 auto; }
 .toast .x { display: inline-grid; place-items: center; margin-left: -4px; color: var(--muted); }
@@ -1638,7 +1654,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var byKey = {};
     rows.forEach(function (r) { byKey[r.key] = r; });
     var built = { rows: rows, present: present, byKey: byKey, order: order, defs: defs, counts: counts, byStatus: byStatus,
-      topics: order.filter(function (t) { return SIDE_TAGS.indexOf(t) < 0; }), colorTopics: colorTopics, tagsProblem: tagsProblem };
+      topics: order.filter(function (t) { return SIDE_TAGS.indexOf(t) < 0; }), colorTopics: colorTopics, tagsProblem: tagsProblem,
+      defsSig: JSON.stringify(defs) + "|" + order.join(",") };
     applyScan(built);
     return built;
   }
@@ -1862,6 +1879,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     queueFit();
     renderSelectAll(rows);
     renderSelectionBar();
+    var fsig = JSON.stringify([state.q, state.sides, state.status, state.tags, state.excluded, state.untagged, state.match, state.sort, state.sortDir, currentView]);
+    if (fsig !== lastFilterSig) { if (lastFilterSig !== null) keepListInView(); lastFilterSig = fsig; }
+  }
+  // After a filter or sort change, a list scrolled far down could end up above the window (looking
+  // empty); this brings its top back to just under the sticky toolbar.
+  var lastFilterSig = null;
+  function keepListInView() {
+    var head = document.querySelector("#view-mods .list-head"), bar = document.querySelector("#view-mods .toolbar");
+    if (!head || !bar || $("view-mods").hidden) return;
+    var gap = head.getBoundingClientRect().top - bar.getBoundingClientRect().bottom;
+    if (gap < 0) window.scrollBy(0, gap - 4);
   }
 
   function renderHeader() {
@@ -2104,9 +2132,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     return img;
   }
 
-  function renderList(rows) {
-    var frag = document.createDocumentFragment();
-    rows.forEach(function (r) {
+  // One row of the list, built from scratch (renderList reuses rows that haven't changed).
+  function buildRow(r) {
       var sel = !!selected[r.key];
       var name = r.status === "missing"
         ? h("span", { class: "mod-name" }, r.name)
@@ -2151,7 +2178,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           h("button", { type: "button", class: "act delete", "data-action": "delete", disabled: isBusy || !connected,
             title: "Delete…", "aria-label": "Delete " + r.name }, icon("trash")));
       }
-      frag.append(h("div", { class: "row" + (sel ? " is-selected" : "") + (r.status === "disabled" ? " is-disabled" : "") + (r.status === "missing" ? " is-missing" : ""),
+      return h("div", { class: "row" + (sel ? " is-selected" : "") + (r.status === "disabled" ? " is-disabled" : "") + (r.status === "missing" ? " is-missing" : ""),
           role: "row", "aria-selected": sel ? "true" : "false", "data-key": r.key, "aria-busy": busy[r.key] ? "true" : null },
         h("div", { class: "c-check", role: "cell" },
           h("button", { type: "button", class: "check", role: "checkbox", "aria-checked": sel ? "true" : "false", "aria-label": "Select " + r.name })),
@@ -2163,9 +2190,37 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           (r.mr && r.mr.versionNumber) || r.version || "—"),
         h("div", { class: "c-slots", role: "cell" }, h("span", { class: "slots" }, slot("C", "client", r), slot("S", "server", r))),
         h("div", { class: "c-chips chips", role: "cell" }, chips),
-        actions));
+        actions);
+  }
+
+  // The list keeps each row's element while nothing it shows has changed, so filtering, searching and
+  // refreshing only build the rows that changed (a full list is hundreds of rows), focus and icons stay
+  // put, and a switch can slide. Anything that changes every row (the look, the tag list) starts afresh.
+  var rowCache = {}, rowCacheEpoch = "";
+  function rowSig(r) {
+    var ex = extOf(r), m = r.mr || {};
+    return [r.file, r.status, r.name, r.tracked, r.tags.join(","), r.topics.join(","), r.update ? r.update.versionNumber + "/" + r.update.type : "",
+      m.versionNumber, m.source, m.downloadsAllowed, m.icon, m.url, r.logo, r.held ? r.held.versionNumber + "/" + r.held.why : "", !!ex.pin, ex.note || "",
+      isNewRow(r), !!r.requiredBy, r.version, !!busy[r.key], r.slug, currentView === "libraries",
+      // Tags being filtered on come first on a row and show pressed; only rows that have one change.
+      r.topics.filter(function (x) { return state.tags.indexOf(x) >= 0; }).join(",")].join("\u0001");
+  }
+  function renderList(rows) {
+    var epoch = [appliedLook, connected, pref("tagsPerRow"), model ? model.defsSig : ""].join("\u0002");
+    if (epoch !== rowCacheEpoch || (model && Object.keys(rowCache).length > model.rows.length * 2)) { rowCache = {}; rowCacheEpoch = epoch; }
+    var els = rows.map(function (r) {
+      var sig = rowSig(r), c = rowCache[r.key];
+      if (!c || c.sig !== sig) c = rowCache[r.key] = { sig: sig, el: buildRow(r) };
+      else markSelected(c.el, !!selected[r.key]);
+      return c.el;
     });
-    $("rows").replaceChildren(frag);
+    var box = $("rows"), kids = box.children, same = kids.length === els.length;
+    for (var i = 0; same && i < els.length; i++) same = kids[i] === els[i];
+    if (!same) {
+      var frag = document.createDocumentFragment();
+      els.forEach(function (el) { frag.append(el); });
+      box.replaceChildren(frag);
+    }
     $("empty").hidden = rows.length > 0 || !model;
     var onlyStatus = !state.q && !state.tags.length && !state.excluded.length && !state.sides.length && !state.untagged;
     var noLibs = currentView === "libraries" && model && !model.rows.some(isLibrary);
@@ -2174,16 +2229,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       : onlyStatus && state.status === "updates" ? "Everything is up to date." : "No mods match these filters.";
   }
 
+  function markSelected(el, on) {
+    if (el.classList.contains("is-selected") === on) return;
+    el.classList.toggle("is-selected", on);
+    el.setAttribute("aria-selected", on ? "true" : "false");
+    var cb = el.querySelector(".check");
+    if (cb) cb.setAttribute("aria-checked", on ? "true" : "false");
+  }
   // Selection changes only touch classes, so focus and scroll position stay put.
   function updateSelectionUI() {
     var els = $("rows").children;
-    for (var i = 0; i < els.length; i++) {
-      var on = !!selected[els[i].getAttribute("data-key")];
-      els[i].classList.toggle("is-selected", on);
-      els[i].setAttribute("aria-selected", on ? "true" : "false");
-      var cb = els[i].querySelector(".check");
-      if (cb) cb.setAttribute("aria-checked", on ? "true" : "false");
-    }
+    for (var i = 0; i < els.length; i++) markSelected(els[i], !!selected[els[i].getAttribute("data-key")]);
     renderSelectAll(visible());
     renderSelectionBar();
   }
@@ -3126,8 +3182,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       });
       return;
     }
-    rows.forEach(function (r) { busy[r.key] = true; });
-    renderList(visible());
+    rows.forEach(function (r) { busy[r.key] = true; flipRow(r.key, enable); });
     api("POST", "/api/set-enabled", { files: rows.map(function (r) { return r.file; }), enabled: enable }).then(function (res) {
       var ok = res.results.filter(function (x) { return !x.error; });
       var failed = res.results.filter(function (x) { return x.error; });
@@ -3146,6 +3201,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
   }
 
+  // Shows a mod as on or off straight away (the switch slides); its buttons ignore clicks until the jar is renamed.
+  function flipRow(key, on) {
+    var c = rowCache[key];
+    if (!c) return;
+    var el = c.el, sw = el.querySelector(".sw-btn");
+    c.sig = ""; // rebuilt next time, from what the folder really has
+    el.classList.toggle("is-disabled", !on);
+    if (sw) { sw.classList.toggle("on", on); sw.setAttribute("aria-checked", String(on)); }
+    var tag = el.querySelector(".off-tag");
+    if (tag) tag.hidden = on;
+  }
   function undoSetEnabled(files, enable, label) {
     api("POST", "/api/set-enabled", { files: files, enabled: enable }).then(function (res) {
       var failed = res.results.filter(function (x) { return x.error; });
@@ -3432,14 +3498,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     el.addEventListener("focusout", function () { arm(2500); });
     el._clear = function () { clearTimeout(timer); };
     stack.append(el);
-    while (stack.children.length > 4) dismissToast(stack.firstChild);
+    while (stack.children.length > 4) dismissToast(stack.firstChild, true);
     arm(actionLabel ? 8000 : 4200);
     return el;
   }
-  function dismissToast(el) {
+  // Fades out, unless there are too many (then it goes at once).
+  function dismissToast(el, now) {
     if (!el || !el.parentNode) return;
     if (el._clear) el._clear();
-    el.parentNode.removeChild(el);
+    if (now || el.classList.contains("leaving")) { el.remove(); return; }
+    el.classList.add("leaving");
+    setTimeout(function () { el.remove(); }, 170);
   }
   function copyText(text, doneMsg) {
     var fallback = function () {
@@ -4796,12 +4865,27 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   applyPrefs();
   if (systemDark && systemDark.addEventListener) systemDark.addEventListener("change", function () { if (pref("theme") === "system" && applyPrefs() && model) render(); });
 
-  function savePref(key, value) {
+  // keepPage: the control already shows the change (a switch that slid), so the Settings page stays as it is.
+  var LOOK_KEYS = ["theme", "accent", "accentColor", "background", "corners", "tagColors", "tagStyle", "density", "rowStyle", "bgDim", "blockyTitle"];
+  function savePref(key, value, keepPage) {
     var body = {};
     body[key] = value;
     if (server) { server.prefs = server.prefs || {}; server.prefs[key] = value; }
-    if (applyPrefs() && model) render();
-    if (currentView === "settings") renderPrefs();
+    var applied = false;
+    var apply = function () {
+      if (applied) return;
+      applied = true;
+      if (applyPrefs() && model) render();
+      if (currentView === "settings") { if (keepPage) prefsSig = settingsSig(); else renderPrefs(); }
+    };
+    // A new theme or colour cross-fades instead of snapping (where the window supports it).
+    var motion = pref("motion") !== "reduce" && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    if (LOOK_KEYS.indexOf(key) >= 0 && motion && document.startViewTransition && document.visibilityState === "visible") {
+      var fade = document.startViewTransition(apply);
+      // A quicker second change skips the first fade (its promises reject); nothing is lost.
+      [fade.ready, fade.finished, fade.updateCallbackDone].forEach(function (pr) { if (pr) pr.then(null, function () {}); });
+      setTimeout(apply, 300); // a window that isn't drawing (minimised) never runs the fade, so apply anyway
+    } else apply();
     var after = key === "updateChannel" ? function () { return runScan(false); } : key === "tagOrder" ? function () { return refresh(true); } : null;
     return api("POST", "/api/prefs", body).then(function (res) {
       if (server) server.prefs = res.prefs;
@@ -5042,7 +5126,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         } else {
           var on = !!pref(s.key);
           control = h("button", { type: "button", class: "toggle sw-btn" + (on ? " on" : ""), role: "switch", "aria-checked": String(on), "aria-label": s.label,
-            onclick: function () { savePref(s.key, !on); } }, h("span", { class: "sw", "aria-hidden": "true" }));
+            onclick: function () {
+              on = !on;
+              control.classList.toggle("on", on);
+              control.setAttribute("aria-checked", String(on));
+              savePref(s.key, on, true);
+            } }, h("span", { class: "sw", "aria-hidden": "true" }));
         }
         into.append(h("div", { class: "set-row" }, h("div", { class: "l" }, s.label), h("div", { class: "d" }, s.desc), h("div", { class: "c" }, control)));
       });
@@ -6951,6 +7040,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var action = e.target.closest("button[data-action]");
     if (action) {
       var kind = action.getAttribute("data-action");
+      if (busy[hit.row.key] && kind !== "details" && kind !== "filter-tag") return;
       if (kind === "toggle") setEnabled([hit.row], hit.row.status === "disabled");
       else if (kind === "update") updateMods([hit.row]);
       else if (kind === "details") openDetails(hit.row);
