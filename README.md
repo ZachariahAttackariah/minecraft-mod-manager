@@ -83,7 +83,9 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Shader packs and resource packs: one shared folder each, linked into every sharing instance with a directory junction. Opting in merges the instance's packs into the shared folder without losing any; opting out gives it its own copy.
   - Game settings (`options.txt`): merged into a shared copy and handed back out on every Play. Keys an instance doesn't know (another version's options, key binds of mods it doesn't have) are kept for the instances that use them.
 
-- **Settings** (the gear): quick looks (Overworld, Nether, The End, Deep Dark, Snowy), theme (dark, light or follow Windows), accent colour (or any colour), background (glow, plain, block grid), square or rounded corners, text size, tag style (tinted, solid, outline), row stripes, mod icons, reduced motion, row spacing, vivid or soft tag colours, blocky lettering, file names, row buttons, tags per row, delete confirmation, search sources, the CurseForge key, and Detect's server-extras rule. The defaults are the intended look; only changes are saved, in the local settings file.
+- **Settings** (the gear): quick looks (Overworld, Nether, The End, Deep Dark, Snowy), theme (dark, light or follow Windows), accent colour (or any colour), text size, and tags (vivid, soft, solid or outline) on top; under Fine-tune: background (glow, plain, block grid), a background picture of your own (dimmed, four strengths), square or rounded corners, row spacing, reduced motion, blocky lettering and `user.css`. The mod list can show or hide the Version, Side and Tags columns, and the app can open on a chosen page or wherever you left off. Also: file names, mod icons, row stripes, row buttons, tags per row, delete confirmation, search sources, the CurseForge key, and Detect's server-extras rule. The defaults are the intended look; only changes are saved, in the local settings file.
+- **Your own tag colours**: click a tag's colour dot in Manage tags to pick any colour; "automatic colour" undoes it.
+- **user.css**: a stylesheet in the app data folder, loaded after the app's own. Settings has Edit and Reload buttons; the first Edit makes the file with a few commented examples.
 
 ## CurseForge
 
@@ -126,6 +128,7 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/Details.cs` | Mod details, versions and changelogs |
 | `source/CurseForge.cs` | CurseForge: fingerprints, updates, search and install |
 | `source/Prefs.cs` | The Settings page's preferences |
+| `source/Appearance.cs` | The background picture and user.css |
 | `source/CurseForgeDetails.cs` | Mod details, versions and switching for CurseForge mods |
 | `source/Drop.cs` | Files dropped on the window |
 | `source/Presets.cs` | On/off presets |

@@ -12,13 +12,23 @@ Settings (the gear at the right end of the section tabs)
   The defaults are the intended look, so nothing here needs changing. Saved in the app's settings file.
   Look .............. quick looks (Overworld, Nether, The End, Deep Dark, Snowy: theme, accent and
                       background in one click), theme (dark, light, or follow Windows), accent colour (five,
-                      or any colour), background (glow, plain, or a faint block grid), corners (rounded or
-                      square), text size (90 to 120%, the app window's zoom), row spacing, tag colours
-                      (vivid / soft), tag style (tinted, solid, outline), animation (follow Windows or
-                      reduce), blocky lettering for the title, PLAY and headings.
+                      or any colour), text size (90 to 120%, the app window's zoom), and tags (vivid, soft,
+                      solid or outline).
+                      Fine-tune (click to unfold): background (glow, plain, or a faint block grid), a
+                      background picture of your own (Choose a picture...; the app keeps its own copy,
+                      dimmed so text stays readable: Bold, Clear, Soft or Faint), corners (rounded or
+                      square), row spacing, animation (follow Windows or reduce), blocky lettering for the
+                      title, PLAY and headings, and your own styles: Edit user.css opens user.css in the
+                      app data folder (made the first time with a few commented examples); save it, then
+                      Reload it. Delete the file to undo it all.
+                      Each tag's own colour: in Manage tags, click the tag's colour dot and pick any colour.
+                      "automatic colour" next to it goes back to the usual one.
   Folders ........... the mods folder and the server folder (open or change), the app's data folder
                       (snapshots, backups, notes, presets) and the app's own folder (settings, actions.log).
-  Mod list .......... mod icons on or off, rows with lines or stripes, tag order (A to Z, the default, or as in the file; client and server stay first,
+  Mod list .......... open on (Mods, Libraries, Packs, Server, Snapshots, or wherever you left off),
+                      the Version column (each mod's installed version; off by default), the Side column
+                      (C / S) and the Tags column (tags still filter from the side panel when it's off),
+                      mod icons on or off, rows with lines or stripes, tag order (A to Z, the default, or as in the file; client and server stay first,
                       and a tag keeps its colour either way), show file names, row buttons always or on
                       hover, tags per row (3, 5 or all; the rest
                       fold into +N), ask before deleting.
@@ -387,6 +397,7 @@ Files
   source\CurseForgeDetails.cs             Mod details, versions and switching for CurseForge mods.
   source\ModExtras.cs                     Notes, pinned versions, skipped updates and release channels.
   source\Prefs.cs                         The Settings page.
+  source\Appearance.cs                    The background picture and user.css.
   source\Drop.cs                          Files dropped on the window.
   source\Crash.cs                         Reading the last crash report.
   source\Presets.cs                       On/off presets.

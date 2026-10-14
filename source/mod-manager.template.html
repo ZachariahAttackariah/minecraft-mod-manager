@@ -192,7 +192,7 @@ html[data-blocky="on"] .btn.play { font-family: var(--font-blocky); font-weight:
 .field input, .field textarea { padding: 7px 9px; font: 400 13.5px/1.35 var(--font-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 5px; }
 .field input.mono { font-family: var(--font-mono); }
 .tag-new .tag-error { flex-basis: 100%; margin: 0; }
-.tag-item { --c: var(--c-x3); display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 12px 8px; border-bottom: 1px solid var(--line); }
+.tag-item { --c: var(--c-x3); display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 12px 8px; border-bottom: 1px solid var(--line); }
 .tag-item .dot { width: 12px; height: 12px; margin-top: 4px; border-radius: 3px; background: var(--c); }
 .tag-item .tname { font: 600 14px/1.3 var(--font-body); color: color-mix(in srgb, var(--c) 80%, var(--ink)); }
 .tag-item .tmeta { font-size: 12.5px; color: var(--muted); }
@@ -368,7 +368,8 @@ html[data-actions="always"] .act { opacity: 1; }
 .check:disabled { opacity: 0.4; cursor: default; }
 
 .list { margin-top: 6px; }
-.list-head, .row { display: grid; grid-template-columns: 22px minmax(0, 1.25fr) 64px minmax(0, 1fr) 100px; gap: 14px; align-items: center; padding: var(--row-pad) 12px; }
+/* The columns follow Settings > Mod list (applyPrefs sets --cols). */
+.list-head, .row { display: grid; grid-template-columns: var(--cols, 22px minmax(0, 1.25fr) 64px minmax(0, 1fr) 100px); gap: 14px; align-items: center; padding: var(--row-pad) 12px; }
 .list-head { padding-block: 12px 8px; font: 600 11.5px/1 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
 .list-head .r { text-align: right; }
 .row { border-bottom: 1px solid var(--line); cursor: default; }
@@ -456,6 +457,7 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
   .c-actions { grid-area: actions; align-self: start; }
   .c-slots { grid-area: slots; }
   .c-chips { grid-area: chips; }
+  .c-version { display: none; }
   .tools { width: 100%; margin-left: 0; }
   .count-label { margin-right: auto; }
   .sel-actions { margin-left: 0; }
@@ -670,6 +672,29 @@ html[data-rows="zebra"] .row { border-bottom-color: transparent; }
 html[data-rows="zebra"] .row:nth-child(even) { background: color-mix(in srgb, var(--surface) 60%, transparent); }
 html[data-rows="zebra"] .row:hover { background: var(--surface); }
 html[data-motion="reduce"] *, html[data-motion="reduce"] *::before, html[data-motion="reduce"] *::after { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; transition-duration: 0.001s !important; }
+/* Which list columns show (Settings > Mod list). */
+html[data-col-version="off"] .col-version, html[data-col-side="off"] .c-slots, html[data-col-side="off"] #sort-side-col,
+html[data-col-tags="off"] .c-chips, html[data-col-tags="off"] .col-tags { display: none; }
+.c-version { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 400 12.5px/1.3 var(--font-mono); color: var(--muted); }
+/* Your own picture behind everything, dimmed with the theme colour so text stays readable. */
+html[data-bgimage="on"] body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(color-mix(in srgb, var(--bg) var(--bg-dim, 75%), transparent), color-mix(in srgb, var(--bg) var(--bg-dim, 75%), transparent)), var(--bg-image) center / cover no-repeat; }
+html[data-bgimage="on"] body { background: var(--bg); }
+.bg-pic { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 6px; }
+.bg-thumb { width: 96px; height: 54px; border-radius: 4px; background: var(--sunken) center / cover no-repeat; border: 1px solid var(--line); }
+.bg-pic .seg-control { margin-left: auto; }
+details.fine { border-top: 1px solid var(--line); }
+details.fine > summary { display: flex; align-items: center; gap: 8px; padding: 12px 0 8px; font-weight: 600; font-size: 14px; cursor: pointer; list-style: none; color: var(--muted); }
+details.fine > summary::-webkit-details-marker { display: none; }
+details.fine > summary::before { content: "\25B8"; font-size: 11px; transition: transform 0.15s; }
+details.fine[open] > summary::before { transform: rotate(90deg); }
+details.fine > summary:hover { color: var(--ink); }
+details.fine > .set-row:first-of-type { border-top: 1px solid var(--line); }
+.set-select { padding: 6px 8px; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; font: inherit; font-size: 13.5px; }
+.tag-item .dot.pickable { position: relative; width: 14px; height: 14px; margin-top: 3px; cursor: pointer; box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 18%, transparent); }
+.tag-item .dot.pickable:hover { box-shadow: 0 0 0 2px var(--ink); }
+.tag-item .dot.pickable input { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; opacity: 0; cursor: pointer; }
+.tcolor-reset { margin-left: 8px; font-size: 12px; }
 .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .preset-card { display: grid; gap: 6px; width: 104px; padding: 8px; text-align: left; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
 .preset-card:hover { border-color: var(--muted); }
@@ -1132,8 +1157,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     <div class="list-head" role="row">
       <span role="columnheader"><button class="check" type="button" id="select-all" role="checkbox" aria-checked="false" aria-label="Select all shown mods"></button></span>
       <span role="columnheader" id="sort-name-col"><button class="sort-head" type="button" id="sort-name" title="Sort by name">Mod <span class="arrow" aria-hidden="true"></span></button></span>
+      <span role="columnheader" class="h-hide col-version">Version</span>
       <span role="columnheader" class="h-hide" id="sort-side-col"><button class="sort-head" type="button" id="sort-side" title="Sort by side: client only, both, server only, then no side tag">Side <span class="arrow" aria-hidden="true"></span></button></span>
-      <span role="columnheader" class="h-hide">Tags</span>
+      <span role="columnheader" class="h-hide col-tags">Tags</span>
       <span role="columnheader" class="r h-hide">Actions</span>
     </div>
     <div id="rows" role="rowgroup"></div>
@@ -1476,6 +1502,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // Every other tag gets its own colour: hues a golden angle apart in tag-list order (so neighbours
   // never look alike), alternating lighter and deeper, all light enough to read on the dark theme.
   function colorOf(tag) {
+    var own = pref("tagHues");
+    if (own && own[tag]) return own[tag];
     if (TAG_COLORS[tag]) return "var(" + TAG_COLORS[tag] + ")";
     var i = model && model.colorTopics ? model.colorTopics.indexOf(tag) : -1;
     if (i < 0) {
@@ -1689,7 +1717,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       logo: !!(f && f.logo),
       size: f ? f.size : 0,
       modified: f ? f.modified : null,
-      requiredBy: f ? f.requiredBy || 0 : 0
+      requiredBy: f ? f.requiredBy || 0 : 0,
+      version: f ? f.version : null
     };
   }
 
@@ -2129,6 +2158,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         h("div", { class: "c-name", role: "cell" }, h("span", { class: "icon-wrap" }, modIcon(r),
             r.status === "disabled" ? h("span", { class: "off-tag", title: "Turned off: renamed to .jar.disabled, so the game skips it" }, "off") : null),
           h("div", { class: "c-name-text" }, name, h("div", { class: "file-line" }, h("span", { class: "file" }, r.file), badges))),
+        h("div", { class: "c-version col-version", role: "cell", title: ((r.mr && r.mr.versionNumber) || r.version || "") + (r.mr && r.mr.versionNumber ? " (from " + (r.mr.source === "curseforge" ? "CurseForge" : "Modrinth") + ")" : r.version ? " (from the jar)" : "") },
+          (r.mr && r.mr.versionNumber) || r.version || "—"),
         h("div", { class: "c-slots", role: "cell" }, h("span", { class: "slots" }, slot("C", "client", r), slot("S", "server", r))),
         h("div", { class: "c-chips chips", role: "cell" }, chips),
         actions));
@@ -2924,16 +2955,37 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     side.concat(topics).forEach(function (t) { list.append(tagItem(t)); });
   }
 
+  // The colour picker wants #rrggbb; tag colours are hsl() or a theme variable. A canvas normalises them.
+  var hexCanvas = null;
+  function colorHex(c) {
+    var m = /^var\((--[\w-]+)\)$/.exec(c);
+    if (m) c = getComputedStyle(document.documentElement).getPropertyValue(m[1]).trim();
+    try {
+      hexCanvas = hexCanvas || document.createElement("canvas").getContext("2d");
+      hexCanvas.fillStyle = "#8899aa";
+      hexCanvas.fillStyle = c;
+      return /^#[0-9a-f]{6}$/i.test(hexCanvas.fillStyle) ? hexCanvas.fillStyle : "#8899aa";
+    } catch (e) { return "#8899aa"; }
+  }
+  function setTagHue(t, color) {
+    var map = Object.assign({}, pref("tagHues") || {});
+    if (color) map[t] = color; else delete map[t];
+    savePref("tagHues", map).then(function () { if (!$("tags-scrim").hidden) renderTagManager(); });
+  }
   function tagItem(t) {
     var used = tagUsers(t).length;
     var isSide = SIDE_TAGS.indexOf(t) >= 0;
     var desc = model.defs[t] || "";
     var editing = editingTag === t;
+    var hues = pref("tagHues") || {};
+    var pick = h("input", { type: "color", value: colorHex(colorOf(t)), "aria-label": "Colour of " + t });
+    pick.addEventListener("change", function () { setTagHue(t, pick.value); });
     var item = h("div", { class: "tag-item", style: "--c:" + colorOf(t) },
-      h("span", { class: "dot", "aria-hidden": "true" }),
+      h("label", { class: "dot pickable", title: "Pick a colour for " + t }, pick),
       h("div", null,
         h("div", null, h("span", { class: "tname" }, t), " ",
-          h("span", { class: "tmeta" }, "· " + count(used, "mod", "mods") + (isSide ? " · side tag" : ""))),
+          h("span", { class: "tmeta" }, "· " + count(used, "mod", "mods") + (isSide ? " · side tag" : "")),
+          hues[t] ? h("button", { type: "button", class: "linkish tcolor-reset", onclick: function () { setTagHue(t, null); } }, "automatic colour") : null),
         editing ? null : h("p", { class: "tdesc" + (desc ? "" : " empty") }, desc || "No description")),
       h("div", { class: "tactions" },
         editing ? null : h("button", { type: "button", class: "btn", disabled: tagOpBusy || !connected, "aria-label": "Edit " + t,
@@ -3907,6 +3959,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }
     if (!menuEl.hidden) closeMenu();
     if (name === "settings") renderPrefs();
+    try { localStorage.setItem("mmm.lastView", name); } catch (e) {}
     if (!hasToken) return;
     if (name === "server") { refreshServer(); startConsole(); }
     if (name === "packs") loadPacks(false);
@@ -4673,7 +4726,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // the first state arrives.
 
   var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha", tagHide: "ctrl", accentColor: "#2fb465", background: "glow", corners: "round", textSize: "100", tagStyle: "tint",
-    motion: "system", rowStyle: "lines", showIcons: true,
+    motion: "system", rowStyle: "lines", showIcons: true, colSide: true, colTags: true, colVersion: false, startPage: "mods", bgDim: "75", tagHues: {},
     worldBackups: false, updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false,
     serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false };
   var localPrefs = {};
@@ -4698,6 +4751,21 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       "data-rows": pref("rowStyle"), "data-motion": pref("motion") };
     Object.keys(look).forEach(function (k) { root.setAttribute(k, look[k]); });
     if (pref("accent") === "custom") root.style.setProperty("--accent", pref("accentColor")); else root.style.removeProperty("--accent");
+    var cols = ["22px", "minmax(0, 1.25fr)"];
+    if (pref("colVersion")) cols.push("minmax(70px, 0.45fr)");
+    if (pref("colSide")) cols.push("64px");
+    if (pref("colTags")) cols.push("minmax(0, 1fr)");
+    cols.push("100px");
+    root.style.setProperty("--cols", cols.join(" "));
+    root.setAttribute("data-col-version", pref("colVersion") ? "on" : "off");
+    root.setAttribute("data-col-side", pref("colSide") ? "on" : "off");
+    root.setAttribute("data-col-tags", pref("colTags") ? "on" : "off");
+    var bg = server && server.background;
+    root.setAttribute("data-bgimage", bg ? "on" : "off");
+    if (bg) root.style.setProperty("--bg-image", "url(\"/api/background-image?t=" + encodeURIComponent(TOKEN) + "&v=" + bg.version + "\")");
+    else root.style.removeProperty("--bg-image");
+    root.style.setProperty("--bg-dim", pref("bgDim") + "%");
+    look.extra = [cols.join(" "), bg ? bg.version : "", pref("bgDim"), JSON.stringify(pref("tagHues") || {})].join("|");
     look.custom = pref("accent") === "custom" ? pref("accentColor") : "";
     // Text size is the window's own zoom (so menus and clicks stay lined up); only the app window has one.
     if (pref("textSize") !== appliedZoom && hasToken && server) {
@@ -4734,17 +4802,23 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "preset", label: "Quick looks", desc: "A whole look in one click: theme, accent and background. Change any part afterwards.", custom: presetControl },
       { key: "theme", label: "Theme", desc: "Dark suits the game's own screens. System follows Windows.", choices: [["dark", "Dark"], ["light", "Light"], ["system", "System"]] },
       { key: "accent", label: "Accent colour", desc: "Used for PLAY, switches that are on, and the selected tab. Nothing else. The last one picks any colour.", swatches: true },
-      { key: "background", label: "Background", desc: "A soft glow of the accent, plain, or a faint block grid.", choices: [["glow", "Glow"], ["plain", "Plain"], ["blocks", "Blocks"]] },
-      { key: "corners", label: "Corners", desc: "Square corners look more like the game.", choices: [["round", "Rounded"], ["square", "Square"]] },
       { key: "textSize", label: "Text size", desc: "Makes everything in the window bigger or smaller (the app window only).", choices: [["90", "90%"], ["100", "100%"], ["110", "110%"], ["120", "120%"]] },
-      { key: "density", label: "Row spacing", desc: "Compact fits more mods on screen.", choices: [["comfortable", "Comfortable"], ["compact", "Compact"]] },
-      { key: "tagColors", label: "Tag colours", desc: "Vivid tags stand out like the game under shaders; soft ones are calmer.", choices: [["vivid", "Vivid"], ["soft", "Soft"]] },
-      { key: "tagStyle", label: "Tag style", desc: "Tinted chips, solid colour, or just an outline.", choices: [["tint", "Tinted"], ["solid", "Solid"], ["outline", "Outline"]] },
-      { key: "motion", label: "Animation", desc: "Spinners, slides and fades. Reduce turns them down.", choices: [["system", "Follow Windows"], ["reduce", "Reduce"]] },
-      { key: "blockyTitle", label: "Blocky lettering", desc: "The title, PLAY and headings in a pixel font." }
+      { key: "tagLook", label: "Tags", desc: "Vivid stands out like the game under shaders; soft is calmer. Each tag's own colour is set in Manage tags.",
+        choices: [["vivid", "Vivid"], ["soft", "Soft"], ["solid", "Solid"], ["outline", "Outline"]], get: tagLook, set: setTagLook },
+      { key: "background", label: "Background", desc: "A soft glow of the accent, plain, or a faint block grid.", choices: [["glow", "Glow"], ["plain", "Plain"], ["blocks", "Blocks"]], fine: true },
+      { key: "bgPicture", label: "Background picture", desc: "", custom: backgroundPictureControl, fine: true },
+      { key: "corners", label: "Corners", desc: "Square corners look more like the game.", choices: [["round", "Rounded"], ["square", "Square"]], fine: true },
+      { key: "density", label: "Row spacing", desc: "Compact fits more mods on screen.", choices: [["comfortable", "Comfortable"], ["compact", "Compact"]], fine: true },
+      { key: "motion", label: "Animation", desc: "Spinners, slides and fades. Reduce turns them down.", choices: [["system", "Follow Windows"], ["reduce", "Reduce"]], fine: true },
+      { key: "blockyTitle", label: "Blocky lettering", desc: "The title, PLAY and headings in a pixel font.", fine: true },
+      { key: "userCss", label: "Your own styles (user.css)", desc: "", custom: userCssControl, fine: true }
     ] },
     { title: "Mod list", items: [
+      { key: "startPage", label: "Open on", desc: "The page the app shows when it starts.", select: [["last", "Where I left off"], ["mods", "Mods"], ["libraries", "Libraries"], ["packs", "Packs"], ["server", "Server"], ["snapshots", "Snapshots"]] },
       { key: "fileNames", label: "Show file names", desc: "The jar's file name under each mod's name." },
+      { key: "colVersion", label: "Version column", desc: "Each mod's installed version, from Modrinth or CurseForge when known, else from the jar." },
+      { key: "colSide", label: "Side column", desc: "The C and S marks for client and server." },
+      { key: "colTags", label: "Tags column", desc: "Each mod's tags. With it off, tags still filter from the side panel." },
       { key: "showIcons", label: "Show mod icons", desc: "Each mod's icon at the start of its row." },
       { key: "rowStyle", label: "Rows", desc: "Lines between rows, or alternating stripes.", choices: [["lines", "Lines"], ["zebra", "Stripes"]] },
       { key: "rowActions", label: "Row buttons", desc: "Update, on / off and delete stay visible, or only show strongly on hover. Updates always show.", choices: [["hover", "On hover"], ["always", "Always"]] },
@@ -4780,6 +4854,64 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "serverExtras", label: "Server copies that add features", desc: "Client mods that also do something on the server (multiplayer sync and the like) are marked both sides." }
     ] }
   ];
+
+  // Tags in one choice: vivid or soft tinted chips, or solid / outlined ones (stored as tagColors + tagStyle).
+  function tagLook() {
+    return pref("tagStyle") === "solid" || pref("tagStyle") === "outline" ? pref("tagStyle") : pref("tagColors");
+  }
+  function setTagLook(v) {
+    var style = v === "solid" || v === "outline" ? v : "tint";
+    var colors = v === "soft" ? "soft" : "vivid";
+    return savePref("tagColors", colors).then(function () { return savePref("tagStyle", style); });
+  }
+
+  function backgroundPictureControl() {
+    var bg = server && server.background;
+    var input = h("input", { type: "file", accept: ".png,.jpg,.jpeg,.webp,.gif", hidden: "" });
+    input.addEventListener("change", function () {
+      var f = input.files && input.files[0];
+      input.value = "";
+      if (!f) return;
+      track("Setting the background picture", fetch("/api/background?name=" + encodeURIComponent(f.name), { method: "POST", headers: { "X-Mod-Manager-Token": TOKEN, "Content-Type": "application/octet-stream" }, body: f })
+        .then(function (res) { return res.json().then(function (d) { if (!res.ok) throw new Error(d.error || "Couldn't use that picture."); return d; }); }))
+        .then(function (d) { server.background = d.background; applyPrefs(); renderPrefs(); }, function (e) { toast(e.message); });
+    });
+    var remove = bg ? btn("Remove", function () {
+      api("POST", "/api/background/remove").then(function () { server.background = null; applyPrefs(); renderPrefs(); }, function (e) { toast(e.message); });
+    }) : null;
+    var dim = null;
+    if (bg) {
+      dim = h("div", { class: "seg-control", role: "group", "aria-label": "How strongly the picture shows" });
+      [["40", "Bold"], ["60", "Clear"], ["75", "Soft"], ["90", "Faint"]].forEach(function (c) {
+        dim.append(h("button", { type: "button", title: "Dims the picture " + c[0] + "%", "aria-pressed": String(pref("bgDim") === c[0]), onclick: function () { savePref("bgDim", c[0]); } }, c[1]));
+      });
+    }
+    return h("div", null,
+      h("div", { class: "d" }, bg ? "Shown behind everything, dimmed so text stays readable. Bold shows it most, Faint barely." :
+        "Any picture of yours (PNG, JPG, WebP or GIF) behind everything, dimmed. The app keeps its own copy."),
+      h("div", { class: "bg-pic" },
+        bg ? h("span", { class: "bg-thumb", style: "background-image:url(\"/api/background-image?t=" + encodeURIComponent(TOKEN) + "&v=" + bg.version + "\")", "aria-hidden": "true" }) : null,
+        btn(bg ? "Change…" : "Choose a picture…", function () { input.click(); }), remove, dim, input));
+  }
+
+  var userCssVersion = 0;
+  function loadUserCss() {
+    if (!hasToken) return;
+    var link = $("user-css");
+    if (!link) {
+      link = h("link", { rel: "stylesheet", id: "user-css" });
+      document.head.append(link);
+    }
+    link.href = "/api/user-css?t=" + encodeURIComponent(TOKEN) + "&v=" + (userCssVersion++);
+  }
+  loadUserCss();
+  function userCssControl() {
+    return h("div", null,
+      h("div", { class: "d" }, "For anything these settings don't cover: user.css in the app data folder loads after the app's own styles. Delete the file to undo it all."),
+      h("div", { class: "bg-pic" },
+        btn("Edit user.css", function () { api("POST", "/api/user-css/open").then(null, function (e) { toast(e.message); }); }),
+        btn("Reload it", function () { loadUserCss(); toast("Reloaded user.css"); })));
+  }
 
   function foldersControl() {
     var p = (server && server.paths) || {};
@@ -4840,13 +4972,27 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       h("div", { class: "set-key" }, input, save, off));
   }
 
+  var fineOpen = false;
   function renderPrefs() {
     var root = $("settings-body");
     root.replaceChildren();
     SETTINGS.forEach(function (card) {
       var el = h("section", { class: "panel set-card" }, h("h2", null, card.title));
+      var fine = null;
       card.items.forEach(function (s) {
-        if (s.custom) { el.append(h("div", { class: "set-row wide" }, h("div", { class: "l" }, s.label), s.custom())); return; }
+        var into = el;
+        if (s.fine) {
+          if (!fine) {
+            fine = h("details", { class: "fine" }, h("summary", null, "Fine-tune"));
+            if (fineOpen) fine.open = true;
+            fine.addEventListener("toggle", function () { fineOpen = fine.open; });
+            el.append(fine);
+          }
+          into = fine;
+        }
+        var value = s.get ? s.get() : pref(s.key);
+        var choose = function (v) { return s.set ? s.set(v) : savePref(s.key, v); };
+        if (s.custom) { into.append(h("div", { class: "set-row wide" }, h("div", { class: "l" }, s.label), s.custom())); return; }
         var control;
         if (s.swatches) {
           control = h("div", { class: "swatches", role: "group", "aria-label": s.label });
@@ -4860,14 +5006,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         } else if (s.choices) {
           control = h("div", { class: "seg-control", role: "group", "aria-label": s.label });
           s.choices.forEach(function (c) {
-            control.append(h("button", { type: "button", "aria-pressed": String(pref(s.key) === c[0]), onclick: function () { savePref(s.key, c[0]); } }, c[1]));
+            control.append(h("button", { type: "button", "aria-pressed": String(value === c[0]), onclick: function () { choose(c[0]); } }, c[1]));
           });
+        } else if (s.select) {
+          control = h("select", { class: "set-select", "aria-label": s.label });
+          s.select.forEach(function (c) { control.append(h("option", { value: c[0] }, c[1])); });
+          control.value = value;
+          control.addEventListener("change", function () { choose(control.value); });
         } else {
           var on = !!pref(s.key);
           control = h("button", { type: "button", class: "toggle sw-btn" + (on ? " on" : ""), role: "switch", "aria-checked": String(on), "aria-label": s.label,
             onclick: function () { savePref(s.key, !on); } }, h("span", { class: "sw", "aria-hidden": "true" }));
         }
-        el.append(h("div", { class: "set-row" }, h("div", { class: "l" }, s.label), h("div", { class: "d" }, s.desc), h("div", { class: "c" }, control)));
+        into.append(h("div", { class: "set-row" }, h("div", { class: "l" }, s.label), h("div", { class: "d" }, s.desc), h("div", { class: "c" }, control)));
       });
       root.append(el);
     });
@@ -7169,7 +7320,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (document.visibilityState === "visible" && connected && currentView === "server") refreshServer();
   }, 5000);
 
-  setView((location.hash || "").replace("#", "") || "mods", true);
+  // Start page (Settings > Mod list): a page, or wherever you were last.
+  var startHash = (location.hash || "").replace("#", "");
+  if (!startHash) {
+    var sp = pref("startPage");
+    if (sp === "last") { try { startHash = localStorage.getItem("mmm.lastView") || ""; } catch (e) {} } else startHash = sp;
+  }
+  setView(startHash || "mods", true);
   // Placeholder rows until the first state arrives, so the list doesn't jump in from nothing.
   if (!model) {
     var skel = document.createDocumentFragment();

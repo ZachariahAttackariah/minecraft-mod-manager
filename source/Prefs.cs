@@ -22,6 +22,8 @@ namespace MinecraftModManager
             { "tagStyle", new[] { "tint", "solid", "outline" } },
             { "motion", new[] { "system", "reduce" } },
             { "rowStyle", new[] { "lines", "zebra" } },
+            { "startPage", new[] { "last", "mods", "libraries", "packs", "server", "snapshots" } },
+            { "bgDim", new[] { "40", "60", "75", "90" } },
             { "density", new[] { "comfortable", "compact" } },
             { "tagColors", new[] { "vivid", "soft" } },
             { "rowActions", new[] { "hover", "always" } },
@@ -32,7 +34,7 @@ namespace MinecraftModManager
             { "searchSources", new[] { "both", "modrinth", "curseforge" } },
             { "serverRestart", new[] { "off", "6", "12", "24" } },
         };
-        static readonly string[] PrefFlags = { "fileNames", "blockyTitle", "checkBeforePlay", "serverExtras", "confirmDelete", "whatChanged", "serverBackups", "worldBackups", "showIcons" };
+        static readonly string[] PrefFlags = { "fileNames", "blockyTitle", "checkBeforePlay", "serverExtras", "confirmDelete", "whatChanged", "serverBackups", "worldBackups", "showIcons", "colSide", "colTags", "colVersion" };
 
         static Dictionary<string, object> PrefsCopy()
         {
@@ -51,6 +53,20 @@ namespace MinecraftModManager
                         string v = Convert.ToString(p.Value, System.Globalization.CultureInfo.InvariantCulture);
                         if (!choices.Contains(v)) throw new UserError("\"" + v + "\" isn't a choice for " + p.Key + ".");
                         prefs[p.Key] = v;
+                    }
+                    else if (p.Key == "tagHues")
+                    {
+                        // Your own colour per tag: { tag: "#rrggbb" }; a tag left out goes back to its automatic colour.
+                        var map = p.Value as Dictionary<string, object>;
+                        if (map == null) throw new UserError("Tag colours have to be a list of tag: colour.");
+                        var clean = new Dictionary<string, object>();
+                        foreach (KeyValuePair<string, object> kv in map)
+                        {
+                            string c = kv.Value as string;
+                            if (kv.Key.Length > 64 || c == null || !System.Text.RegularExpressions.Regex.IsMatch(c, "^#[0-9a-fA-F]{6}$")) continue;
+                            clean[kv.Key] = c.ToLowerInvariant();
+                        }
+                        prefs[p.Key] = clean;
                     }
                     else if (p.Key == "accentColor")
                     {

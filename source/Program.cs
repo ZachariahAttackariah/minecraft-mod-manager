@@ -335,6 +335,13 @@ namespace MinecraftModManager
                     return;
                 }
                 // A mod's logo from inside its jar. Images can't send the token header, so it comes in the URL.
+                // The background image and user.css load as plain page resources, which can't send the token header.
+                if (method == "GET" && (path == "/api/background-image" || path == "/api/user-css"))
+                {
+                    if (req.QueryString["t"] != Token) { SendText(ctx, 403, "text/plain; charset=utf-8", "Forbidden"); return; }
+                    if (path == "/api/user-css") SendUserCss(ctx); else SendBackground(ctx);
+                    return;
+                }
                 if (method == "GET" && path == "/api/mod-icon")
                 {
                     if (req.QueryString["t"] != Token) { SendText(ctx, 403, "text/plain; charset=utf-8", "Forbidden"); return; }
@@ -480,6 +487,11 @@ namespace MinecraftModManager
                     SendJson(ctx, 200, ReceiveDroppedFile(req));
                     return;
                 }
+                if (path == "/api/background")
+                {
+                    SendJson(ctx, 200, ReceiveBackground(req));
+                    return;
+                }
                 if (path == "/api/modpack/import")
                 {
                     SendJson(ctx, 200, ImportModpack(req));
@@ -592,6 +604,13 @@ namespace MinecraftModManager
                         SendJson(ctx, 200, Obj("ok", true));
                         return;
                     }
+                    case "/api/background/remove":
+                        SendJson(ctx, 200, RemoveBackground());
+                        return;
+                    case "/api/user-css/open":
+                        OpenUserCss();
+                        SendJson(ctx, 200, Obj("ok", true));
+                        return;
                     case "/api/reveal":
                     {
                         string jarPath = ResolveModFile(modsDir, Str(body, "file"));
@@ -867,7 +886,8 @@ namespace MinecraftModManager
                     int needers;
                     requiredBy.TryGetValue(file.Name, out needers);
                     files.Add(Obj("name", file.Name, "size", file.Length, "modified", file.LastWriteTimeUtc.ToString("o"),
-                        "modId", info[0], "displayName", info[1], "logo", main != null && main.Logo != null, "requiredBy", needers));
+                        "modId", info[0], "displayName", info[1], "logo", main != null && main.Logo != null, "requiredBy", needers,
+                        "version", main != null && main.Version != null && !main.Version.Contains("${") ? main.Version : null));
                 }
                 string tagsPath = Path.Combine(dir, "mod-tags.json");
                 if (HasLinkedTags(dir))
@@ -878,7 +898,7 @@ namespace MinecraftModManager
                 else if (File.Exists(tagsPath)) tagsText = File.ReadAllText(tagsPath, Encoding.UTF8);
             }
             string[] prism = PrismInstanceFor(dir);
-            return Obj("modsDir", dir, "folderExists", exists, "files", files, "tagsText", tagsText, "tagsLinked", tagsLinked, "curseforge", CfReady, "prefs", PrefsCopy(), "extras", ExtrasFor(dir), "lastCrash", exists ? LastCrashInfo() : null, "target", TargetObj(),
+            return Obj("modsDir", dir, "folderExists", exists, "files", files, "tagsText", tagsText, "tagsLinked", tagsLinked, "curseforge", CfReady, "prefs", PrefsCopy(), "extras", ExtrasFor(dir), "lastCrash", exists ? LastCrashInfo() : null, "background", BackgroundInfo(), "target", TargetObj(),
                 "paths", Obj("server", serverDir, "data", dataDir, "app", AppDir.TrimEnd('\\')),
                 "prism", Obj("installed", FindPrism() != null, "instanceId", prism == null ? null : prism[0], "instanceName", prism == null ? null : prism[1]),
                 "server", Obj("configured", serverDir != null, "state", serverState, "players", PlayerCount()),
