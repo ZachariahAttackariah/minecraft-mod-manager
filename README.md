@@ -56,6 +56,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Online players and connection info.
   - A `server.properties` editor.
   - Asks before closing the window while the server runs, then stops it so the world saves.
+  - Optional scheduled restarts (6 / 12 / 24 h, with warnings in chat) and world backups.
 - **Create server:** makes a new NeoForge, Forge or Fabric server from an instance. It runs the loader's official installer (NeoForge and Forge installers are checked against their published SHA-1), then copies the instance's server-side mods and configs and sets memory, port and name. The EULA is only accepted if the user ticks it. A dropdown switches between known servers.
 - **Sync from the game:** compares the game's mods (using their client/server tags) with the server's, and compares config files setting by setting. Nothing changes until you press Apply, and never while the server is running.
 - **Snapshots**
@@ -130,6 +131,7 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/AutoTag.cs` | Site categories for Auto-tag |
 | `source/DepTree.cs` | The dependency tree in mod details |
 | `source/Worlds.cs` | World backups |
+| `source/ServerSchedule.cs` | Scheduled server restarts and backups |
 | `source/Loose.cs` | Matching jars by mod id and name when no file matches exactly |
 | `source/Crash.cs` | Reading the last crash report and naming the mods it points at |
 | `source/ModExtras.cs` | Notes, pinned versions, skipped updates and release channels |

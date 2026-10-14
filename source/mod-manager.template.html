@@ -4389,6 +4389,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "searchSources", label: "Search", desc: "Where Add mods looks. Mods on both sites show once, and download from Modrinth.", choices: [["both", "Both"], ["modrinth", "Modrinth"], ["curseforge", "CurseForge"]] },
       { key: "curseforgeKey", label: "CurseForge API key", desc: "", custom: curseforgeKeyControl }
     ] },
+    { title: "Server", items: [
+      { key: "serverRestart", label: "Restart on a schedule", desc: "While the server runs from here: warns players 5 and 1 minutes ahead, then stops and starts it again.",
+        choices: [["off", "Off"], ["6", "6 h"], ["12", "12 h"], ["24", "24 h"]] },
+      { key: "serverBackups", label: "Back up the server world", desc: "At each scheduled restart, or once a day while it runs (saving paused meanwhile). Backups are on the Snapshots page." }
+    ] },
     { title: "Worlds", items: [
       { key: "worldBackups", label: "Back up before risky changes", desc: "Zips your most recently played world before updates and before turning off or deleting worldgen mods. Backups are on the Snapshots page." }
     ] },

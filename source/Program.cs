@@ -125,6 +125,7 @@ namespace MinecraftModManager
             catch { }
 
             pageHtml = LoadPage();
+            StartServerSchedule();
             var context = new WindowsFormsSynchronizationContext();
             SynchronizationContext.SetSynchronizationContext(context);
             ui = context;

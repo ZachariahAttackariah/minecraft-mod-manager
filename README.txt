@@ -21,6 +21,11 @@ Settings (the gear at the right end of the section tabs)
                       something would keep the game from starting ("Play anyway" is there too).
   Updates ........... where updates come from (see Updates).
   Detect sides ...... whether client mods that add features on the server are marked both sides.
+  Server ............ restart on a schedule (off, 6, 12 or 24 hours; players are warned in chat 5 and 1
+                      minutes ahead) and back up the server world (at each scheduled restart, or once a
+                      day while it runs, with saving paused). Both are off by default and only apply to
+                      a server started from this app.
+  Worlds ............ back up the latest world before risky changes (see World backups).
 
 Top right (like the Minecraft Launcher)
   Instance picker ... next to PLAY. Lists every instance with its Minecraft version, loader
@@ -333,6 +338,7 @@ Files
   source\AutoTag.cs                       Categories for Auto-tag.
   source\DepTree.cs                       The dependency tree in mod details.
   source\Worlds.cs                        World backups.
+  source\ServerSchedule.cs                Scheduled server restarts and backups.
   source\Loose.cs                         Matching jars by mod id and name when no file matches exactly.
   source\Sides.cs                         Detecting client / server / both.
   source\Duplicates.cs                    Finding duplicate jars.
