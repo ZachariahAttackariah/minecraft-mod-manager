@@ -225,7 +225,7 @@ namespace MinecraftModManager
         {
             if (!CfReady) return null;
             Dictionary<string, object> match;
-            try { match = CfExactFor(jar.DirectoryName, jar.Name); }
+            try { match = CfMatchFor(jar.DirectoryName, jar.Name); }
             catch (UserError) { return null; }
             List<string> versions = A(Get(D(Get(match, "file")), "gameVersions")).OfType<string>().ToList();
             bool c = versions.Contains("Client"), s = versions.Contains("Server");

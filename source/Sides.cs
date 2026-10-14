@@ -105,7 +105,7 @@ namespace MinecraftModManager
                     else if (cfEnv != null)
                     {
                         side = cfEnv; source = "CurseForge";
-                        reason = notOn + "CurseForge lists it for the " + cfEnv + " only.";
+                        reason = notOn + "CurseForge lists it for the " + cfEnv + " only (its client / server tags).";
                     }
                     else if (content)
                     {
@@ -132,7 +132,7 @@ namespace MinecraftModManager
                 }
                 else
                 {
-                    reason = meta.Broken ? "The jar couldn't be read." : "Not on Modrinth, and the jar has no mod info to go on.";
+                    reason = meta.Broken ? "The jar couldn't be read." : "Not on Modrinth or CurseForge with side info, and the jar has no mod info to go on.";
                 }
                 ModInfo main = MainMod(meta);
                 found.Add(new SideGuess { File = jar.Name, Meta = meta, Name = project != null ? S(project, "title") : main != null ? main.Name : null,
@@ -141,7 +141,7 @@ namespace MinecraftModManager
             FollowDependencies(found);
             var mods = found.Select(g => (object)Obj("file", g.File, "key", NormalizeKey(g.File), "name", g.Name,
                 "side", SideName(g.Sides), "source", g.Source, "sure", g.Sure, "reason", g.Reason, "serverOptional", g.ServerOptional)).ToList();
-            return Obj("ok", true, "mods", mods, "serverExtras", serverExtras, "serverOptionalCount", found.Count(g => g.ServerOptional), "modrinthProblem", modrinthProblem);
+            return Obj("ok", true, "mods", mods, "curseforge", CfReady, "serverExtras", serverExtras, "serverOptionalCount", found.Count(g => g.ServerOptional), "modrinthProblem", modrinthProblem);
         }
 
         sealed class SideGuess

@@ -5388,7 +5388,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function detectSides() {
     if (!model || !connected) return;
     var picks = {}; // key -> detected side, for the ticked rows
-    var body = h("div", null, h("p", { class: "search-empty" }, "Reading the jars and checking Modrinth…"));
+    var body = h("div", null, h("p", { class: "search-empty" }, "Reading the jars and checking Modrinth" + (server && server.curseforge ? " and CurseForge" : "") + "…"));
     var go = btn("Apply", function () {
       var chosen = {}, before = {};
       Object.keys(picks).forEach(function (k) { chosen[k] = picks[k]; before[k] = model.byKey[k] ? model.byKey[k].side : "none"; });
@@ -5406,7 +5406,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       go.disabled = !n;
     };
     openBig("Detect client and server sides",
-      "Each jar is checked on its own first (some say they're client or server only), then on Modrinth. Nothing changes until you apply. Hover a mod to see why.",
+      "Each jar is checked on its own first (what it says, and whether its code only runs on one side), then on Modrinth, then what's inside it and CurseForge's client / server tags. Nothing changes until you apply. Hover a mod to see why.",
       body, [btn("Cancel", closeBig), go]);
 
     // Whether client mods whose server copy is optional (it adds features) go on both. Remembered here only.
@@ -5414,7 +5414,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     function load() {
       picks = {};
       label();
-      body.replaceChildren(h("p", { class: "search-empty" }, "Reading the jars and checking Modrinth…"));
+      body.replaceChildren(h("p", { class: "search-empty" }, "Reading the jars and checking Modrinth" + (server && server.curseforge ? " and CurseForge" : "") + "…"));
       track("Detecting sides", api("POST", "/api/sides/detect", { serverExtras: extras })).then(show, function (e) {
         body.replaceChildren(h("p", { class: "search-empty" }, "Couldn't detect sides (" + e.message + ")."));
       });
@@ -5440,6 +5440,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       ];
       body.replaceChildren();
       if (res.modrinthProblem) body.append(h("p", { class: "hint", style: "margin:12px 0 0" }, res.modrinthProblem));
+      if (!res.curseforge) body.append(h("p", { class: "hint", style: "margin:12px 0 0" }, "CurseForge isn't set up (no key in Settings > Sources), so its client / server tags weren't checked."));
       if (res.serverOptionalCount) {
         var opt = h("input", { type: "checkbox", checked: extras ? true : null });
         opt.addEventListener("change", function () {
