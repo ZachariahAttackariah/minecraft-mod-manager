@@ -51,8 +51,10 @@ Mods and Libraries
   Counts, the side chart and tag counts follow the tab you're on.
 
 Mods page
-  One bar above the list: getting mods (Add mods, the Modrinth and CurseForge websites) on the left,
-  and the Minecraft version Modrinth looks for, the update count and Update all / Check for updates on the right.
+  One bar above the list: Add mods on the left (its arrow also has "Add .jar or .zip files..." and the
+  Modrinth and CurseForge websites), and on the right the Minecraft version and loader that updates and
+  search look for, what's known about the jars, a check-now button, and "N updates", which shows what
+  changed and updates them. Updates are checked by themselves every 30 minutes.
   Add mods searches Modrinth and CurseForge in one list (with a CurseForge key; Both / Modrinth /
   CurseForge at its top). A mod on both sites shows once, marked with both, and installs from Modrinth;
   if Modrinth has no file for your version and loader, CurseForge's is used instead.
@@ -68,6 +70,7 @@ Mods page
   Each mod shows its icon (Modrinth's, else the logo inside the jar). On a mod's row, click a tag to filter
   by it (click again to stop). C and S show where it installs; change them from the right-click menu.
   Click the Mod or Side column heading to sort by name or by side (click again to reverse).
+  The dots at the end of the filter row hold "Not in folder" and Copy filenames.
   "Not in folder" lists mods that still have tags in mod-tags.json but whose jar is gone (deleting keeps
   tags, in case the jar comes back). "Forget these" there, or Forget in the right-click menu, removes
   those leftover entries (with Undo); it never touches a jar that's in the folder.
@@ -162,6 +165,12 @@ Notes, pins and skipped updates (right-click a mod)
 Drag and drop
   Drop .jar files anywhere on the window to add them to the mods folder, and resource, shader or data pack
   .zip files to send them where they belong (sorted by what's inside, like a download in a tab).
+
+What the app is doing
+  While something runs (checking mods, looking for updates, updating, installing, detecting sides, adding
+  files), a thin bar moves under the section tabs and its name shows by the server chip. Click it for
+  what's running and the last few jobs, with how long they took and whether they worked.
+  Messages stack at the bottom right; hover one to keep it, x to close it, and Undo where it applies.
 
 Command palette and shortcuts
   Ctrl+K ............ type to jump to any mod (opens its details), tag (show only / hide), page or action.

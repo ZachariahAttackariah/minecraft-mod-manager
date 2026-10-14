@@ -39,6 +39,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
 - **Turning off or deleting a library** that other mods need says which ones first.
 - **Drag and drop:** `.jar` files dropped on the window go into the mods folder; pack `.zip` files are sorted by what's inside them.
 - **Command palette (Ctrl+K)** to jump to any mod, tag, page or action; **?** lists every shortcut.
+- **Jobs:** a thin progress bar under the tabs while anything runs, and a list of running and recent jobs. Messages stack with Undo where it applies.
 - **Check before Play** (optional): the pre-launch check runs first and only interrupts when something would stop the game.
   - What a mod needs and what needs it, including mods bundled inside jars.
   - Its config files, and whether the server's copies match.
