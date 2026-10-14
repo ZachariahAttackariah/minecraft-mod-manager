@@ -40,6 +40,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
 - **Turning off or deleting a library** that other mods need says which ones first.
 - **Drag and drop:** `.jar` files dropped on the window go into the mods folder; pack `.zip` files are sorted by what's inside them.
 - **Command palette (Ctrl+K)** to jump to any mod, tag, page or action; **?** lists every shortcut.
+- **Compare two folders:** what each has, version, on/off and tag differences, matched by mod id. Read-only.
 - **On/off presets:** named sets of which mods are on, switched in one click (with a preview, a snapshot first, and Undo).
 - **Crash reader:** after a crash, a banner offers to read the newest crash report (or `latest.log`) and lists the mods it points at, most likely first, with one-click Turn off or Find for a missing dependency.
 - **Jobs:** a thin progress bar under the tabs while anything runs, and a list of running and recent jobs. Messages stack with Undo where it applies.
@@ -122,6 +123,8 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/CurseForgeDetails.cs` | Mod details, versions and switching for CurseForge mods |
 | `source/Drop.cs` | Files dropped on the window |
 | `source/Presets.cs` | On/off presets |
+| `source/Compare.cs` | Comparing two mods folders |
+| `source/Loose.cs` | Matching jars by mod id and name when no file matches exactly |
 | `source/Crash.cs` | Reading the last crash report and naming the mods it points at |
 | `source/ModExtras.cs` | Notes, pinned versions, skipped updates and release channels |
 | `source/Sides.cs` | Detecting which side (client, server, both) each jar belongs on |

@@ -531,6 +531,24 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .view-nav .nav-gear { display: inline-grid; place-items: center; width: 34px; height: 32px; padding: 0; color: var(--muted); background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
 .view-nav .nav-gear:hover, .view-nav .nav-gear[aria-current="page"] { color: var(--ink); background: var(--btn); }
 .view-nav .nav-gear[aria-current="page"]::after { display: none; }
+/* Compare */
+.cmp-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.cmp-top select { flex: 1 1 260px; min-width: 0; padding: 7px 9px; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
+.cmp-list { margin-top: 10px; }
+.cmp-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.2fr); gap: 12px; padding: 8px 4px; border-top: 1px solid var(--line); font-size: 13px; }
+.cmp-head { font: 700 11px/1.2 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-top: 0; }
+.cmp-name { font-weight: 600; }
+.cmp-tag { font: 500 11px/1.2 var(--font-mono); color: var(--muted); }
+.s-here .cmp-tag, .s-there .cmp-tag { color: var(--warn); }
+.s-version .cmp-tag { color: var(--c-client); }
+.cmp-side { display: grid; gap: 3px; min-width: 0; }
+.cmp-side.off { opacity: 0.6; }
+.cmp-ver { font: 600 12.5px/1.3 var(--font-mono); }
+.cmp-file { font: 400 11.5px/1.3 var(--font-mono); color: var(--muted); overflow-wrap: anywhere; }
+.cmp-none { color: var(--muted); }
+.cmp-side .chip { padding: 2px 5px; font-size: 11px; }
+.cmp-side .chip.only { box-shadow: 0 0 0 1px var(--c); }
+@media (max-width: 640px) { .cmp-row { grid-template-columns: minmax(0, 1fr); } }
 /* Presets */
 .preset-new { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .preset-new input { flex: 1 1 220px; min-width: 0; padding: 8px 10px; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
@@ -996,6 +1014,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <div class="pop-menu right" id="tb-menu" role="menu" hidden>
           <button type="button" role="menuitem" id="show-missing">Not in folder<span class="k" id="missing-k"></span></button>
           <button type="button" role="menuitem" id="copy">Copy filenames</button>
+          <button type="button" role="menuitem" id="open-compare">Compare with another folder…<span class="k">what each has, versions, tags</span></button>
           <button type="button" role="menuitem" id="read-crash">Read the last crash<span class="k">which mods it points at</span></button>
         </div>
       </div>
@@ -3660,6 +3679,60 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   document.addEventListener("mousedown", function (e) { if (!$("jobs-pop").hidden && !e.target.closest("#jobs-wrap")) { $("jobs-pop").hidden = true; $("jobs-btn").setAttribute("aria-expanded", "false"); clearInterval(jobTick); } });
   $("server-chip").addEventListener("click", function () { setView("server"); });
 
+  // ---------- Comparing two folders (Compare.cs): read-only ----------
+
+  var COMPARE_VIEWS = [["diff", "Differences"], ["here", "Only here"], ["there", "Only there"], ["version", "Other version"], ["onoff", "On / off"], ["tags", "Tags differ"], ["all", "Everything"]];
+  function compareDialog() {
+    var pick = h("select", { "aria-label": "Folder to compare with" }, h("option", { value: "" }, "Loading folders…"));
+    var view = "diff", data = null;
+    var seg = h("div", { class: "seg-control", role: "group", "aria-label": "Show" });
+    var list = h("div", { class: "cmp-list" });
+    var body = h("div", null, h("div", { class: "cmp-top" }, h("span", { class: "hint" }, "Compare this folder with"), pick), seg, list);
+    openBig("Compare folders", "Mods are matched by mod id, so the same mod under two file names lines up. Nothing is changed in either folder.", body, [btn("Close", closeBig)]);
+    api("GET", "/api/instances").then(function (res) {
+      pick.replaceChildren(h("option", { value: "" }, "Pick an instance or folder…"));
+      res.instances.filter(function (i) { return !i.current; }).forEach(function (i) { pick.append(h("option", { value: i.path }, i.name + " (" + i.mods + " mods)")); });
+      res.recent.filter(function (r) { return !r.current && r.exists; }).forEach(function (r) { pick.append(h("option", { value: r.path }, r.name + " — " + r.path)); });
+    }, function (e) { toast(e.message); });
+    pick.addEventListener("change", function () {
+      if (!pick.value) return;
+      list.replaceChildren(h("p", { class: "search-empty" }, "Reading both folders…"));
+      track("Comparing folders", api("GET", "/api/compare?other=" + encodeURIComponent(pick.value))).then(function (res) { data = res; draw(); },
+        function (e) { list.replaceChildren(h("p", { class: "search-empty" }, e.message)); });
+    });
+    var side = function (s, other) {
+      if (!s) return h("span", { class: "cmp-none" }, "—");
+      var tagDiff = other ? s.tags.filter(function (t) { return other.tags.indexOf(t) < 0; }) : [];
+      return h("div", { class: "cmp-side" + (s.on ? "" : " off") },
+        h("div", { class: "cmp-ver" }, (s.version || "?") + (s.on ? "" : " · off")),
+        h("div", { class: "cmp-file" }, s.file),
+        s.tags.length ? h("div", { class: "chips" }, s.tags.map(function (t) {
+          return h("span", { class: "chip" + (tagDiff.indexOf(t) >= 0 ? " only" : ""), style: "--c:" + colorOf(t), title: tagDiff.indexOf(t) >= 0 ? "Only on this side" : null }, t);
+        })) : null);
+    };
+    var draw = function () {
+      var c = data.counts;
+      var n = { diff: c.version + c.here + c.there + c.onoff + c.tags, here: c.here, there: c.there, version: c.version, onoff: c.onoff, tags: c.tags, all: data.rows.length };
+      seg.replaceChildren();
+      COMPARE_VIEWS.forEach(function (v) {
+        seg.append(h("button", { type: "button", "aria-pressed": String(view === v[0]), onclick: function () { view = v[0]; draw(); } }, v[1], h("span", { class: "k" }, String(n[v[0]]))));
+      });
+      var rows = data.rows.filter(function (r) {
+        return view === "all" ? true : view === "diff" ? r.status !== "same" || r.tagsDiffer : view === "tags" ? r.tagsDiffer : r.status === view;
+      }).sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { sensitivity: "base" }); });
+      list.replaceChildren(h("div", { class: "cmp-row cmp-head" }, h("span", null, "Mod"), h("span", null, "This folder"), h("span", null, data.there.split("\\").slice(-3, -1).join("\\") || "Other folder")));
+      rows.slice(0, 600).forEach(function (r) {
+        var label = { same: "same", here: "only here", there: "only there", version: "other version", onoff: "on / off" }[r.status];
+        list.append(h("div", { class: "cmp-row s-" + r.status },
+          h("div", null, h("div", { class: "cmp-name" }, r.name), h("span", { class: "cmp-tag" }, label + (r.tagsDiffer ? " · tags" : ""))),
+          side(r.here, r.there), side(r.there, r.here)));
+      });
+      if (!rows.length) list.append(h("p", { class: "search-empty" }, "Nothing here."));
+      if (rows.length > 600) list.append(h("p", { class: "hint" }, "Showing the first 600."));
+    };
+  }
+  $("open-compare").addEventListener("click", compareDialog);
+
   // ---------- On/off presets (Presets.cs) ----------
 
   var presetCache = null;
@@ -3808,6 +3881,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     go("Keyboard shortcuts", "?", showShortcuts);
     go("Read the last crash", "which mods it points at", crashDialog);
     go("On/off presets", "saved sets of mods that are on", presetsDialog);
+    go("Compare with another folder", "instances and folders you've used", compareDialog);
     (presetCache || []).forEach(function (p) { go("Switch to preset " + p.name, p.on + " on", function () { applyPreset(p.name); }); });
     if (model) {
       model.topics.forEach(function (t) {

@@ -170,6 +170,11 @@ Drag and drop
   Drop .jar files anywhere on the window to add them to the mods folder, and resource, shader or data pack
   .zip files to send them where they belong (sorted by what's inside, like a download in a tab).
 
+Compare with another folder (dots menu, or Ctrl+K)
+  Pick an instance or a folder you've used: every mod is matched by mod id across both, and listed as only
+  here, only there, another version, on in one and off in the other, or with different tags (the tags only
+  one side has are outlined). Nothing is changed in either folder.
+
 On/off presets (Presets, next to Add mods)
   A preset remembers which mods are on ("full", "performance", "testing"...). "Save what's on now" saves
   or updates one; Apply shows what it would turn on and off, takes a snapshot, switches, and offers Undo.
@@ -303,6 +308,8 @@ Files
   source\Drop.cs                          Files dropped on the window.
   source\Crash.cs                         Reading the last crash report.
   source\Presets.cs                       On/off presets.
+  source\Compare.cs                       Comparing two folders.
+  source\Loose.cs                         Matching jars by mod id and name when no file matches exactly.
   source\Sides.cs                         Detecting client / server / both.
   source\Duplicates.cs                    Finding duplicate jars.
   source\LinkedTags.cs                    Showing another tool's .mod-tags.json, read-only.
