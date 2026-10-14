@@ -142,13 +142,29 @@ Play and the pre-launch check
   Two or more extra copies at once are snapshotted first.
 
 Mod details
-  Click a mod's name (or right-click > Details...) for: Modrinth's description and links, every Modrinth
-  version for your Minecraft version with its changelog (and "Switch to this" for any of them), what the
-  mod needs and what needs it, and its config files (open them, and see whether the server's copy matches).
+  Click a mod's name (or right-click > Details...) for: its description, screenshots and links, every
+  version for your Minecraft version and loader with its changelog (and "Switch to this" for any of them),
+  what the mod needs and what needs it, and its config files (open them, and see whether the server's copy
+  matches). It works the same for mods from Modrinth and from CurseForge (with a key); for a CurseForge mod
+  whose author only allows downloads from their website, switching opens its page.
+  Under the buttons: where its updates come from (see Updates), Pin this version, and a note.
+
+Notes, pins and skipped updates (right-click a mod)
+  Add a note... ..... a note on the mod: shown on hover over the note mark beside its file name, and found by
+                      the search box. Also editable in its details.
+  Pin this version .. Update all and the update arrow leave it alone (a pin mark shows beside its file name).
+  Skip this update .. hides this one update; a newer version shows again. "Show the ... update again" undoes it.
+  These are kept per mods folder in mod-extras.json in the app's data folder, and follow a mod through updates.
+
+Turning off or deleting a mod others need
+  If a mod that stays on requires it, the app says which ones first, and asks before going ahead.
 
 Updates
   Every update first shows what changed: the changelogs of all versions between yours and the new one.
   Untick any mod you'd rather keep. Updating several mods takes a snapshot first.
+  Release channel ... Settings > Updates: "Match" (the default) keeps a release on releases and lets a beta
+                      move to newer betas or releases; or Releases only, Releases and betas, or Everything.
+                      Each mod can override it in its details ("Updates from").
 
 Server (for hosting friends on this PC)
   Servers ........... the dropdown at the top lists every server the app knows; pick one to switch (while
@@ -243,6 +259,13 @@ Files
   source\Sync.cs                          Comparing and syncing the game and the server.
   source\JarMeta.cs                       Reading jars and the pre-launch check.
   source\Details.cs                       Mod details, versions and changelogs.
+  source\CurseForge.cs                    CurseForge: recognising jars, updates, search and install.
+  source\CurseForgeDetails.cs             Mod details, versions and switching for CurseForge mods.
+  source\ModExtras.cs                     Notes, pinned versions, skipped updates and release channels.
+  source\Prefs.cs                         The Settings page.
+  source\Sides.cs                         Detecting client / server / both.
+  source\Duplicates.cs                    Finding duplicate jars.
+  source\LinkedTags.cs                    Showing another tool's .mod-tags.json, read-only.
   source\Snapshots.cs                     Snapshots and finding a problem mod.
   source\Cleanup.cs                       Disk cleanup.
   source\mod-manager.template.html        The page.

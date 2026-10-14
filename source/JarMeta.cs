@@ -795,5 +795,40 @@ namespace MinecraftModManager
             }
             return needs;
         }
+        // Before jars are turned off or deleted: which mods that stay on require something only these jars
+        // provide (their own mod ids or ones bundled inside them). Empty when nothing would break.
+        static Dictionary<string, object> DependentsOf(List<string> files)
+        {
+            string dir = modsDir;
+            var leaving = new HashSet<string>(files, StringComparer.OrdinalIgnoreCase);
+            var jars = new DirectoryInfo(dir).GetFiles().Where(f => JarName.IsMatch(f.Name)).ToList();
+            var staying = jars.Where(f => !leaving.Contains(f.Name) && !f.Name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)).ToList();
+            var metas = jars.ToDictionary(f => f.Name, f => GetJarMeta(f), StringComparer.OrdinalIgnoreCase);
+            var stillProvided = new HashSet<string>(staying.SelectMany(f => metas[f.Name].Mods.Concat(metas[f.Name].Nested)).Select(m => m.Id), StringComparer.OrdinalIgnoreCase);
+            var result = new List<object>();
+            foreach (string file in files)
+            {
+                JarMeta meta;
+                if (!metas.TryGetValue(file, out meta)) continue;
+                var ids = new HashSet<string>(meta.Mods.Concat(meta.Nested).Select(m => m.Id).Where(id => !stillProvided.Contains(id)), StringComparer.OrdinalIgnoreCase);
+                if (ids.Count == 0) continue;
+                var needers = new List<string>();
+                foreach (FileInfo other in staying)
+                {
+                    JarMeta om = metas[other.Name];
+                    if (om.Deps.Any(d => d.Type == "required" && ids.Contains(d.Id ?? "")))
+                    {
+                        ModInfo main = MainMod(om);
+                        needers.Add((main != null ? main.Name ?? main.Id : null) ?? other.Name);
+                    }
+                }
+                if (needers.Count > 0)
+                {
+                    ModInfo self = MainMod(meta);
+                    result.Add(Obj("file", file, "name", (self != null ? self.Name ?? self.Id : null) ?? file, "neededBy", needers.Distinct().OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList()));
+                }
+            }
+            return Obj("ok", true, "dependents", result);
+        }
     }
 }

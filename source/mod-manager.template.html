@@ -364,6 +364,16 @@ a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--acce
 .badge { --c: var(--muted); padding: 2px 6px; font: 500 11px/1.3 var(--font-mono); white-space: nowrap; color: color-mix(in srgb, var(--c) 85%, var(--ink)); border: 1px dashed color-mix(in srgb, var(--c) 60%, transparent); border-radius: 3px; }
 .badge.missing { --c: var(--c-x2); border-style: solid; }
 .badge.untracked { --c: var(--c-x3); }
+.mark { display: inline-grid; place-items: center; color: var(--muted); cursor: help; }
+.mark svg { width: 13px; height: 13px; }
+.mark.pin { color: var(--warn); }
+.mark.note { color: var(--c-client); }
+.note-input { width: 100%; min-height: 44px; padding: 8px 10px; font: 400 13.5px/1.45 var(--font-body); color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; resize: vertical; }
+.det-extras { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 8px 16px; align-items: center; margin-top: 14px; padding: 12px; background: var(--raised); border: 1px solid var(--line); border-radius: 4px; }
+.det-extras .note-input, .det-extras .hint { grid-column: 1 / -1; }
+.dx { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; }
+.dx .l { color: var(--muted); white-space: nowrap; }
+.dx select { min-width: 0; max-width: 70%; padding: 5px 8px; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
 .row.is-disabled .mod-name, .row.is-disabled .c-chips, .row.is-disabled .slots { opacity: 0.5; }
 .row.is-missing .mod-name, .row.is-missing .c-chips, .row.is-missing .slots { opacity: 0.6; }
 .slots { display: inline-flex; gap: 4px; }
@@ -1154,7 +1164,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     copy: [["rect", { x: "5.5", y: "5.5", width: "8", height: "8", rx: "1.5" }], ["path", { d: "M10.5 5.5V3.8A1.3 1.3 0 0 0 9.2 2.5H3.8a1.3 1.3 0 0 0-1.3 1.3v5.4a1.3 1.3 0 0 0 1.3 1.3h1.7" }]],
     link: [["path", { d: "M9 2.5h4.5V7" }], ["path", { d: "M13.5 2.5L7.5 8.5" }], ["path", { d: "M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3" }]],
     clear: [["path", { d: "M4 4l8 8M12 4l-8 8" }]],
-    info: [["circle", { cx: "8", cy: "8", r: "6" }], ["path", { d: "M8 7.3v3.9" }], ["path", { d: "M8 4.9v.1" }]]
+    info: [["circle", { cx: "8", cy: "8", r: "6" }], ["path", { d: "M8 7.3v3.9" }], ["path", { d: "M8 4.9v.1" }]],
+    pin: [["path", { d: "M5.5 2.5h5" }], ["path", { d: "M6.6 2.5l-.5 4.3L3.8 9.2h8.4L9.9 6.8l-.5-4.3" }], ["path", { d: "M8 9.2v4.6" }]],
+    note: [["path", { d: "M3.5 2.5h6l3 3v8h-9z" }], ["path", { d: "M9.5 2.5v3h3" }], ["path", { d: "M5.5 8.5h5M5.5 11h3.5" }]],
+    skip: [["path", { d: "M3 4l5 4-5 4z" }], ["path", { d: "M8 4l5 4-5 4z" }]]
   };
 
   function $(id) { return document.getElementById(id); }
@@ -1330,12 +1343,55 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var info = mods[r.file] || null;
       r.mr = info;
       r.update = info && info.update && r.status !== "missing" ? info.update : null;
+      r.held = info && info.held && r.status !== "missing" ? info.held : null;
       if (info && !NAMES[r.key] && info.title) r.name = info.title;
       if (info && info.slug) r.slug = r.slug || info.slug;
-      r.haystack = (r.name + " " + r.file).toLowerCase();
+      r.haystack = (r.name + " " + r.file + " " + (extOf(r).note || "")).toLowerCase();
     });
     m.rows.sort(function (a, b) { return a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) || a.file.localeCompare(b.file); });
     m.byStatus.updates = m.present.filter(function (r) { return r.update; }).length;
+  }
+
+  // ---- Per-mod extras: a note, a pinned version, a skipped update, a release channel (ModExtras.cs).
+  // Keyed by the mod's project, so they follow it through updates; jars neither site knows use the file.
+  function extKey(r) {
+    var i = r.mr;
+    if (i && i.source === "curseforge" && i.cfModId) return "cf:" + i.cfModId;
+    if (i && i.projectId) return i.projectId;
+    return "file:" + r.key;
+  }
+  function extOf(r) { return (server && server.extras && server.extras[extKey(r)]) || {}; }
+  function setExtras(rows, fields, msg, undo) {
+    if (!connected || !rows.length) return Promise.resolve();
+    return Promise.all(rows.map(function (r) {
+      return api("POST", "/api/mod/extras", Object.assign({ key: extKey(r) }, fields)).then(function (res) {
+        server.extras = server.extras || {};
+        if (res.extras) server.extras[res.key] = res.extras; else delete server.extras[res.key];
+      });
+    })).then(function () {
+      if (msg) { if (undo) toast(msg, "Undo", undo); else toast(msg); }
+      applyScan();
+      render();
+      if ("pin" in fields || "skip" in fields || "channel" in fields) return runScan(false);
+    }, function (e) { toast(e.message); });
+  }
+  function pinMods(rows, pin) {
+    var who = rows.length === 1 ? rows[0].name : count(rows.length, "mod", "mods");
+    setExtras(rows, { pin: pin }, pin ? "Pinned " + who + ": Update all leaves " + (rows.length === 1 ? "it" : "them") + " alone" : "Unpinned " + who,
+      function () { pinMods(rows, !pin); });
+  }
+  function skipUpdate(r, versionId, versionNumber) {
+    setExtras([r], { skip: versionId || "" }, versionId ? "Skipping " + r.name + " " + versionNumber + ". A newer version will show again" : "The " + versionNumber + " update for " + r.name + " shows again",
+      versionId ? function () { skipUpdate(r, null, versionNumber); } : null);
+  }
+  function editNote(r) {
+    var area = h("textarea", { class: "note-input", rows: "5", maxlength: "1000", placeholder: "Why it's here, what to watch out for, which version works…" });
+    area.value = extOf(r).note || "";
+    var save = function () { closeBig(); setExtras([r], { note: area.value }, area.value.trim() ? "Saved the note on " + r.name : "Removed the note on " + r.name); };
+    area.addEventListener("keydown", function (e) { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); } });
+    openBig("Note on " + r.name, "Shown when you hover the note mark on its row, and found by the search box. Kept for this mods folder only.", area,
+      [btn("Cancel", closeBig), btn("Save note", save, "primary")]);
+    setTimeout(function () { area.focus(); }, 0);
   }
 
   function makeRow(key, file, status, tags, f) {
@@ -1657,6 +1713,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var badges = [];
       if (r.status === "missing") badges.push(h("span", { class: "badge missing", title: "Listed in mod-tags.json, but the jar isn't in the folder" }, "not in folder"));
       if (!r.tracked && r.status !== "missing") badges.push(h("span", { class: "badge untracked", title: "This jar has no entry in mod-tags.json" }, "not in mod-tags.json"));
+      // Pinned and noted mods get a small mark beside the file name (never an extra line).
+      var ex = extOf(r);
+      if (ex.pin) badges.push(h("span", { class: "mark pin", title: "Pinned: Update all leaves it on this version" + (r.held ? ". " + r.held.versionNumber + " is out" : "") }, icon("pin")));
+      if (r.held && r.held.why === "skipped") badges.push(h("span", { class: "mark", title: "Skipping the " + r.held.versionNumber + " update" }, icon("skip")));
+      if (ex.note) badges.push(h("span", { class: "mark note", title: ex.note }, icon("note")));
       // Tags being filtered on come first; past the Settings limit the rest fold into "+N" (hover lists them).
       var limit = pref("tagsPerRow") === "all" ? Infinity : Number(pref("tagsPerRow"));
       var topics = r.topics.slice().sort(function (a, b) { return (state.tags.indexOf(b) >= 0) - (state.tags.indexOf(a) >= 0); });
@@ -2556,9 +2617,34 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     return count(results.length, "mod", "mods");
   }
 
-  function setEnabled(rows, enable) {
+  // Before turning mods off or deleting them: the mods that stay on but require one of them.
+  function dependentsThen(rows, fn) {
+    api("POST", "/api/check/dependents", { files: rows.map(function (r) { return r.file; }) }).then(function (res) { fn(res.dependents || []); }, function () { fn([]); });
+  }
+  function neededLines(deps) {
+    return deps.map(function (d) {
+      var by = d.neededBy.length > 3 ? d.neededBy.slice(0, 3).join(", ") + " and " + (d.neededBy.length - 3) + " more" : d.neededBy.join(", ");
+      return d.name + " is needed by " + by;
+    });
+  }
+
+  function setEnabled(rows, enable, checked) {
     rows = rows.filter(function (r) { return r.status === (enable ? "disabled" : "enabled"); });
     if (!rows.length || !connected) return;
+    if (!enable && !checked) {
+      dependentsThen(rows, function (deps) {
+        if (!deps.length) { setEnabled(rows, false, true); return; }
+        confirmDialog({
+          title: deps.length === 1 ? deps[0].name + " is needed by other mods" : deps.length + " of these are needed by other mods",
+          items: neededLines(deps),
+          body: "Turned off, the game won't start until those mods are turned off too or this is turned back on.",
+          ok: rows.length === 1 ? "Turn it off anyway" : "Turn them off anyway",
+          okClass: "danger",
+          onOk: function () { setEnabled(rows, false, true); }
+        });
+      });
+      return;
+    }
     rows.forEach(function (r) { busy[r.key] = true; });
     renderList(visible());
     api("POST", "/api/set-enabled", { files: rows.map(function (r) { return r.file; }), enabled: enable }).then(function (res) {
@@ -2613,15 +2699,20 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function askDelete(rows) {
     rows = rows.filter(function (r) { return r.status !== "missing"; });
     if (!rows.length || !connected) return;
-    // With the Settings switch off, delete goes straight to the Recycle Bin (still restorable from there).
-    if (!pref("confirmDelete")) { deleteMods(rows); return; }
+    dependentsThen(rows, function (deps) { askDeleteWith(rows, deps); });
+  }
+  function askDeleteWith(rows, deps) {
+    // With the Settings switch off, delete goes straight to the Recycle Bin (still restorable from there),
+    // unless other mods need what's being deleted.
+    if (!pref("confirmDelete") && !deps.length) { deleteMods(rows); return; }
     var single = rows.length === 1;
+    var warn = deps.length ? " Careful: " + neededLines(deps).join("; ") + "." : "";
     confirmDialog({
       title: single ? "Delete " + rows[0].name + "?" : "Delete " + rows.length + " mods?",
       items: rows.map(function (r) { return r.file; }),
-      body: single
+      body: (single
         ? "The jar moves to the Recycle Bin, so you can restore it from there. Its tags stay in mod-tags.json."
-        : "The jars move to the Recycle Bin, so you can restore them from there. Their tags stay in mod-tags.json.",
+        : "The jars move to the Recycle Bin, so you can restore them from there. Their tags stay in mod-tags.json.") + warn,
       ok: single ? "Move to Recycle Bin" : "Move " + rows.length + " to Recycle Bin",
       onOk: function () { deleteMods(rows); }
     });
@@ -2741,6 +2832,14 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (single && rows[0].status !== "missing") actions.append(menuItem("Details…", "info", function () { openDetails(rows[0]); }));
     if (connected) {
       if (g.updatable.length) actions.append(menuItem(single ? "Update to " + rows[0].update.versionNumber : "Update " + g.updatable.length, "up", function () { updateMods(g.updatable); }));
+      if (single && rows[0].update) actions.append(menuItem("Skip this update", "skip", function () { skipUpdate(rows[0], rows[0].update.versionId, rows[0].update.versionNumber); }));
+      if (single && rows[0].held && rows[0].held.why === "skipped") actions.append(menuItem("Show the " + rows[0].held.versionNumber + " update again", "up", function () { skipUpdate(rows[0], null, rows[0].held.versionNumber); }));
+      var pinnable = rows.filter(function (r) { return r.mr && r.status !== "missing"; });
+      if (pinnable.length) {
+        var allPinned = pinnable.every(function (r) { return extOf(r).pin; });
+        actions.append(menuItem(allPinned ? (single ? "Unpin" : "Unpin " + pinnable.length) : (single ? "Pin this version" : "Pin " + pinnable.length), "pin", function () { pinMods(pinnable, !allPinned); }));
+      }
+      if (single && rows[0].status !== "missing") actions.append(menuItem(extOf(rows[0]).note ? "Edit note…" : "Add a note…", "note", function () { editNote(rows[0]); }));
       if (g.disabled.length) actions.append(menuItem(single ? "Enable" : "Enable " + g.disabled.length, "switchOn", function () { setEnabled(g.disabled, true); }));
       if (g.enabled.length) actions.append(menuItem(single ? "Disable" : "Disable " + g.enabled.length, "switchOff", function () { setEnabled(g.enabled, false); }));
       if (g.present.length) {
@@ -3391,7 +3490,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // the first state arrives.
 
   var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "5",
-    updateChannel: "release", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false,
+    updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false,
     serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false };
   var localPrefs = {};
   try { localPrefs = JSON.parse(localStorage.getItem("mmm.prefs") || "{}") || {}; } catch (e) {}
@@ -3429,8 +3528,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (server) { server.prefs = server.prefs || {}; server.prefs[key] = value; }
     if (applyPrefs() && model) render();
     if (currentView === "settings") renderPrefs();
+    var after = key === "updateChannel" ? function () { return runScan(false); } : null;
     return api("POST", "/api/prefs", body).then(function (res) {
       if (server) server.prefs = res.prefs;
+      if (after) return after();
     }, function (e) { toast("Couldn't save that setting (" + e.message + ")."); });
   }
 
@@ -3452,6 +3553,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     { title: "Sources", items: [
       { key: "searchSources", label: "Search", desc: "Where Add mods looks. Mods on both sites show once, and download from Modrinth.", choices: [["both", "Both"], ["modrinth", "Modrinth"], ["curseforge", "CurseForge"]] },
       { key: "curseforgeKey", label: "CurseForge API key", desc: "", custom: curseforgeKeyControl }
+    ] },
+    { title: "Updates", items: [
+      { key: "updateChannel", label: "Updates come from", desc: "Match keeps a release on releases and lets a beta move to newer betas. Each mod can override this in its details.",
+        choices: [["auto", "Match"], ["release", "Releases"], ["beta", "+ Betas"], ["alpha", "Everything"]] }
     ] },
     { title: "Detect sides", items: [
       { key: "serverExtras", label: "Server copies that add features", desc: "Client mods that also do something on the server (multiplayer sync and the like) are marked both sides." }
@@ -3706,8 +3811,15 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         return src ? "![" + alt + "](" + src + ")" : "";
       })
       .replace(/<a\b[^>]*?href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, function (m, href, text) { return "[" + text.replace(/<[^>]+>/g, "").trim() + "](" + href + ")"; })
+      .replace(/<(strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi, function (m, t, text) { return text.trim() ? "**" + text.trim() + "**" : ""; })
+      .replace(/<h[1-6]\b[^>]*>/gi, "\n### ")
+      .replace(/<li\b[^>]*>/gi, "\n- ")
       .replace(/<\/?(p|div|center|h[1-6]|li|ul|ol|details|summary|table|thead|tbody|tr|blockquote)\b[^>]*>/gi, "\n")
-      .replace(/<[^>]+>/g, "");
+      .replace(/<[^>]+>/g, "")
+      // CurseForge writes its descriptions and changelogs in HTML, entities and all.
+      .replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;|&apos;/g, "'")
+      .replace(/&#(\d+);/g, function (m, n) { return String.fromCharCode(Number(n)); }).replace(/&amp;/g, "&")
+      .replace(/\n{3,}/g, "\n\n");
   }
   var INLINE = /(`[^`]+`)|(!\[([^\]]*)\]\(([^)\s]+)[^)]*\))|(\[((?:[^\[\]]|\[[^\]]*\])*)\]\(([^)\s]+)[^)]*\))|(\*\*[^*]+\*\*)|(\*[^*\s][^*]*\*)|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/;
   function inline(el, text) {
@@ -3957,6 +4069,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       actions.append(btn("Delete…", function () { closeDetails(); askDelete([r]); }, "danger-outline"));
     }
     body.append(actions);
+    if (connected && r.status !== "missing") body.append(extrasBox(r));
     var kv = h("dl", { class: "kv", style: "margin-top:14px" });
     var add = function (k, v) { if (v !== null && v !== undefined && v !== "") kv.append(h("dt", null, k), h("dd", null, v)); };
     add("File", d.file);
@@ -3964,7 +4077,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     add("Mod id", d.mods.map(function (m) { return m.id; }).join(", "));
     add("Version", main.version || (mr.versionNumber ? mr.versionNumber + " (Modrinth)" : null));
     add("Loader", KIND_NAMES[d.kind] || d.kind);
-    if (mr.found) add("Where it's needed", "Client: " + (SIDE_WORDS[mr.clientSide] || mr.clientSide) + " · Server: " + (SIDE_WORDS[mr.serverSide] || mr.serverSide) + " (Modrinth)");
+    if (mr.found && mr.site === "curseforge") add("From", "CurseForge" + (mr.author ? ", by " + mr.author : ""));
+    if (mr.found && mr.clientSide) add("Where it's needed", "Client: " + (SIDE_WORDS[mr.clientSide] || mr.clientSide) + " · Server: " + (SIDE_WORDS[mr.serverSide] || mr.serverSide) + " (Modrinth)");
     add("Your tags", r.tags.length ? r.tags.join(", ") : "none");
     if (mr.found) {
       add("License", mr.license);
@@ -3974,12 +4088,15 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (d.nested.length) add("Bundled inside", d.nested.map(function (m) { return m.name + (m.version ? " " + m.version : ""); }).join(", "));
     body.append(kv);
     var links = h("div", { class: "det-links" });
-    if (mr.slug) links.append(btn("Modrinth page", function () { openTab("https://modrinth.com/mod/" + encodeURIComponent(mr.slug)); }));
+    if (mr.site === "curseforge") { if (safeUrl(mr.url)) links.append(btn("CurseForge page", function () { openTab(mr.url); })); }
+    else if (mr.slug) links.append(btn("Modrinth page", function () { openTab("https://modrinth.com/mod/" + encodeURIComponent(mr.slug)); }));
     [["Source code", mr.source], ["Issues", mr.issues], ["Wiki", mr.wiki], ["Discord", mr.discord]].forEach(function (l) {
       if (safeUrl(l[1])) links.append(btn(l[0], function () { openTab(l[1]); }));
     });
     if (links.childNodes.length) body.append(links);
-    if (!mr.found) body.append(h("p", { class: "hint" }, mr.error ? "Modrinth: " + mr.error : "This jar isn't on Modrinth (it may come from CurseForge), so there's no description or version list here."));
+    if (!mr.found) body.append(h("p", { class: "hint" }, mr.error ? mr.error : server && server.curseforge
+      ? "Neither Modrinth nor CurseForge knows this jar, so there's no description or version list here."
+      : "This jar isn't on Modrinth (it may come from CurseForge: add a CurseForge key in Settings to see it), so there's no description or version list here."));
     if (mr.body) {
       body.append(h("h3", { style: "margin:18px 0 4px;font:700 16px/1.3 var(--font-display)" }, "Description"));
       var md = h("div", { class: "md" });
@@ -3988,21 +4105,47 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }
   }
 
+  // In a mod's details: where its updates come from, pinning, and its note.
+  var CHANNEL_NAMES = { auto: "Match what's installed", release: "Releases only", beta: "Releases and betas", alpha: "Everything, alphas too" };
+  function extrasBox(r) {
+    var ex = extOf(r);
+    var known = !!r.mr;
+    var sel = h("select", { "aria-label": "Updates come from", disabled: !known });
+    sel.append(h("option", { value: "" }, "Default (" + CHANNEL_NAMES[pref("updateChannel")] + ")"));
+    ["release", "beta", "alpha"].forEach(function (c) { sel.append(h("option", { value: c }, CHANNEL_NAMES[c])); });
+    sel.value = ex.channel || "";
+    sel.addEventListener("change", function () { setExtras([r], { channel: sel.value }, "Updates for " + r.name + ": " + (sel.value ? CHANNEL_NAMES[sel.value] : "the default")); });
+    var pin = h("button", { type: "button", class: "toggle sw-btn" + (ex.pin ? " on" : ""), role: "switch", "aria-checked": String(!!ex.pin), disabled: !known,
+      "aria-label": "Pin this version", onclick: function () { pinMods([r], !ex.pin); closeDetails(); } }, h("span", { class: "sw", "aria-hidden": "true" }));
+    var note = h("textarea", { class: "note-input", rows: "2", maxlength: "1000", placeholder: "A note: why it's here, known issues…", "aria-label": "Note" });
+    note.value = ex.note || "";
+    note.addEventListener("change", function () { setExtras([r], { note: note.value }, null); });
+    return h("div", { class: "det-extras" },
+      h("label", { class: "dx" }, h("span", { class: "l" }, "Updates from"), sel),
+      h("div", { class: "dx" }, h("span", { class: "l" }, "Pin this version"), pin),
+      note,
+      known ? null : h("p", { class: "hint", style: "margin:0" }, "Neither Modrinth nor CurseForge knows this jar, so there are no updates to pin or filter."));
+  }
+
   function vtypeTag(type) { return type && type !== "release" ? h("span", { class: "vtype " + type }, type) : h("span", { class: "vtype" }, "release"); }
 
   function renderVersions(body, mr) {
-    if (det.versionsLoading) { body.append(h("p", { class: "search-empty" }, "Getting versions from Modrinth…")); return; }
+    if (det.versionsLoading) { body.append(h("p", { class: "search-empty" }, "Getting versions…")); return; }
     if (det.versionsError) { body.append(h("p", { class: "search-empty" }, det.versionsError)); return; }
     var v = det.versions;
     if (!v) return;
-    body.append(h("p", { class: "hint", style: "margin:0 0 8px" }, "Every Modrinth version for " + targetText() + ", newest first. Open one to read its changelog."));
-    if (!v.versions.length) body.append(h("p", { class: "search-empty" }, "Modrinth has no versions for " + targetText() + "."));
+    var site = v.source === "curseforge" ? "CurseForge" : "Modrinth";
+    // A CurseForge author can allow downloads from their website only: then versions open its page.
+    var pageOnly = v.source === "curseforge" && v.downloadsAllowed === false;
+    body.append(h("p", { class: "hint", style: "margin:0 0 8px" }, "Every " + site + " version for " + targetText() + ", newest first. Open one to read its changelog." +
+      (pageOnly ? " Its author only allows downloads from CurseForge's website, so switching opens its page there." : "")));
+    if (!v.versions.length) body.append(h("p", { class: "search-empty" }, site + " has no versions for " + targetText() + "."));
     v.versions.forEach(function (ver) {
-      var install = ver.installed || !connected ? null : btn(ver.newer ? "Update to this" : "Switch to this", function (e) {
+      var install = ver.installed || !connected ? null : btn(pageOnly ? "Open page" : ver.newer ? "Update to this" : "Switch to this", function (e) {
         e.preventDefault();
         e.stopPropagation();
-        askSwitch(ver);
-      }, ver.newer ? "primary" : "");
+        if (pageOnly) { if (safeUrl(v.url)) openTab(v.url); } else askSwitch(ver);
+      }, ver.newer && !pageOnly ? "primary" : "");
       var item = h("details", { class: "ver" },
         h("summary", null, h("span", { class: "num" }, ver.number), vtypeTag(ver.type), h("span", { class: "date" }, dateText(ver.date)),
           ver.installed ? h("span", { class: "vtag" }, "installed") : null, h("span", { class: "spacer" }), install));
@@ -4011,8 +4154,16 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         if (!item.open || filled) return;
         filled = true;
         var md = h("div", { class: "md" });
-        md.append(ver.changelog ? renderMarkdown(ver.changelog) : h("p", { class: "hint" }, "No changelog for this version."));
         item.append(md);
+        var show = function (text) { md.replaceChildren(text ? renderMarkdown(text) : h("p", { class: "hint" }, "No changelog for this version.")); };
+        // CurseForge changelogs are fetched one at a time, when opened.
+        if (ver.cf && ver.changelog == null) {
+          md.append(h("p", { class: "hint" }, "Getting the changelog…"));
+          api("GET", "/api/curseforge/changelog?file=" + encodeURIComponent(det.row.file) + "&id=" + encodeURIComponent(ver.id)).then(function (res) {
+            ver.changelog = res.html || "";
+            show(ver.changelog);
+          }, function (e) { md.replaceChildren(h("p", { class: "hint" }, e.message)); });
+        } else show(ver.changelog);
       });
       body.append(item);
     });

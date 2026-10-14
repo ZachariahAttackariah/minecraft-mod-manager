@@ -20,7 +20,7 @@ namespace MinecraftModManager
             { "tagColors", new[] { "vivid", "soft" } },
             { "rowActions", new[] { "hover", "always" } },
             { "tagsPerRow", new[] { "3", "5", "all" } },
-            { "updateChannel", new[] { "release", "beta", "alpha" } },
+            { "updateChannel", new[] { "auto", "release", "beta", "alpha" } },
             { "searchSources", new[] { "both", "modrinth", "curseforge" } },
             { "serverRestart", new[] { "off", "6", "12", "24" } },
         };

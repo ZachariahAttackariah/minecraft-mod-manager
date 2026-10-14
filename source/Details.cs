@@ -117,7 +117,8 @@ namespace MinecraftModManager
                         VersionByHash[hash] = D(Get(found, hash));
                     }
                     Dictionary<string, object> version = VersionByHash[hash];
-                    if (version == null) return Obj("found", false);
+                    // Not on Modrinth: CurseForge's page for it, when CurseForge knows it (CurseForgeDetails.cs).
+                    if (version == null) return (CfReady ? CfInfo(file) : null) ?? Obj("found", false);
                     Dictionary<string, object> project = GetProject(S(version, "project_id"));
                     if (project == null) return Obj("found", false);
                     Dictionary<string, object> license = D(Get(project, "license"));
@@ -184,7 +185,11 @@ namespace MinecraftModManager
                     VersionByHash[hash] = D(Get(found, hash));
                 }
                 Dictionary<string, object> current = VersionByHash[hash];
-                if (current == null) throw new UserError(name + " isn't on Modrinth, so there are no versions to show.");
+                if (current == null)
+                {
+                    if (CfReady) return CfVersions(name);
+                    throw new UserError(name + " isn't on Modrinth, so there are no versions to show.");
+                }
                 string currentDate = S(current, "date_published");
                 List<object> versions = ProjectVersions(S(current, "project_id")).Select(v => (object)VersionObj(v, S(current, "id"), currentDate)).ToList();
                 return Obj("ok", true, "target", TargetObj(), "current", Obj("id", S(current, "id"), "number", S(current, "version_number")), "versions", versions);
@@ -236,6 +241,7 @@ namespace MinecraftModManager
         static Dictionary<string, object> ModrinthSwitch(string name, string versionId)
         {
             if (string.IsNullOrEmpty(versionId)) throw new UserError("No version was chosen.");
+            if (versionId.StartsWith("cf:")) return CfSwitch(name, versionId);
             lock (ModrinthLock)
             {
                 string dir = modsDir;

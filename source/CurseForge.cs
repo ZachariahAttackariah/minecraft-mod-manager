@@ -201,10 +201,16 @@ namespace MinecraftModManager
         }
 
         // A newer file than the installed one, or null.
+        // The newest file in the release types this mod may move to (see AllowedTypes), when it's newer than the jar.
         static Dictionary<string, object> CfUpdateFor(Dictionary<string, object> match)
         {
             Dictionary<string, object> mod = CfMod(CfId(Get(match, "id")));
-            Dictionary<string, object> latest = mod == null ? null : CfLatestIndex(mod);
+            if (mod == null) return null;
+            string[] types = AllowedTypes(modsDir, "cf:" + CfId(Get(match, "id")), CfReleaseName(Get(D(Get(match, "file")), "releaseType")));
+            int want = CfLoader();
+            Dictionary<string, object> latest = A(Get(mod, "latestFilesIndexes")).Select(x => D(x)).Where(x => x != null
+                    && S(x, "gameVersion") == gameVersion && CfId(Get(x, "modLoader")) == want && types.Contains(CfReleaseName(Get(x, "releaseType"))))
+                .OrderByDescending(x => CfId(Get(x, "fileId"))).FirstOrDefault();
             if (latest == null) return null;
             return CfId(Get(latest, "fileId")) > CfId(Get(D(Get(match, "file")), "id")) ? latest : null;
         }
@@ -221,11 +227,19 @@ namespace MinecraftModManager
                 Dictionary<string, object> mod = CfMod(CfId(Get(match, "id")));
                 if (mod == null) continue;
                 Dictionary<string, object> latest = CfUpdateFor(match);
+                string key = "cf:" + CfId(Get(mod, "id"));
+                string held = latest == null ? null : UpdateHeld(modsDir, key, "cf:" + CfId(Get(latest, "fileId")));
+                Dictionary<string, object> heldUpdate = null;
+                if (held != null)
+                {
+                    heldUpdate = Obj("versionId", "cf:" + CfId(Get(latest, "fileId")), "versionNumber", S(latest, "filename"), "type", CfReleaseName(Get(latest, "releaseType")), "why", held);
+                    latest = null;
+                }
                 if (latest != null) updates++;
                 found++;
                 mods[p.Key] = Obj("source", "curseforge", "cfModId", CfId(Get(mod, "id")), "projectId", null, "slug", null,
                     "url", CfUrl(mod), "title", S(mod, "name"), "icon", CfIcon(mod), "clientSide", null, "serverSide", null,
-                    "versionNumber", S(file, "displayName"), "downloadsAllowed", CfDownloadsAllowed(mod),
+                    "versionNumber", S(file, "displayName"), "versionType", CfReleaseName(Get(file, "releaseType")), "held", heldUpdate, "downloadsAllowed", CfDownloadsAllowed(mod),
                     "update", latest == null ? null : Obj("versionId", "cf:" + CfId(Get(latest, "fileId")), "versionNumber", S(latest, "filename"), "type", CfReleaseName(Get(latest, "releaseType"))));
             }
             return found;
@@ -288,6 +302,7 @@ namespace MinecraftModManager
             Dictionary<string, object> mod = CfMod(CfId(Get(match, "id")));
             Dictionary<string, object> latest = CfUpdateFor(match);
             if (mod == null || latest == null) throw new UserError(name + " is already up to date.");
+            if (UpdateHeld(dir, "cf:" + CfId(Get(mod, "id")), null) == "pinned") throw new UserError(name + " is pinned to this version. Unpin it to update.");
             AssertNotInUse(ResolveModFile(dir, name));
             bool disabled = name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase);
             string newFile = CfDownloadFile(mod, CfId(Get(latest, "fileId")), dir, disabled, name, notes);
@@ -306,14 +321,30 @@ namespace MinecraftModManager
             Dictionary<string, object> mod = CfMod(CfId(Get(match, "id")));
             Dictionary<string, object> latest = CfUpdateFor(match);
             if (mod == null || latest == null) throw new UserError("Already up to date.");
-            long fileId = CfId(Get(latest, "fileId"));
-            object log = Get(D(CfHttp("GET", "/mods/" + CfId(Get(mod, "id")) + "/files/" + fileId + "/changelog", null)), "data");
-            Dictionary<string, object> file = CfData(CfHttp("GET", "/mods/" + CfId(Get(mod, "id")) + "/files/" + fileId, null));
+            long modId = CfId(Get(mod, "id")), fileId = CfId(Get(latest, "fileId"));
+            Dictionary<string, object> current = D(Get(match, "file"));
+            long currentId = CfId(Get(current, "id"));
+            // Every file between the installed one and the update (in the same release types), newest first.
+            List<Dictionary<string, object>> files = CfFiles(modId);
+            Dictionary<string, object> target = files.FirstOrDefault(f => CfId(Get(f, "id")) == fileId)
+                ?? CfData(CfHttp("GET", "/mods/" + modId + "/files/" + fileId, null));
+            string from = S(current, "fileDate") ?? "", to = S(target, "fileDate") ?? "";
+            string[] types = AllowedTypes(modsDir, "cf:" + modId, CfReleaseName(Get(current, "releaseType")));
+            List<Dictionary<string, object>> between = files.Where(f => CfId(Get(f, "id")) != currentId && types.Contains(CfReleaseName(Get(f, "releaseType")))
+                && string.CompareOrdinal(S(f, "fileDate") ?? "", from) > 0 && string.CompareOrdinal(S(f, "fileDate") ?? "", to) <= 0).ToList();
+            if (!between.Any(f => CfId(Get(f, "id")) == fileId) && target != null) between.Insert(0, target);
+            var versions = new List<object>();
+            foreach (Dictionary<string, object> f in between.Take(8))
+            {
+                object log = null;
+                try { log = Get(D(CfHttp("GET", "/mods/" + modId + "/files/" + CfId(Get(f, "id")) + "/changelog", null)), "data"); }
+                catch (UserError) { }
+                versions.Add(Obj("number", S(f, "displayName") ?? S(f, "fileName"), "type", CfReleaseName(Get(f, "releaseType")),
+                    "date", S(f, "fileDate"), "changelog", log as string));
+            }
             return Obj("file", name, "title", S(mod, "name"), "icon", CfIcon(mod), "slug", null,
-                "from", S(D(Get(match, "file")), "displayName"), "to", S(file, "displayName") ?? S(latest, "filename"), "count", 1,
-                "versions", new List<object> { Obj("number", S(file, "displayName") ?? S(latest, "filename"), "type", CfReleaseName(Get(latest, "releaseType")),
-                    "date", S(file, "fileDate"), "changelog", log as string) },
-                "downloadsAllowed", CfDownloadsAllowed(mod), "url", CfUrl(mod));
+                "from", S(current, "displayName"), "to", S(target, "displayName") ?? S(latest, "filename"), "count", between.Count,
+                "versions", versions, "downloadsAllowed", CfDownloadsAllowed(mod), "url", CfUrl(mod));
         }
 
         // ---- Search and install, from the Add mods dialog ----

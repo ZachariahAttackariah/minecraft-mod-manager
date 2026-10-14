@@ -385,6 +385,9 @@ namespace MinecraftModManager
                         case "/api/modrinth/versions":
                             result = ModrinthVersions(req.QueryString["file"]);
                             break;
+                        case "/api/curseforge/changelog":
+                            result = CfFileChangelog(req.QueryString["file"], req.QueryString["id"]);
+                            break;
                         case "/api/snapshots":
                             result = SnapshotsState();
                             break;
@@ -512,6 +515,12 @@ namespace MinecraftModManager
                         return;
                     case "/api/prefs":
                         SendJson(ctx, 200, SetPrefs(body));
+                        return;
+                    case "/api/check/dependents":
+                        SendJson(ctx, 200, DependentsOf(StrList(body, "files")));
+                        return;
+                    case "/api/mod/extras":
+                        SendJson(ctx, 200, SetModExtras(body));
                         return;
                     case "/api/curseforge/key":
                         SendJson(ctx, 200, SetCurseForgeKey(Str(body, "key")));
@@ -713,7 +722,7 @@ namespace MinecraftModManager
                 else if (File.Exists(tagsPath)) tagsText = File.ReadAllText(tagsPath, Encoding.UTF8);
             }
             string[] prism = PrismInstanceFor(dir);
-            return Obj("modsDir", dir, "folderExists", exists, "files", files, "tagsText", tagsText, "tagsLinked", tagsLinked, "curseforge", CfReady, "prefs", PrefsCopy(), "target", TargetObj(),
+            return Obj("modsDir", dir, "folderExists", exists, "files", files, "tagsText", tagsText, "tagsLinked", tagsLinked, "curseforge", CfReady, "prefs", PrefsCopy(), "extras", ExtrasFor(dir), "target", TargetObj(),
                 "prism", Obj("installed", FindPrism() != null, "instanceId", prism == null ? null : prism[0], "instanceName", prism == null ? null : prism[1]),
                 "server", Obj("configured", serverDir != null, "state", serverState, "players", PlayerCount()),
                 "bisect", BisectSummary());
@@ -1008,7 +1017,8 @@ namespace MinecraftModManager
             {
                 Dictionary<string, string> hashes = IdentifyFolder(modsDir);
                 List<string> identified = hashes.Values.Distinct().Where(h => VersionByHash[h] != null).ToList();
-                string target = gameVersion + "|" + loader;
+                // A changed release channel (Settings or per mod) asks again, like a new target does.
+                string target = gameVersion + "|" + loader + "|" + PrefChoice("updateChannel", "auto") + "|" + extrasVersion;
                 if (target != latestTarget)
                 {
                     LatestByHash.Clear();
@@ -1017,13 +1027,7 @@ namespace MinecraftModManager
                 }
                 bool stale = force || DateTime.UtcNow - latestCheckedAt > TimeSpan.FromMinutes(30);
                 List<string> toCheck = stale ? identified : identified.Where(h => !LatestByHash.ContainsKey(h)).ToList();
-                for (int i = 0; i < toCheck.Count; i += 500)
-                {
-                    List<string> chunk = toCheck.Skip(i).Take(500).ToList();
-                    Dictionary<string, object> found = D(ModrinthPost("/version_files/update",
-                        Obj("hashes", chunk, "algorithm", "sha1", "loaders", new[] { loader }, "game_versions", new[] { gameVersion }))) ?? new Dictionary<string, object>();
-                    foreach (string h in chunk) LatestByHash[h] = D(Get(found, h));
-                }
+                CheckLatest(modsDir, toCheck);
                 if (stale) latestCheckedAt = DateTime.UtcNow;
 
                 var mods = new Dictionary<string, object>();
@@ -1035,8 +1039,13 @@ namespace MinecraftModManager
                     Dictionary<string, object> project;
                     ProjectById.TryGetValue(S(version, "project_id") ?? "", out project);
                     Dictionary<string, object> latest = UpdateFor(pair.Value);
+                    string held = latest == null ? null : UpdateHeld(modsDir, S(version, "project_id"), S(latest, "id"));
+                    Dictionary<string, object> heldUpdate = null;
+                    if (held != null) { heldUpdate = Obj("versionId", S(latest, "id"), "versionNumber", S(latest, "version_number"), "type", S(latest, "version_type"), "why", held); latest = null; }
                     if (latest != null) updates++;
                     mods[pair.Key] = Obj(
+                        "held", heldUpdate,
+                        "versionType", S(version, "version_type"),
                         "projectId", S(version, "project_id"),
                         "slug", S(project, "slug"),
                         "title", S(project, "title"),
@@ -1057,6 +1066,23 @@ namespace MinecraftModManager
                 }
                 return Obj("ok", true, "target", TargetObj(), "checkedAt", latestCheckedAt == DateTime.MinValue ? null : latestCheckedAt.ToString("o"),
                     "total", hashes.Count, "identified", onModrinth, "identifiedCurseForge", onCurseForge, "curseforgeError", cfError, "updates", updates, "mods", mods);
+            }
+        }
+
+        // Asks Modrinth for the newest version of each hash, grouped by the release types each mod may move to.
+        static void CheckLatest(string dir, List<string> hashes)
+        {
+            foreach (var group in hashes.GroupBy(h => string.Join(",", AllowedTypes(dir, S(VersionByHash[h], "project_id"), S(VersionByHash[h], "version_type")))))
+            {
+                List<string> list = group.ToList();
+                for (int i = 0; i < list.Count; i += 500)
+                {
+                    List<string> chunk = list.Skip(i).Take(500).ToList();
+                    Dictionary<string, object> found = D(ModrinthPost("/version_files/update",
+                        Obj("hashes", chunk, "algorithm", "sha1", "loaders", new[] { loader }, "game_versions", new[] { gameVersion },
+                            "version_types", group.Key.Split(',')))) ?? new Dictionary<string, object>();
+                    foreach (string h in chunk) LatestByHash[h] = D(Get(found, h));
+                }
             }
         }
 
@@ -1333,15 +1359,11 @@ namespace MinecraftModManager
                             results.Add(Obj("file", name, "newFile", CfUpdateJar(dir, name, cf, notes)));
                             continue;
                         }
-                        if (!LatestByHash.ContainsKey(hash))
-                        {
-                            Dictionary<string, object> found = D(ModrinthPost("/version_files/update",
-                                Obj("hashes", new[] { hash }, "algorithm", "sha1", "loaders", new[] { loader }, "game_versions", new[] { gameVersion })));
-                            LatestByHash[hash] = D(Get(found, hash));
-                        }
+                        if (!LatestByHash.ContainsKey(hash)) CheckLatest(dir, new List<string> { hash });
                         Dictionary<string, object> current = VersionByHash[hash];
                         Dictionary<string, object> latest = UpdateFor(hash);
                         if (latest == null) throw new UserError(name + " is already up to date.");
+                        if (UpdateHeld(dir, S(current, "project_id"), S(latest, "id")) == "pinned") throw new UserError(name + " is pinned to this version. Unpin it to update.");
                         string newFile = ReplaceWithVersion(dir, name, current, latest, "Updated   ", notes);
                         results.Add(Obj("file", name, "newFile", newFile));
                         Dictionary<string, object> project;

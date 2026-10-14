@@ -32,8 +32,11 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - mods made for another Minecraft version;
   - Fabric mods without Sinytra Connector.
 - **Mod details**
-  - Description, links and versions with changelogs.
-  - Gallery: the mod's Modrinth screenshots, full size on click (arrow keys to flip through).
+  - Description, links and versions with changelogs, for Modrinth and CurseForge mods alike; switch to any version.
+  - Gallery: the mod's screenshots, full size on click (arrow keys to flip through).
+  - Where its updates come from (match what's installed, releases, betas, everything), pin this version, and a note.
+- **Notes, pins and skipped updates:** a note on any mod (shown on hover, found by search), pinning a mod so Update all leaves it alone, and skipping one update until a newer one comes out. Kept per mods folder in the app's data folder.
+- **Turning off or deleting a library** that other mods need says which ones first.
   - What a mod needs and what needs it, including mods bundled inside jars.
   - Its config files, and whether the server's copies match.
 - **Server**
@@ -109,6 +112,8 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/Details.cs` | Mod details, versions and changelogs |
 | `source/CurseForge.cs` | CurseForge: fingerprints, updates, search and install |
 | `source/Prefs.cs` | The Settings page's preferences |
+| `source/CurseForgeDetails.cs` | Mod details, versions and switching for CurseForge mods |
+| `source/ModExtras.cs` | Notes, pinned versions, skipped updates and release channels |
 | `source/Sides.cs` | Detecting which side (client, server, both) each jar belongs on |
 | `source/Duplicates.cs` | Finding duplicate jars and picking the copy to keep |
 | `source/LinkedTags.cs` | Showing another tool's `.mod-tags.json`, read-only |
