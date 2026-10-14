@@ -3453,8 +3453,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       h("p", { class: "hint", style: "margin:0;line-height:1.4" }, "Ticked items are the same in every instance that ticks them. " +
         "Ticking packs moves this instance's packs into the shared folder, and unticking gives it a copy of its own, so nothing is lost. " +
         "Edit the shared Java arguments under Shared settings in the instance list."));
-    setSharing(source ? source.sharing : inst.data && inst.data.shareByDefault === false
-      ? { java: false, javaArgs: "", shaderpacks: false, resourcepacks: false, options: false } : null);
+    // A new instance (or a copy) starts out sharing everything; an existing one's settings show what it shares now.
+    setSharing(settings && source ? source.sharing : null);
     form.append.apply(form, [
       h("label", { class: "prop" }, h("b", null, "Name"), nameInput),
       settings ? null : h("label", { class: "prop" }, h("b", null, "Start from"), copySelect),
@@ -3581,7 +3581,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       });
     }
 
-    copySelect.addEventListener("change", function () { syncFixed(); setSharing(picked() ? picked().sharing : null); loadVersions(picked() ? picked().loaderVersion : null); });
+    copySelect.addEventListener("change", function () { syncFixed(); loadVersions(picked() ? picked().loaderVersion : null); });
     mcSelect.addEventListener("change", function () { loadVersions(sameAsSource() ? source.loaderVersion : null); });
     loaderSelect.addEventListener("change", function () { loadVersions(sameAsSource() ? source.loaderVersion : null); });
     if (settings) loaderSelect.value = source.loader;

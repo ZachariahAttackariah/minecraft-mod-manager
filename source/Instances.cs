@@ -371,7 +371,8 @@ namespace MinecraftModManager
             int memoryMb = IntValue(body, "memoryMb");
             if (memoryMb != 0) CheckMemory(memoryMb);
             if (source != null && InstanceGameRunning(source)) throw new UserError("Close " + source.Name + " (the game) before copying it.");
-            Dictionary<string, object> sharing = D(Get(body, "sharing"));
+            // Without a choice (a modpack import, for one), a new instance shares everything, like the dialog's default.
+            Dictionary<string, object> sharing = D(Get(body, "sharing")) ?? Obj("java", true, "shaderpacks", true, "resourcepacks", true, "options", true);
             if (sharing != null) CleanJavaArgs(Str(sharing, "javaArgs"));
 
             string folder = NewInstanceFolder(root, name);

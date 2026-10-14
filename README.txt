@@ -135,7 +135,8 @@ Sharing between instances
   Shared settings... in the instance list shows what's shared. Each instance ticks what it shares in its
   own Settings. "New instances share everything" (on by default) applies to instances made here and to ones
   the app sees for the first time (made in the launcher, imported, or there before sharing existed): each is
-  set up once, and anything you untick later stays unticked. A copy shares what its source does.
+  set up once, and anything you untick later stays unticked. The New instance dialog starts with every
+  box ticked (copies and modpack imports included); untick what an instance should keep to itself.
   When the shared Java arguments are still empty, the most recently played instance's own ones become them,
   so switching it over doesn't change how it runs.
   Java arguments .... one set for every instance that ticks it. An instance that doesn't keeps its own arguments
