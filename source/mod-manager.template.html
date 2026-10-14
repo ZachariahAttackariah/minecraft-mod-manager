@@ -1837,6 +1837,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     } else {
       selectOnly(r.key);
     }
+    cursorKey = r.key;
     updateSelectionUI();
   }
   function groupTargets(rows) {
@@ -2305,7 +2306,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var sig = s.modsDir + "|" + s.files.map(function (f) { return f.name + ":" + f.size; }).join(",") + "|" + hash(s.tagsText || "");
       server = s;
       var lookChanged = applyPrefs();
-      if (currentView === "settings") renderPrefs();
+      if (currentView === "settings") renderPrefsIfChanged();
       if (force || lookChanged || sig !== lastSignature || !model) {
         lastSignature = sig;
         if (restoredFor !== s.modsDir) restoreView();
@@ -2967,6 +2968,14 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       return /^#[0-9a-f]{6}$/i.test(hexCanvas.fillStyle) ? hexCanvas.fillStyle : "#8899aa";
     } catch (e) { return "#8899aa"; }
   }
+  function moveTagHue(from, to) {
+    var hues = pref("tagHues") || {};
+    if (!hues[from] || from === to) return;
+    var map = Object.assign({}, hues);
+    if (to) map[to] = map[from];
+    delete map[from];
+    savePref("tagHues", map);
+  }
   function setTagHue(t, color) {
     var map = Object.assign({}, pref("tagHues") || {});
     if (color) map[t] = color; else delete map[t];
@@ -3039,6 +3048,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (i >= 0) state.tags[i] = res.name; // keep a tag filter pointing at the renamed tag
       var j = state.excluded.indexOf(name);
       if (j >= 0) state.excluded[j] = res.name;
+      moveTagHue(name, res.name);
       toast(res.name !== name ? "Renamed " + name + " to " + res.name + (res.mods ? " on " + count(res.mods, "mod", "mods") : "") + "." : "Saved " + name + ".");
     }, function (e) {
       toast(e.message);
@@ -3062,6 +3072,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         renderTagManager();
         api("POST", "/api/tags/delete", { name: t }).then(function (res) {
           if (editingTag === t) { editingTag = null; editDraft = null; }
+          moveTagHue(t, null);
           toast("Deleted the " + t + " tag" + (res.mods ? " from " + count(res.mods, "mod", "mods") : "") + ".");
         }, function (e) {
           toast(e.message);
@@ -3789,6 +3800,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function folderChanged(res) {
     selected = {};
     anchorKey = null;
+    // The folder being left keeps its remembered filters: nothing is saved until the new one's are restored.
+    restoredFor = null;
     clearAll();
     mr.data = null;
     mr.error = null;
@@ -4516,7 +4529,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (model && model.byStatus.updates) go("Update all", count(model.byStatus.updates, "update", "updates"), function () { $("mr-update-all").click(); });
     go("Detect sides", "client / server / both", detectSides);
     go("Manage tags", "", openTagManager);
-    go("Play", server && server.instance ? server.instance.name : "", function () { playChecked(); });
+    go("Play", server && server.prism && server.prism.instanceName ? server.prism.instanceName : "", function () { playChecked(); });
     go("Keyboard shortcuts", "?", showShortcuts);
     go("Read the last crash", "which mods it points at", crashDialog);
     go("On/off presets", "saved sets of mods that are on", presetsDialog);
@@ -4972,8 +4985,21 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       h("div", { class: "set-key" }, input, save, off));
   }
 
+  // The state arrives every 15 seconds; the Settings page is rebuilt only when something it shows changed,
+  // and never while a field on it is in use (a half-typed key, an open list).
+  var prefsSig = "";
+  function settingsSig() {
+    return JSON.stringify(server ? [server.prefs, server.background, server.curseforge, server.paths, server.modsDir] : null);
+  }
+  function renderPrefsIfChanged() {
+    if (settingsSig() === prefsSig) return;
+    var a = document.activeElement;
+    if (a && $("settings-body").contains(a) && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return;
+    renderPrefs();
+  }
   var fineOpen = false;
   function renderPrefs() {
+    prefsSig = settingsSig();
     var root = $("settings-body");
     root.replaceChildren();
     SETTINGS.forEach(function (card) {
@@ -7073,6 +7099,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (!list.length) return;
       e.preventDefault();
       var at = cursorKey ? indexOfKey(list, cursorKey) : -1;
+      if (at < 0 && anchorKey) at = indexOfKey(list, anchorKey);
       var next = Math.max(0, Math.min(list.length - 1, at < 0 ? 0 : at + (e.key === "ArrowDown" ? 1 : -1)));
       cursorKey = list[next].key;
       if (e.shiftKey && anchorKey) {
@@ -7341,7 +7368,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     renderHeader();
     showNotice("Open this page by double-clicking MinecraftModManager.exe. Opened straight from disk, it can't read the mods folder.", "info");
   } else {
-    refresh(true).then(refreshServer);
+    refresh(true).then(function () {
+      // Opened on Packs: its list waits for the connection, which only exists now.
+      if (currentView === "packs" && !packs.data) loadPacks(false);
+      return refreshServer();
+    });
   }
 })();
 </script>

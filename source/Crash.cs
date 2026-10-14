@@ -58,7 +58,8 @@ namespace MinecraftModManager
             if (log.Exists && (report == null || log.LastWriteTimeUtc > report.LastWriteTimeUtc.AddMinutes(1)))
             {
                 string logText = ReadShared(log.FullName);
-                if (Regex.IsMatch(logText, @"/(FATAL|ERROR)\]|Exception in thread|Mod loading has failed|Crash report saved"))
+                // Only signs of a real crash: a healthy game logs plenty of ERROR lines too.
+                if (Regex.IsMatch(logText, @"/FATAL\]|Exception in thread ""(main|Render thread|Server thread)""|Mod loading has failed|Missing or unsupported mandatory dependencies|Encountered an unexpected exception|Crash report saved"))
                 {
                     if (text == null || !logText.Contains("Crash report saved")) { text = logText; source = log.FullName; when = log.LastWriteTimeUtc; }
                 }
