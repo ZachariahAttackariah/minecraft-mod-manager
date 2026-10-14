@@ -495,7 +495,7 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .dlg-files { margin: 0; padding: 8px 10px 8px 28px; max-height: 190px; overflow: auto; font: 400 12.5px/1.55 var(--font-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; overflow-wrap: anywhere; }
 .dlg-files .more { list-style: none; margin-left: -16px; font-family: var(--font-body); color: var(--muted); }
 .dialog .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 4px; }
-#dlg-extra { margin-right: auto; } /* a third choice sits apart, on the left; Cancel and the action stay together on the right */
+#dlg-extra, #check-again-dlg { margin-right: auto; } /* a third choice sits apart, on the left; Cancel and the action stay together on the right */
 
 .copy-fallback { position: fixed; inset: auto var(--gutter) calc(var(--bar-h) + 16px); z-index: 25; display: grid; gap: 8px; max-width: 560px; margin: 0 auto; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; box-shadow: var(--shadow-lg); }
 .copy-fallback p { margin: 0; font-size: 13.5px; }
@@ -4723,11 +4723,20 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   // The check runs only when the button is pressed.
+  // Runs the check and says what changed, since a re-check often finishes in a blink with the same result.
   function manualCheck() {
+    var before = check.data;
     renderCheckBar(true);
     runCheck().then(function (res) {
       if (!res) { toast("The check couldn't run. Try again."); return; }
+      if (before) {
+        var was = before.errors, now = res.errors;
+        toast(now === 0 && !res.warnings ? "Checked again: nothing missing or clashing." :
+          now === was ? "Checked again: " + count(now, "problem", "problems") + (now ? ", as before." : " (" + count(res.warnings, "warning", "warnings") + ").") :
+          "Checked again: " + count(now, "problem", "problems") + " (was " + was + ").");
+      }
       if (res.errors || res.warnings) problemsDialog(res, {});
+      else if (!$("big-scrim").hidden) closeBig();
     });
   }
 
@@ -4791,6 +4800,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!res.issues.length) body.append(h("p", { class: "search-empty" }, "No problems left."));
     if (res.side === "server" && res.issues.length) body.append(h("p", { class: "hint", style: "margin:12px 0" }, "To fix the server, sort it out in the game first, then use Server → Sync from the game."));
     var buttons = [btn(opts.action ? "Cancel" : "Close", closeBig)];
+    if (!opts.action && res.side === "client" && connected) buttons.unshift(btn("Check again", function (e) { e.currentTarget.disabled = true; manualCheck(); }, "", { id: "check-again-dlg" }));
     if (opts.action) buttons.push(btn(res.errors ? opts.actionLabel : (opts.readyLabel || "Continue"), function () { closeBig(); opts.action(); }, res.errors ? "danger" : "primary"));
     openBig(res.errors && opts.title ? opts.title : (res.side === "server" ? "Server mod check" : "Game mod check"),
       res.errors && opts.lead ? opts.lead : "Checked " + res.enabled + " jars that are on, for Minecraft " + res.minecraft + (res.neoforge ? " with NeoForge " + res.neoforge : "") + ".",
