@@ -531,6 +531,13 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .view-nav .nav-gear { display: inline-grid; place-items: center; width: 34px; height: 32px; padding: 0; color: var(--muted); background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
 .view-nav .nav-gear:hover, .view-nav .nav-gear[aria-current="page"] { color: var(--ink); background: var(--btn); }
 .view-nav .nav-gear[aria-current="page"]::after { display: none; }
+/* Auto-tag */
+.sl-actions { display: inline-flex; gap: 6px; }
+.at-group { margin-top: 8px; border: 1px solid var(--line); border-radius: 4px; }
+.at-group summary { display: flex; align-items: center; gap: 10px; padding: 8px 10px; cursor: pointer; }
+.at-mods { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px 12px; padding: 0 10px 10px 34px; }
+.at-mod { display: flex; align-items: center; gap: 7px; font-size: 13px; min-width: 0; }
+.at-mod span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Compare */
 .cmp-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
 .cmp-top select { flex: 1 1 260px; min-width: 0; padding: 7px 9px; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
@@ -992,7 +999,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   </aside>
   <aside class="side-col side-right" aria-label="Tags">
     <div class="panel">
-      <h2 class="section-label"><span>Tags</span><button class="btn" type="button" id="manage-tags">Manage</button></h2>
+      <h2 class="section-label"><span>Tags</span><span class="sl-actions"><button class="btn" type="button" id="auto-tag" title="Suggest your tags for mods from their Modrinth and CurseForge categories. You review them first.">Auto-tag</button><button class="btn" type="button" id="manage-tags">Manage</button></span></h2>
       <div class="tag-grid" id="tag-grid"></div>
       <p class="hint" style="margin:10px 0 0">Click a tag to show only it, click again to hide it. Right-click hides it straight away.</p>
     </div>
@@ -3679,6 +3686,93 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   document.addEventListener("mousedown", function (e) { if (!$("jobs-pop").hidden && !e.target.closest("#jobs-wrap")) { $("jobs-pop").hidden = true; $("jobs-btn").setAttribute("aria-expanded", "false"); clearInterval(jobTick); } });
   $("server-chip").addEventListener("click", function () { setView("server"); });
 
+  // ---------- Auto-tag: the sites' categories, mapped onto this folder's own tags, reviewed first ----------
+
+  // A site category (lowercase, "&" as "and") -> the tags it can mean, first one that exists in this folder wins.
+  var CATEGORY_TAGS = {
+    "optimization": ["performance", "optimization"], "performance": ["performance"],
+    "technology": ["technology", "tech"], "tech": ["technology"], "energy": ["technology"], "automation": ["technology"], "redstone": ["redstone", "technology"],
+    "worldgen": ["worldgen"], "world gen": ["worldgen"], "world generation": ["worldgen"], "biomes": ["worldgen", "biomes"], "dimensions": ["dimensions", "worldgen"],
+    "ores and resources": ["worldgen"], "structures": ["structures"],
+    "mobs": ["mobs"], "mc creatures": ["mobs"], "food": ["food"], "cooking": ["food"], "farming": ["farming", "food"], "agriculture": ["farming", "food"],
+    "magic": ["magic"], "storage": ["storage"], "transportation": ["transport", "transportation"], "player transport": ["transport"],
+    "library": ["library"], "api and library": ["library"], "adventure": ["adventure"], "adventure and rpg": ["adventure"],
+    "decoration": ["decoration", "building"], "cosmetic": ["cosmetic"], "equipment": ["equipment"], "armor, tools, and weapons": ["equipment"],
+    "utility": ["quality-of-life", "utility"], "utility and qol": ["quality-of-life"], "map and information": ["quality-of-life"], "management": ["quality-of-life"],
+    "game-mechanics": ["gameplay"], "game mechanics": ["gameplay"], "social": ["multiplayer"], "server utility": ["multiplayer"], "economy": ["economy"], "minigame": ["minigame"],
+    "create": ["create"], "enchantments": ["enchanting"], "enchanting": ["enchanting"]
+  };
+  function autoTagDialog() {
+    if (!model) return;
+    if (server && server.tagsLinked) { toast("These tags come from another tool's file and are read-only here."); return; }
+    var body = h("div", null, h("p", { class: "search-empty" }, "Reading Modrinth and CurseForge categories…"));
+    var picks = {}; // tag -> { key: true }
+    var go = btn("Add tags", function () { apply(); }, "primary", { disabled: true });
+    openBig("Auto-tag", "Your tags for each mod, from its Modrinth or CurseForge categories. Only tags that already exist here are suggested, and only to mods without them. Untick anything that doesn't fit.", body, [btn("Cancel", closeBig), go]);
+    var label = function () {
+      var n = Object.keys(picks).reduce(function (s, t) { return s + Object.keys(picks[t]).filter(function (k) { return picks[t][k]; }).length; }, 0);
+      go.textContent = n ? "Add " + count(n, "tag", "tags") : "Add tags";
+      go.disabled = !n;
+    };
+    track("Reading categories", api("GET", "/api/tags/suggest")).then(function (res) {
+      var existing = model.order.filter(function (t) { return SIDE_TAGS.indexOf(t) < 0; });
+      var byTag = {}, unmapped = {};
+      res.mods.forEach(function (m) {
+        var r = model.byKey[m.key];
+        if (!r) return;
+        m.categories.forEach(function (c) {
+          var norm = c.toLowerCase().replace(/&/g, "and").replace(/\s+/g, " ").trim();
+          var tag = (CATEGORY_TAGS[norm] || [norm.replace(/\s+/g, "-")]).filter(function (t) { return existing.indexOf(t) >= 0; })[0];
+          if (!tag) { unmapped[norm] = (unmapped[norm] || 0) + 1; return; }
+          if (r.tags.indexOf(tag) >= 0) return;
+          (byTag[tag] = byTag[tag] || {})[r.key] = { r: r, from: c + " on " + (m.site === "curseforge" ? "CurseForge" : "Modrinth") };
+        });
+      });
+      body.replaceChildren();
+      var tags = Object.keys(byTag).sort();
+      if (!tags.length) body.append(h("p", { class: "search-empty" }, "Nothing to suggest: every mod already has the tags its categories point to."));
+      tags.forEach(function (t) {
+        picks[t] = {};
+        var keys = Object.keys(byTag[t]);
+        var list = h("div", { class: "at-mods" });
+        keys.sort(function (a, b) { return byTag[t][a].r.name.localeCompare(byTag[t][b].r.name); }).forEach(function (k) {
+          picks[t][k] = true;
+          var cb = h("input", { type: "checkbox", checked: true });
+          cb.addEventListener("change", function () { picks[t][k] = cb.checked; label(); });
+          list.append(h("label", { class: "at-mod", title: byTag[t][k].from }, cb, h("span", null, byTag[t][k].r.name)));
+        });
+        var all = h("input", { type: "checkbox", checked: true, "aria-label": "All for " + t });
+        all.addEventListener("change", function () {
+          Array.prototype.forEach.call(list.querySelectorAll("input"), function (cb) { cb.checked = all.checked; });
+          keys.forEach(function (k) { picks[t][k] = all.checked; });
+          label();
+        });
+        body.append(h("details", { class: "at-group", open: tags.length <= 4 ? true : null },
+          h("summary", null, all, h("span", { class: "chip", style: "--c:" + colorOf(t) }, t), h("span", { class: "hint" }, count(keys.length, "mod", "mods"))), list));
+      });
+      var un = Object.keys(unmapped).sort(function (a, b) { return unmapped[b] - unmapped[a]; });
+      if (un.length) body.append(h("p", { class: "hint", style: "margin-top:12px" }, "Categories with no matching tag here (make a tag with the same name to use them): " +
+        un.slice(0, 14).map(function (c) { return c + " (" + unmapped[c] + ")"; }).join(", ") + (un.length > 14 ? "…" : "")));
+      label();
+    }, function (e) { body.replaceChildren(h("p", { class: "search-empty" }, e.message)); });
+
+    function apply() {
+      var plan = Object.keys(picks).map(function (t) { return { tag: t, keys: Object.keys(picks[t]).filter(function (k) { return picks[t][k]; }) }; }).filter(function (p) { return p.keys.length; });
+      closeBig();
+      var total = plan.reduce(function (n, p) { return n + p.keys.length; }, 0);
+      plan.reduce(function (pr, p) {
+        return pr.then(function () { return api("POST", "/api/tags", { keys: p.keys, add: [p.tag], remove: [] }); });
+      }, track("Adding tags", Promise.resolve())).then(function () {
+        toast("Added " + count(total, "tag", "tags") + " across " + count(plan.length, "tag name", "tag names") + ".", "Undo", function () {
+          plan.reduce(function (pr, p) { return pr.then(function () { return api("POST", "/api/tags", { keys: p.keys, add: [], remove: [p.tag] }); }); }, Promise.resolve())
+            .then(function () { toast("Took the added tags off again"); return refresh(true); }, function (e) { toast(e.message); });
+        });
+        return refresh(true);
+      }, function (e) { toast(e.message); return refresh(true); });
+    }
+  }
+  $("auto-tag").addEventListener("click", autoTagDialog);
+
   // ---------- Comparing two folders (Compare.cs): read-only ----------
 
   var COMPARE_VIEWS = [["diff", "Differences"], ["here", "Only here"], ["there", "Only there"], ["version", "Other version"], ["onoff", "On / off"], ["tags", "Tags differ"], ["all", "Everything"]];
@@ -3881,6 +3975,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     go("Keyboard shortcuts", "?", showShortcuts);
     go("Read the last crash", "which mods it points at", crashDialog);
     go("On/off presets", "saved sets of mods that are on", presetsDialog);
+    go("Auto-tag", "suggest tags from Modrinth and CurseForge categories", autoTagDialog);
     go("Compare with another folder", "instances and folders you've used", compareDialog);
     (presetCache || []).forEach(function (p) { go("Switch to preset " + p.name, p.on + " on", function () { applyPreset(p.name); }); });
     if (model) {

@@ -116,6 +116,14 @@ namespace MinecraftModManager
             }
             var showRequests = new EventWaitHandle(false, EventResetMode.AutoReset, "MinecraftModManager.Show." + port);
 
+            // A new build installed while the app ran leaves the old exe renamed beside it; tidy it up.
+            try
+            {
+                foreach (string old in Directory.GetFiles(AppDir, "MinecraftModManager.old*.exe"))
+                    try { File.Delete(old); } catch { } // still running: next time
+            }
+            catch { }
+
             pageHtml = LoadPage();
             var context = new WindowsFormsSynchronizationContext();
             SynchronizationContext.SetSynchronizationContext(context);
@@ -384,6 +392,9 @@ namespace MinecraftModManager
                             break;
                         case "/api/modrinth/versions":
                             result = ModrinthVersions(req.QueryString["file"]);
+                            break;
+                        case "/api/tags/suggest":
+                            result = TagSuggestionSources();
                             break;
                         case "/api/compare":
                             result = CompareFolders(req.QueryString["other"]);
