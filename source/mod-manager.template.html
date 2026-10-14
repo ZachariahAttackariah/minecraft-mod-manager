@@ -1842,8 +1842,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var many = model.topics.length > 20;
     $("tag-filter").hidden = !many;
     var f = many ? $("tag-filter").value.trim().toLowerCase() : "";
-    // The Libraries page shows only the library tag(s); the Mods page shows every tag but those (it never shows library mods).
-    var shownTags = model.topics.filter(function (t) { return (LIBRARY_TAGS.indexOf(t) >= 0) === (currentView === "libraries"); })
+    // The Libraries page shows the tags its libraries carry (the library tag among them); the Mods page shows
+    // every tag but the library one (it never shows library mods).
+    var shownTags = model.topics.filter(function (t) {
+      return currentView === "libraries" ? area.counts[t] > 0 || LIBRARY_TAGS.indexOf(t) >= 0 : LIBRARY_TAGS.indexOf(t) < 0;
+    })
       .filter(function (t) { return !f || t.indexOf(f) >= 0 || state.tags.indexOf(t) >= 0 || state.excluded.indexOf(t) >= 0; });
     var lists = shownTags.filter(function (t) { return LIST_TAGS.test(t); });
     var topics = shownTags.filter(function (t) { return !LIST_TAGS.test(t); });

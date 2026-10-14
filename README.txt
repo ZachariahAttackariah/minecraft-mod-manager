@@ -78,7 +78,8 @@ Mods page
   Tag filters: click a tag to show only mods with it (click again to stop). Ctrl+click a tag (or right-click
   a tag card) to hide mods with it instead: the card turns dashed and says NOT; click it to stop. Hidden
   tags beat shown ones. Settings > Mod list > Hiding a tag can make a second click hide instead.
-  The Libraries page's tag panel shows only the library tag; the Mods page's shows every tag but that one.
+  The Libraries page's tag panel shows the tags its libraries have (library among them); the Mods page's
+  shows every tag but library.
   Detect (by "Where each jar installs") works out client only, server only or both for every jar, trusting
   in this order: the jar's metadata (clientSideOnly, a Fabric environment); its code (an entry point that
   only loads on the client or the server); Modrinth's client / server info; then what's inside it (block
