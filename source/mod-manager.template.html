@@ -641,8 +641,9 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 html[data-blocky="on"] .drop-title { font-family: var(--font-blocky); font-weight: 600; }
 .drop-sub { margin-top: 6px; color: var(--muted); font-size: 13.5px; }
 /* Settings page */
-.set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; align-items: start; }
-.set-card { display: grid; gap: 4px; }
+/* Cards flow down columns (like a masonry wall), so a short card never leaves a hole beside a tall one. */
+.set-grid { columns: 2 440px; column-gap: 16px; }
+.set-card { display: grid; gap: 4px; break-inside: avoid; margin: 0 0 16px; }
 .set-card h2 { margin: 0 0 6px; font: 700 15px/1.2 var(--font-display); }
 html[data-blocky="on"] .set-card h2 { font-family: var(--font-blocky); font-weight: 600; letter-spacing: 0.02em; }
 .set-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
