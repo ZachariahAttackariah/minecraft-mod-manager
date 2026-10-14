@@ -14,6 +14,11 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Detect sides: works out client only, server only or both for every jar, from the jar's own metadata (a client-only `displayTest`, `clientSideOnly`, or a Fabric `environment`) and then Modrinth's client / server flags. Results are listed for review before any tag changes, with Undo after.
   - Each mod shows its icon: Modrinth's when Modrinth knows the jar, else the logo inside the jar. Turned-off mods show OFF on the icon; updates are an arrow among the row's actions.
   - Another tool's `.mod-tags.json` (keyed by mod id) in the same folder is shown live, matched to jars by mod id. It's read-only: nothing is written in that folder, since that tool merges any `mod-tags.json` it finds.
+- **CurseForge** (with an API key in the local settings file, never in this repository)
+  - Jars Modrinth doesn't know are recognised by CurseForge's file fingerprint: names, icons, update checks and updates.
+  - The Add mods dialog searches CurseForge too, and installs mods with their required dependencies.
+  - Authors who turn off third-party downloads are respected: their mods are never downloaded by the app; their CurseForge page opens instead.
+  - CurseForge data is kept in memory for the current run only.
 - **Modrinth**
   - Recognises installed jars by their SHA-1 hash.
   - Checks for updates and shows every changelog between your version and the new one before updating.

@@ -135,6 +135,8 @@ namespace MinecraftModManager
                 dataDir = dataArg != null ? Path.GetFullPath(dataArg)
                     : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MinecraftModManager");
             }
+            if (curseforgeKey == null) curseforgeKey = ReadCurseForgeKey(); // test runs (--mods) don't read the rest of the settings
+
             // A saved folder that's gone falls back to another instance rather than a folder dialog, which can
             // open behind other windows and look like the app never started. Test runs (--mods) never fall back.
             if (folderArg == null && (modsDir == null || !Directory.Exists(modsDir)))
@@ -329,6 +331,13 @@ namespace MinecraftModManager
                     SendJson(ctx, 200, GetState());
                     return;
                 }
+                if (method == "GET" && path == "/api/curseforge/search")
+                {
+                    int cfOffset;
+                    int.TryParse(req.QueryString["offset"], out cfOffset);
+                    SendJson(ctx, 200, CurseForgeSearch(req.QueryString["q"], cfOffset, req.QueryString["sort"]));
+                    return;
+                }
                 if (method == "GET" && path == "/api/modrinth/search")
                 {
                     int offset;
@@ -500,6 +509,9 @@ namespace MinecraftModManager
                         return;
                     case "/api/check/remove-duplicates":
                         SendJson(ctx, 200, RemoveDuplicates(body));
+                        return;
+                    case "/api/curseforge/install":
+                        SendJson(ctx, 200, CurseForgeInstall(Str(body, "projectId")));
                         return;
                     case "/api/modrinth/install":
                         SendJson(ctx, 200, ModrinthInstall(Str(body, "projectId")));
@@ -695,7 +707,7 @@ namespace MinecraftModManager
                 else if (File.Exists(tagsPath)) tagsText = File.ReadAllText(tagsPath, Encoding.UTF8);
             }
             string[] prism = PrismInstanceFor(dir);
-            return Obj("modsDir", dir, "folderExists", exists, "files", files, "tagsText", tagsText, "tagsLinked", tagsLinked, "target", TargetObj(),
+            return Obj("modsDir", dir, "folderExists", exists, "files", files, "tagsText", tagsText, "tagsLinked", tagsLinked, "curseforge", CfReady, "target", TargetObj(),
                 "prism", Obj("installed", FindPrism() != null, "instanceId", prism == null ? null : prism[0], "instanceName", prism == null ? null : prism[1]),
                 "server", Obj("configured", serverDir != null, "state", serverState, "players", PlayerCount()),
                 "bisect", BisectSummary());
@@ -1028,8 +1040,17 @@ namespace MinecraftModManager
                         "versionNumber", S(version, "version_number"),
                         "update", latest == null ? null : Obj("versionId", S(latest, "id"), "versionNumber", S(latest, "version_number"), "type", S(latest, "version_type")));
                 }
+                int onModrinth = mods.Count, onCurseForge = 0;
+                string cfError = null;
+                if (CfReady)
+                {
+                    // Jars Modrinth doesn't know: ask CurseForge (CurseForge.cs).
+                    List<FileInfo> rest = hashes.Where(p => VersionByHash[p.Value] == null).Select(p => new FileInfo(Path.Combine(modsDir, p.Key))).ToList();
+                    try { if (rest.Count > 0) onCurseForge = CfScanInto(mods, rest, ref updates); }
+                    catch (UserError ex) { cfError = ex.Message; }
+                }
                 return Obj("ok", true, "target", TargetObj(), "checkedAt", latestCheckedAt == DateTime.MinValue ? null : latestCheckedAt.ToString("o"),
-                    "total", hashes.Count, "identified", mods.Count, "updates", updates, "mods", mods);
+                    "total", hashes.Count, "identified", onModrinth, "identifiedCurseForge", onCurseForge, "curseforgeError", cfError, "updates", updates, "mods", mods);
             }
         }
 
@@ -1199,6 +1220,13 @@ namespace MinecraftModManager
                 || !(url.Host == "cdn.modrinth.com" || url.Host.EndsWith(".modrinth.com", StringComparison.OrdinalIgnoreCase)))
                 throw new UserError("Modrinth gave an unexpected download address for " + name + ", so it wasn't installed.");
 
+            return DownloadJar(url, name, S(D(Get(file, "hashes")), "sha1"), "Modrinth", dir, disabled, replacing, notes);
+        }
+
+        // Downloads one jar (from Modrinth or CurseForge) next to the others, checks its SHA-1, skips it when
+        // the same mod is already there, and only then sends the jar it replaces to the Recycle Bin.
+        static string DownloadJar(Uri url, string name, string expected, string site, string dir, bool disabled, string replacing, List<string> notes)
+        {
             string finalName = name + (disabled ? ".disabled" : "");
             bool sameName = replacing != null && (string.Equals(replacing, name, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(replacing, name + ".disabled", StringComparison.OrdinalIgnoreCase));
@@ -1208,7 +1236,6 @@ namespace MinecraftModManager
                 return null;
             }
 
-            string expected = S(D(Get(file, "hashes")), "sha1");
             string temp = Path.Combine(dir, name + ".download");
             try
             {
@@ -1225,7 +1252,7 @@ namespace MinecraftModManager
                 using (FileStream stream = File.OpenRead(temp))
                     actual = Hex(sha.ComputeHash(stream));
                 if (expected != null && !string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase))
-                    throw new UserError("The download of " + name + " didn't match Modrinth's checksum, so it was thrown away.");
+                    throw new UserError("The download of " + name + " didn't match " + site + "'s checksum, so it was thrown away.");
 
                 if (replacing == null)
                 {
@@ -1293,7 +1320,13 @@ namespace MinecraftModManager
                         string path = ResolveModFile(dir, name);
                         string hash;
                         if (!hashes.TryGetValue(name, out hash) || VersionByHash[hash] == null)
-                            throw new UserError(name + " isn't on Modrinth, so it can't be updated here.");
+                        {
+                            // Not on Modrinth: a CurseForge jar is updated from CurseForge (CurseForge.cs).
+                            Dictionary<string, object> cf = CfMatchFor(dir, name);
+                            if (cf == null) throw new UserError(name + " isn't on Modrinth or CurseForge, so it can't be updated here.");
+                            results.Add(Obj("file", name, "newFile", CfUpdateJar(dir, name, cf, notes)));
+                            continue;
+                        }
                         if (!LatestByHash.ContainsKey(hash))
                         {
                             Dictionary<string, object> found = D(ModrinthPost("/version_files/update",
@@ -1722,6 +1755,7 @@ namespace MinecraftModManager
                     foreach (object folder in A(Get(settings, "servers")))
                         if (folder is string) knownServers.Add((string)folder);
                     savedWindow = D(Get(settings, "window"));
+                    curseforgeKey = Str(settings, "curseforgeKey"); // CurseForge.cs; kept only in this local file
                 }
             }
             catch { }
@@ -1735,7 +1769,8 @@ namespace MinecraftModManager
             try
             {
                 File.WriteAllText(SettingsPath, new JavaScriptSerializer().Serialize(Obj("modsFolder", modsDir, "gameVersion", gameVersion, "loader", loader,
-                    "serverFolder", serverDir, "window", savedWindow, "recentFolders", RecentFoldersCopy(), "servers", KnownServersCopy())), new UTF8Encoding(false));
+                    "serverFolder", serverDir, "window", savedWindow, "recentFolders", RecentFoldersCopy(), "servers", KnownServersCopy(),
+                    "curseforgeKey", string.IsNullOrEmpty(curseforgeKey) ? null : curseforgeKey)), new UTF8Encoding(false));
             }
             catch { }
         }

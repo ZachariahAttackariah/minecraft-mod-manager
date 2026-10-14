@@ -989,6 +989,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <button class="drawer-close" type="button" id="search-close" aria-label="Close">×</button>
     </header>
     <form class="drawer-search" id="search-form">
+      <div class="seg-control" id="search-source" role="group" aria-label="Search on" hidden>
+        <button type="button" data-src="modrinth" aria-pressed="true">Modrinth</button>
+        <button type="button" data-src="curseforge" aria-pressed="false">CurseForge</button>
+      </div>
       <input id="search-q" type="search" placeholder="Search Modrinth" aria-label="Search Modrinth" autocomplete="off" spellcheck="false">
       <select id="search-sort" aria-label="Sort results">
         <option value="relevance">Best match</option>
@@ -1389,6 +1393,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var checked = mr.data.checkedAt ? new Date(mr.data.checkedAt) : null;
       append(st, [mr.data.updates ? h("strong", { class: "upd" }, count(mr.data.updates, "update", "updates") + " available") : "Everything up to date",
         " · ", h("strong", null, mr.data.identified + " of " + mr.data.total), " jars found on Modrinth",
+        mr.data.identifiedCurseForge ? [", ", h("strong", null, String(mr.data.identifiedCurseForge)), " more on CurseForge"] : "",
+        mr.data.curseforgeError ? " · CurseForge: " + mr.data.curseforgeError : "",
         mr.loading ? " · checking…" : checked ? " · checked " + clock(checked) : ""]);
     } else {
       append(st, mr.loading ? "Checking Modrinth…" : "");
@@ -1547,7 +1553,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         var enable = r.status === "disabled";
         // An available update is a button beside the others, so it never adds a line to the row.
         if (r.update) actions.append(h("button", { type: "button", class: "act upd", "data-action": "update", disabled: isBusy || !connected,
-          title: "Update from " + (r.mr ? r.mr.versionNumber : "this version") + " to " + r.update.versionNumber + " (Modrinth" + (r.update.type && r.update.type !== "release" ? ", " + r.update.type : "") + ")",
+          title: "Update from " + (r.mr ? r.mr.versionNumber : "this version") + " to " + r.update.versionNumber + " (" + (r.mr && r.mr.source === "curseforge" ? "CurseForge" : "Modrinth") + (r.update.type && r.update.type !== "release" ? ", " + r.update.type : "") + ")" +
+            (r.mr && r.mr.downloadsAllowed === false ? ". The author only allows downloads from CurseForge's website, so this opens its page." : ""),
           "aria-label": "Update " + r.name + " to " + r.update.versionNumber }, icon("up")));
         actions.append(
           // A switch: green with the knob right while the mod is on, grey with it left while it's off.
@@ -1747,7 +1754,16 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function updateMods(rows) {
     rows = rows.filter(function (r) { return r.update && r.status !== "missing"; });
     if (!rows.length || !connected) return;
-    showChangelogs(rows);
+    // CurseForge mods whose author allows downloads only from the website can't be updated from here.
+    var pageOnly = rows.filter(function (r) { return r.mr && r.mr.source === "curseforge" && r.mr.downloadsAllowed === false; });
+    rows = rows.filter(function (r) { return pageOnly.indexOf(r) < 0; });
+    if (pageOnly.length === 1 && !rows.length) {
+      if (pageOnly[0].mr.url) window.open(pageOnly[0].mr.url, "_blank", "noopener");
+      toast(pageOnly[0].name + "'s author only allows downloads from CurseForge's website. Its page is open in a tab: the new jar you download there lands in this mods folder.");
+      return;
+    }
+    if (pageOnly.length) toast(count(pageOnly.length, "update is", "updates are") + " only available from CurseForge's website (the authors' choice). Right-click one and pick Open on CurseForge.");
+    if (rows.length) showChangelogs(rows);
   }
 
   function doUpdate(rows) {
@@ -1774,7 +1790,27 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   // The same drawer searches for mods or, from the Packs page, for one kind of pack.
-  var search = { kind: "mods", hits: [], total: 0, offset: 0, loading: false, error: null, seq: 0 };
+  var search = { kind: "mods", source: "modrinth", hits: [], total: 0, offset: 0, loading: false, error: null, seq: 0 };
+  // Mods can come from Modrinth or, once a key is set up, CurseForge (packs are Modrinth only).
+  function searchSite() { return search.kind === "mods" && search.source === "curseforge" ? "CurseForge" : "Modrinth"; }
+  function setSearchSource(src) {
+    if (search.source === src) return;
+    search.source = src;
+    search.hits = []; search.total = 0; search.offset = 0; search.seq++; search.loading = false;
+    labelSearch();
+    runSearch(true);
+  }
+  function labelSearch() {
+    var cf = search.kind === "mods" && server && server.curseforge;
+    if (!cf) search.source = "modrinth";
+    $("search-source").hidden = !cf;
+    Array.prototype.forEach.call(document.querySelectorAll("#search-source button"), function (b) { b.setAttribute("aria-pressed", String(b.dataset.src === search.source)); });
+    $("search-q").placeholder = "Search " + searchSite();
+    $("search-q").setAttribute("aria-label", "Search " + searchSite());
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("#search-source button"), function (b) {
+    b.addEventListener("click", function () { setSearchSource(b.dataset.src); });
+  });
   var installing = {};
   var PACK_NOUNS = { resourcepacks: "resource packs", shaderpacks: "shader packs", datapacks: "data packs" };
   var MODRINTH_PATH = { mods: "mod", resourcepacks: "resourcepack", shaderpacks: "shader", datapacks: "datapack" };
@@ -1783,7 +1819,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!connected) return;
     kind = typeof kind === "string" ? kind : "mods";
     if (search.kind !== kind) { search.kind = kind; search.hits = []; search.total = 0; search.offset = 0; search.seq++; search.loading = false; }
-    $("search-title").textContent = kind === "mods" ? "Add mods from Modrinth" : "Add " + PACK_NOUNS[kind] + " from Modrinth";
+    labelSearch();
+    $("search-title").textContent = kind === "mods" ? "Add mods" : "Add " + PACK_NOUNS[kind] + " from Modrinth";
     $("search-target").textContent = kind === "mods" ? "Showing mods for " + targetText() + ". Installing also adds the mods it needs."
       : kind === "shaderpacks" ? "Showing shader packs that work with Iris. Iris is installed too if it isn't yet."
       : kind === "datapacks" ? "Showing data packs for Minecraft " + (server && server.target ? server.target.gameVersion : "") + ". They go into " + packPlaceLabel() + "."
@@ -1806,7 +1843,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     search.loading = true;
     search.error = null;
     renderSearch();
-    var url = search.kind === "mods" ? "/api/modrinth/search?q=" + encodeURIComponent(q)
+    var url = search.kind === "mods" ? "/api/" + (search.source === "curseforge" ? "curseforge" : "modrinth") + "/search?q=" + encodeURIComponent(q)
       : "/api/packs/search?kind=" + search.kind + "&place=" + encodeURIComponent(packs.places[search.kind] || "") + "&q=" + encodeURIComponent(q);
     api("GET", url + "&offset=" + search.offset + "&sort=" + sort).then(function (res) {
       if (seq !== search.seq) return;
@@ -1843,7 +1880,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     list.replaceChildren();
     search.hits.forEach(function (hit) { list.append(resultCard(hit)); });
     if (search.error) list.append(h("p", { class: "search-empty" }, search.error));
-    else if (search.loading) list.append(h("p", { class: "search-empty" }, search.hits.length ? "Loading more…" : "Searching Modrinth…"));
+    else if (search.loading) list.append(h("p", { class: "search-empty" }, search.hits.length ? "Loading more…" : "Searching " + searchSite() + "…"));
     else if (!search.hits.length) list.append(h("p", { class: "search-empty" }, search.kind === "mods" ? "No mods found for " + targetText() + "." : "No " + PACK_NOUNS[search.kind] + " found."));
     // More results load by themselves near the bottom; the button is only there to retry after an error.
     $("search-more").hidden = !search.error || !search.hits.length;
@@ -1865,24 +1902,33 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var sides = [];
     if (hit.clientSide !== "unsupported") sides.push("client");
     if (hit.serverSide !== "unsupported") sides.push("server");
-    var isMod = search.kind === "mods";
+    var isMod = search.kind === "mods", cf = hit.source === "curseforge";
+    // A CurseForge author can switch off downloads through other apps: then the button opens their page.
+    var pageOnly = cf && hit.downloadsAllowed === false && !hit.installed;
     return h("article", { class: "result" },
       hit.icon ? h("img", { class: "result-icon", src: hit.icon, alt: "", loading: "lazy" }) : h("span", { class: "result-icon" }),
       h("div", null,
         h("div", { class: "result-top" },
-          h("a", { class: "result-title", href: "https://modrinth.com/" + MODRINTH_PATH[search.kind] + "/" + encodeURIComponent(hit.slug), target: "_blank", rel: "noopener" }, hit.title),
+          h("a", { class: "result-title", href: hit.url || "https://modrinth.com/" + MODRINTH_PATH[search.kind] + "/" + encodeURIComponent(hit.slug), target: "_blank", rel: "noopener" }, hit.title),
           hit.author ? h("span", { class: "result-author" }, "by " + hit.author) : null),
         h("p", { class: "result-desc" }, hit.description || ""),
-        h("div", { class: "result-meta" }, formatNum(hit.downloads) + " downloads" + (isMod ? " · " + (sides.join(" + ") || "side unknown") : "") + (hit.updated ? " · updated " + ago(hit.updated) : ""))),
-      h("button", { type: "button", class: "btn" + (hit.installed ? "" : " primary"), disabled: hit.installed || busyNow || !connected,
-          "aria-label": (hit.installed ? "Installed: " : "Install ") + hit.title, onclick: function () { if (isMod) installMod(hit); else installPack(hit); } },
-        hit.installed ? "Installed" : busyNow ? "Installing…" : "Install"));
+        h("div", { class: "result-meta" }, formatNum(hit.downloads) + " downloads" + (isMod && !cf ? " · " + (sides.join(" + ") || "side unknown") : "") + (hit.updated ? " · updated " + ago(hit.updated) : "") +
+          (pageOnly ? " · download from CurseForge's site only" : ""))),
+      h("button", { type: "button", class: "btn" + (hit.installed || pageOnly ? "" : " primary"), disabled: hit.installed || busyNow || !connected,
+          title: pageOnly ? "The author only allows downloads from the CurseForge website. Opens its page; a jar you download there goes straight into this mods folder." : null,
+          "aria-label": (hit.installed ? "Installed: " : pageOnly ? "Open the page of " : "Install ") + hit.title, onclick: function () { if (isMod) installMod(hit); else installPack(hit); } },
+        hit.installed ? "Installed" : busyNow ? "Installing…" : pageOnly ? "Open page" : "Install"));
   }
 
   function installMod(hit) {
     installing[hit.projectId] = true;
     renderSearch();
-    api("POST", "/api/modrinth/install", { projectId: hit.projectId }).then(function (res) {
+    api("POST", "/api/" + (hit.source === "curseforge" ? "curseforge" : "modrinth") + "/install", { projectId: hit.projectId }).then(function (res) {
+      if (res.manual) {
+        if (res.url) window.open(res.url, "_blank", "noopener");
+        toast(res.title + "'s author only allows downloads from CurseForge's website. Its page is open in a tab: download it there and it goes straight into this mods folder.");
+        return;
+      }
       var deps = res.added.filter(function (a) { return a.dependency; });
       res.added.forEach(function (a) {
         search.hits.forEach(function (x) { if (x.projectId === a.projectId) x.installed = true; });
@@ -2479,6 +2525,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       copyText(rows.map(function (r) { return r.file; }).join("\n"), single ? "Copied " + rows[0].file : "Copied " + rows.length + " filenames");
     }));
     if (single && rows[0].slug) actions.append(menuItem("Open on Modrinth", "link", function () { window.open("https://modrinth.com/project/" + encodeURIComponent(rows[0].slug), "_blank", "noopener"); }));
+    else if (single && rows[0].mr && rows[0].mr.source === "curseforge" && rows[0].mr.url) actions.append(menuItem("Open on CurseForge", "link", function () { window.open(rows[0].mr.url, "_blank", "noopener"); }));
     if (!single) actions.append(menuItem("Clear selection", "clear", clearSelection));
     var wasOpen = !menuEl.hidden;
     menuEl.replaceChildren(actions, renderTagPanel(rows));

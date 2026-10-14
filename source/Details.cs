@@ -203,7 +203,13 @@ namespace MinecraftModManager
                     try
                     {
                         string hash;
-                        if (!hashes.TryGetValue(name, out hash) || VersionByHash[hash] == null) throw new UserError(name + " isn't on Modrinth.");
+                        if (!hashes.TryGetValue(name, out hash) || VersionByHash[hash] == null)
+                        {
+                            Dictionary<string, object> cf = CfMatchFor(modsDir, name);
+                            if (cf == null) throw new UserError(name + " isn't on Modrinth or CurseForge.");
+                            results.Add(CfChangelogEntry(name, cf));
+                            continue;
+                        }
                         Dictionary<string, object> current = VersionByHash[hash];
                         Dictionary<string, object> latest = UpdateFor(hash);
                         if (latest == null) throw new UserError("Already up to date.");
