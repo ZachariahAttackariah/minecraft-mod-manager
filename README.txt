@@ -166,6 +166,12 @@ Drag and drop
   Drop .jar files anywhere on the window to add them to the mods folder, and resource, shader or data pack
   .zip files to send them where they belong (sorted by what's inside, like a download in a tab).
 
+On/off presets (Presets, next to Add mods)
+  A preset remembers which mods are on ("full", "performance", "testing"...). "Save what's on now" saves
+  or updates one; Apply shows what it would turn on and off, takes a snapshot, switches, and offers Undo.
+  Mods added after a preset was saved stay as they are. Presets find mods by file name, or by mod id after
+  an update. Kept per mods folder in mod-presets.json in the app's data folder. Also in Ctrl+K.
+
 When the game crashes
   A red bar under the tabs says the game crashed (for crash reports from the last three days). "What went
   wrong?" reads the newest crash report, or latest.log when the game died without writing one, and lists
@@ -292,6 +298,7 @@ Files
   source\Prefs.cs                         The Settings page.
   source\Drop.cs                          Files dropped on the window.
   source\Crash.cs                         Reading the last crash report.
+  source\Presets.cs                       On/off presets.
   source\Sides.cs                         Detecting client / server / both.
   source\Duplicates.cs                    Finding duplicate jars.
   source\LinkedTags.cs                    Showing another tool's .mod-tags.json, read-only.

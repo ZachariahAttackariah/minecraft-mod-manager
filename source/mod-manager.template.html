@@ -531,6 +531,12 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .view-nav .nav-gear { display: inline-grid; place-items: center; width: 34px; height: 32px; padding: 0; color: var(--muted); background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
 .view-nav .nav-gear:hover, .view-nav .nav-gear[aria-current="page"] { color: var(--ink); background: var(--btn); }
 .view-nav .nav-gear[aria-current="page"]::after { display: none; }
+/* Presets */
+.preset-new { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.preset-new input { flex: 1 1 220px; min-width: 0; padding: 8px 10px; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
+.preset { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 0; border-top: 1px solid var(--line); }
+.p-name { font-weight: 700; }
+.p-meta { font-size: 12.5px; color: var(--muted); }
 /* The last crash */
 .crash-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 12px; padding: 10px 14px; background: color-mix(in srgb, var(--danger) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line)); border-left: 4px solid var(--danger); border-radius: 4px; }
 .cb-icon { display: inline-grid; place-items: center; width: 22px; height: 22px; font: 800 14px/1 var(--font-body); color: #fff; background: var(--danger); border-radius: 3px; }
@@ -927,6 +933,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         </div>
         <input type="file" id="add-files" multiple accept=".jar,.zip" hidden>
       </div>
+      <button class="btn quiet" type="button" id="open-presets" title="Saved sets of which mods are on, switched in one click">Presets</button>
     </div>
     <div class="mb-group mb-updates">
       <span class="target">
@@ -3653,6 +3660,82 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   document.addEventListener("mousedown", function (e) { if (!$("jobs-pop").hidden && !e.target.closest("#jobs-wrap")) { $("jobs-pop").hidden = true; $("jobs-btn").setAttribute("aria-expanded", "false"); clearInterval(jobTick); } });
   $("server-chip").addEventListener("click", function () { setView("server"); });
 
+  // ---------- On/off presets (Presets.cs) ----------
+
+  var presetCache = null;
+  function loadPresets() {
+    return api("GET", "/api/presets").then(function (res) { presetCache = res.presets; return res.presets; });
+  }
+  function presetsDialog() {
+    var body = h("div");
+    var input = h("input", { type: "text", maxlength: "40", placeholder: "Name, e.g. full, performance, testing", "aria-label": "Preset name", autocomplete: "off" });
+    var form = h("form", { class: "preset-new", onsubmit: function (e) {
+      e.preventDefault();
+      if (!input.value.trim()) { input.focus(); return; }
+      var name = input.value.trim();
+      var exists = (presetCache || []).some(function (p) { return p.name.toLowerCase() === name.toLowerCase(); });
+      api("POST", "/api/presets/save", { name: name }).then(function (res) {
+        toast((exists ? "Updated " : "Saved ") + "the preset " + res.name + ": which of the " + res.count + " jars are on right now.");
+        input.value = "";
+        draw();
+      }, function (err) { toast(err.message); });
+    } }, input, h("button", { type: "submit", class: "btn primary" }, "Save what's on now"));
+    var list = h("div", { class: "preset-list" });
+    body.append(h("p", { class: "hint", style: "margin:0 0 8px" }, "A preset remembers which mods are on. Applying one turns mods on and off to match (a snapshot is taken first); mods added since it was saved stay as they are. Saving with an existing name updates it."), form, list);
+    var draw = function () {
+      list.replaceChildren(h("p", { class: "search-empty" }, "Loading…"));
+      loadPresets().then(function (presets) {
+        list.replaceChildren();
+        if (!presets.length) list.append(h("p", { class: "search-empty" }, "No presets yet. Turn mods on and off the way you want, then save it above."));
+        presets.forEach(function (p) {
+          list.append(h("div", { class: "preset" },
+            h("div", null, h("div", { class: "p-name" }, p.name), h("div", { class: "p-meta" }, p.on + " on · " + p.off + " off · saved " + (p.saved ? ago(p.saved) : ""))),
+            h("div", { class: "row-actions" },
+              btn("Apply", function () { closeBig(); applyPreset(p.name); }, "primary"),
+              btn("Delete", function () {
+                api("POST", "/api/presets/delete", { name: p.name }).then(function () { toast("Deleted the preset " + p.name); draw(); }, function (err) { toast(err.message); });
+              }, "danger-outline"))));
+        });
+      }, function (err) { list.replaceChildren(h("p", { class: "search-empty" }, err.message)); });
+    };
+    openBig("On/off presets", null, body, [btn("Close", closeBig)]);
+    draw();
+    setTimeout(function () { input.focus(); }, 0);
+  }
+  // Shows what would change first, then applies; Undo flips exactly those jars back.
+  function applyPreset(name) {
+    if (!connected) return;
+    api("POST", "/api/presets/apply", { name: name, preview: true }).then(function (pv) {
+      if (!pv.turnOn.length && !pv.turnOff.length) { toast("Everything already matches the preset " + name + "."); return; }
+      var items = pv.turnOn.map(function (f) { return "on: " + nameOf(f); }).concat(pv.turnOff.map(function (f) { return "off: " + nameOf(f); }));
+      confirmDialog({
+        title: "Switch to the preset " + name + "?",
+        items: items,
+        body: "Turns " + count(pv.turnOn.length, "mod", "mods") + " on and " + count(pv.turnOff.length, "mod", "mods") + " off." +
+          (pv.untouched.length ? " " + count(pv.untouched.length, "mod added since it was saved stays", "mods added since it was saved stay") + " as they are." : ""),
+        ok: "Switch",
+        okClass: "primary",
+        onOk: function () {
+          track("Switching to the preset " + name, api("POST", "/api/presets/apply", { name: name })).then(function (res) {
+            var msg = "Switched to " + name + ": " + res.turnedOn.length + " on, " + res.turnedOff.length + " off.";
+            if (res.failed.length) msg += " " + count(res.failed.length, "jar", "jars") + " couldn't be changed: " + res.failed[0].error;
+            toast(msg, "Undo", function () {
+              var back = res.turnedOn.map(function (f) { return { file: f.replace(/\.disabled$/i, ""), on: false }; })
+                .concat(res.turnedOff.map(function (f) { return { file: f + ".disabled", on: true }; }));
+              Promise.all([
+                api("POST", "/api/set-enabled", { files: back.filter(function (b) { return !b.on; }).map(function (b) { return b.file; }), enabled: false }),
+                api("POST", "/api/set-enabled", { files: back.filter(function (b) { return b.on; }).map(function (b) { return b.file; }), enabled: true })
+              ]).then(function () { toast("Put back how it was before " + name); return refresh(true); }, function (e) { toast(e.message); });
+            });
+            return refresh(true);
+          }, function (e) { toast(e.message); });
+        }
+      });
+    }, function (e) { toast(e.message); });
+  }
+  $("open-presets").addEventListener("click", presetsDialog);
+  loadPresets().then(null, function () {});
+
   // ---------- The last crash: a banner when there's a new crash report, and what it points at ----------
 
   function crashSeen() { try { return localStorage.getItem("mmm.crashSeen") || ""; } catch (e) { return ""; } }
@@ -3724,6 +3807,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     go("Play", server && server.instance ? server.instance.name : "", function () { playChecked(); });
     go("Keyboard shortcuts", "?", showShortcuts);
     go("Read the last crash", "which mods it points at", crashDialog);
+    go("On/off presets", "saved sets of mods that are on", presetsDialog);
+    (presetCache || []).forEach(function (p) { go("Switch to preset " + p.name, p.on + " on", function () { applyPreset(p.name); }); });
     if (model) {
       model.topics.forEach(function (t) {
         go("Show only " + t, "tag", function () { setView(currentView === "libraries" ? "libraries" : "mods"); if (state.tags.indexOf(t) < 0) toggleTag(t); }, "tag");

@@ -385,6 +385,9 @@ namespace MinecraftModManager
                         case "/api/modrinth/versions":
                             result = ModrinthVersions(req.QueryString["file"]);
                             break;
+                        case "/api/presets":
+                            result = ListPresets();
+                            break;
                         case "/api/crash":
                             result = ReadLastCrash();
                             break;
@@ -524,6 +527,15 @@ namespace MinecraftModManager
                         return;
                     case "/api/prefs":
                         SendJson(ctx, 200, SetPrefs(body));
+                        return;
+                    case "/api/presets/save":
+                        SendJson(ctx, 200, SavePreset(Str(body, "name")));
+                        return;
+                    case "/api/presets/apply":
+                        SendJson(ctx, 200, ApplyPreset(Str(body, "name"), Bool(body, "preview")));
+                        return;
+                    case "/api/presets/delete":
+                        SendJson(ctx, 200, DeletePreset(Str(body, "name")));
                         return;
                     case "/api/crash/open":
                         OpenCrashFile(Str(body, "name"));
