@@ -58,6 +58,8 @@ Mods page
   Add mods searches Modrinth and CurseForge in one list (with a CurseForge key; Both / Modrinth /
   CurseForge at its top). A mod on both sites shows once, marked with both, and installs from Modrinth;
   if Modrinth has no file for your version and loader, CurseForge's is used instead.
+  Filters beside the search box: category (both sites), and side (Client only / Works on a server;
+  Modrinth only, since CurseForge doesn't say). "More like this" on a result searches its category.
   The list is in the middle, with "Where each jar installs" (client / server) on the left and the tags
   on the right; click either to filter the list. Hover over a tag to see what it means.
   Tag filters: click a tag card to show only mods with it, click again to hide mods with it instead
@@ -158,6 +160,8 @@ Mod details
   your version. Its details say "Matched by mod id and name". It's offered an update only when one of
   the site's files has the jar's own version number, so the app knows where it stands.
   Under the buttons: where its updates come from (see Updates), Pin this version, and a note.
+  Needs & needed by has a Tree view: everything it requires, and what those require, with missing and
+  turned-off ones marked; click a name to open that mod.
 
 Notes, pins and skipped updates (right-click a mod)
   Add a note... ..... a note on the mod: shown on hover over the note mark beside its file name, and found by
@@ -165,6 +169,10 @@ Notes, pins and skipped updates (right-click a mod)
   Pin this version .. Update all and the update arrow leave it alone (a pin mark shows beside its file name).
   Skip this update .. hides this one update; a newer version shows again. "Show the ... update again" undoes it.
   These are kept per mods folder in mod-extras.json in the app's data folder, and follow a mod through updates.
+
+What changed
+  On opening, a note says what's new since the folder was last open here: new updates, and jars added
+  or gone. Show lists them. Switch it off in Settings > Mod list.
 
 Drag and drop
   Drop .jar files anywhere on the window to add them to the mods folder, and resource, shader or data pack
@@ -316,6 +324,7 @@ Files
   source\Presets.cs                       On/off presets.
   source\Compare.cs                       Comparing two folders.
   source\AutoTag.cs                       Categories for Auto-tag.
+  source\DepTree.cs                       The dependency tree in mod details.
   source\Loose.cs                         Matching jars by mod id and name when no file matches exactly.
   source\Sides.cs                         Detecting client / server / both.
   source\Duplicates.cs                    Finding duplicate jars.

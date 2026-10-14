@@ -229,6 +229,8 @@ html[data-blocky="on"] .btn.play { font-family: var(--font-blocky); font-weight:
 .src.cf { --c: #f16436; }
 a.src:hover { border-color: var(--c); }
 .search-warn { margin: 8px; }
+.more-like { font-size: 12px; }
+#search-cat, #search-side { max-width: 170px; }
 .search-empty { margin: 18px 8px; color: var(--muted); }
 .drawer-scrim.centered { justify-content: center; align-items: center; padding: 24px; }
 .drawer.modal { width: min(780px, 100%); height: min(880px, 100%); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
@@ -531,6 +533,19 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .view-nav .nav-gear { display: inline-grid; place-items: center; width: 34px; height: 32px; padding: 0; color: var(--muted); background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
 .view-nav .nav-gear:hover, .view-nav .nav-gear[aria-current="page"] { color: var(--ink); background: var(--btn); }
 .view-nav .nav-gear[aria-current="page"]::after { display: none; }
+.wc-list { margin: 0; padding-left: 18px; font-size: 13.5px; }
+/* Dependency tree */
+.dtree ul { margin: 0; padding-left: 20px; list-style: none; border-left: 1px dashed var(--line); }
+.dtree ul.dt-root { padding-left: 0; border-left: 0; }
+.dtree li { margin: 2px 0; }
+.dt-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 3px 0; font-size: 13.5px; }
+.dt-row::before { content: ""; width: 10px; border-top: 1px dashed var(--line); margin-left: -20px; }
+.dt-root > li > .dt-row::before { display: none; }
+.dt-name { font-weight: 600; }
+.dt-missing > .dt-row .dt-name { color: var(--danger-fg); }
+.dt-off > .dt-row .dt-name { color: var(--warn); }
+.dt-repeat > .dt-row .dt-name { font-weight: 400; color: var(--muted); }
+.dt-note { font-size: 12px; color: var(--muted); }
 /* Auto-tag */
 .sl-actions { display: inline-flex; gap: 6px; }
 .at-group { margin-top: 8px; border: 1px solid var(--line); border-radius: 4px; }
@@ -1245,6 +1260,20 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <option value="downloads">Most downloaded</option>
         <option value="updated">Recently updated</option>
         <option value="newest">Newest</option>
+      </select>
+      <select id="search-cat" aria-label="Category">
+        <option value="">Any category</option>
+        <option value="adventure">Adventure</option><option value="decoration">Decoration</option><option value="economy">Economy</option>
+        <option value="equipment">Equipment</option><option value="food">Food</option><option value="game-mechanics">Game mechanics</option>
+        <option value="library">Library</option><option value="magic">Magic</option><option value="management">Management</option>
+        <option value="minigame">Minigame</option><option value="mobs">Mobs</option><option value="optimization">Performance</option>
+        <option value="social">Social</option><option value="storage">Storage</option><option value="technology">Technology</option>
+        <option value="transportation">Transportation</option><option value="utility">Utility</option><option value="worldgen">World generation</option>
+      </select>
+      <select id="search-side" aria-label="Side">
+        <option value="">Any side</option>
+        <option value="client">Client only</option>
+        <option value="server">Works on a server</option>
       </select>
     </form>
     <div class="results" id="search-results" aria-live="polite"></div>
@@ -2078,6 +2107,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       mr.data = res;
       applyScan();
       render();
+      whatChanged();
     }, function (e) {
       mr.error = e.message;
     }).then(function () {
@@ -2239,13 +2269,21 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     renderSearch();
     var src = searchSource();
     var sites = search.kind !== "mods" ? ["packs"] : src === "both" ? ["modrinth", "curseforge"] : [src];
+    var cat = search.kind === "mods" ? $("search-cat").value : "", side = search.kind === "mods" ? $("search-side").value : "";
+    // CurseForge doesn't say which side a mod runs on, so a side filter leaves it out.
+    if (side && sites.indexOf("curseforge") >= 0) {
+      sites = sites.filter(function (s) { return s !== "curseforge"; });
+      search.warn = "CurseForge results are left out while a side is picked: CurseForge doesn't say which side mods run on.";
+      if (!sites.length) sites = ["modrinth"];
+    }
     var failed = [];
     var calls = sites.map(function (site) {
       var st = site === "curseforge" ? search.cf : search.mr;
       if (st.done) return Promise.resolve([]);
       var url = site === "packs" ? "/api/packs/search?kind=" + search.kind + "&place=" + encodeURIComponent(packs.places[search.kind] || "") + "&q=" + encodeURIComponent(q)
-        : "/api/" + site + "/search?q=" + encodeURIComponent(q);
+        : "/api/" + site + "/search?q=" + encodeURIComponent(q) + (cat ? "&category=" + encodeURIComponent(cat) : "") + (side && site === "modrinth" ? "&side=" + side : "");
       return api("GET", url + "&offset=" + st.offset + "&sort=" + sort).then(function (res) {
+        if (res.noCategory) search.warn = "CurseForge has no matching category, so only Modrinth results show.";
         st.total = Number(res.total) || 0;
         st.offset += res.hits.length;
         st.done = !res.hits.length || st.offset >= st.total;
@@ -2326,6 +2364,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         h("div", { class: "result-top" },
           h("a", { class: "result-title", href: cf ? hit.url : "https://modrinth.com/" + MODRINTH_PATH[search.kind] + "/" + encodeURIComponent(hit.slug), target: "_blank", rel: "noopener" }, hit.title),
           hit.author ? h("span", { class: "result-author" }, "by " + hit.author) : null, sites),
+        // More like this: the same category, no search words.
+        isMod && hit.categories && hit.categories.length ? h("button", { type: "button", class: "linkish more-like", title: "Mods in the " + hit.categories[0] + " category",
+          onclick: function () { var c = hit.categories.filter(function (x) { return $("search-cat").querySelector("option[value=\"" + x + "\"]"); })[0];
+            if (!c) { toast("That category isn't one of the filters."); return; } $("search-cat").value = c; $("search-q").value = ""; runSearch(true); } }, "More like this") : null,
         h("p", { class: "result-desc" }, hit.description || ""),
         h("div", { class: "result-meta" }, formatNum(hit.downloads) + " downloads" + (isMod && !cf ? " · " + (sides.join(" + ") || "side unknown") : "") + (hit.updated ? " · updated " + ago(hit.updated) : "") +
           (pageOnly ? " · download from CurseForge's site only" : ""))),
@@ -3686,6 +3728,41 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   document.addEventListener("mousedown", function (e) { if (!$("jobs-pop").hidden && !e.target.closest("#jobs-wrap")) { $("jobs-pop").hidden = true; $("jobs-btn").setAttribute("aria-expanded", "false"); clearInterval(jobTick); } });
   $("server-chip").addEventListener("click", function () { setView("server"); });
 
+  // ---------- "What changed": on opening, what's new since this folder was last open here ----------
+  // Remembered in this window's storage per mods folder: the jars and the updates on offer.
+
+  var whatChangedDone = false;
+  function whatChanged() {
+    if (whatChangedDone || !model || !server) return;
+    whatChangedDone = true;
+    var storeKey = "mmm.seen." + server.modsDir.toLowerCase();
+    var now = { jars: model.present.map(function (r) { return r.key; }), updates: model.present.filter(function (r) { return r.update; }).map(function (r) { return r.key + "@" + r.update.versionNumber; }), at: new Date().toISOString() };
+    var before = null;
+    try { before = JSON.parse(localStorage.getItem(storeKey) || "null"); } catch (e) {}
+    try { localStorage.setItem(storeKey, JSON.stringify(now)); } catch (e) {}
+    if (!before || !pref("whatChanged")) return;
+    var added = now.jars.filter(function (k) { return before.jars.indexOf(k) < 0; });
+    var gone = before.jars.filter(function (k) { return now.jars.indexOf(k) < 0; });
+    var fresh = now.updates.filter(function (u) { return before.updates.indexOf(u) < 0; });
+    if (!added.length && !gone.length && !fresh.length) return;
+    var parts = [];
+    if (fresh.length) parts.push(count(fresh.length, "new update", "new updates"));
+    if (added.length) parts.push(count(added.length, "jar", "jars") + " added");
+    if (gone.length) parts.push(count(gone.length, "jar", "jars") + " gone");
+    toast("Since you were last here (" + ago(before.at) + "): " + parts.join(", ") + ".", "Show", function () {
+      var body = h("div");
+      var section = function (title, items) {
+        if (!items.length) return;
+        body.append(h("h3", { style: "margin:12px 0 4px;font:700 15px/1.3 var(--font-display)" }, title), h("ul", { class: "wc-list" }, items.map(function (x) { return h("li", null, x); })));
+      };
+      section("New updates", fresh.map(function (u) { var i = u.lastIndexOf("@"); return nameOf(u.slice(0, i)) + " → " + u.slice(i + 1); }));
+      section("Added", added.map(nameOf));
+      section("Gone (deleted, renamed or updated)", gone.map(function (k) { return k; }));
+      openBig("What changed", "Since this folder was last open here, " + dateText(before.at) + " " + clock(new Date(before.at)) + ".", body,
+        [btn("Close", closeBig), fresh.length ? btn("Show updates", function () { closeBig(); setView("mods"); setStatus("updates"); }, "primary") : null].filter(Boolean));
+    });
+  }
+
   // ---------- Auto-tag: the sites' categories, mapped onto this folder's own tags, reviewed first ----------
 
   // A site category (lowercase, "&" as "and") -> the tags it can mean, first one that exists in this folder wins.
@@ -4229,6 +4306,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "fileNames", label: "Show file names", desc: "The jar's file name under each mod's name." },
       { key: "rowActions", label: "Row buttons", desc: "Update, on / off and delete stay visible, or only show strongly on hover. Updates always show.", choices: [["hover", "On hover"], ["always", "Always"]] },
       { key: "tagsPerRow", label: "Tags per row", desc: "Extra tags fold into +N (hover to see them).", choices: [["3", "3"], ["5", "5"], ["all", "All"]] },
+      { key: "whatChanged", label: "What changed, on opening", desc: "A short note of new updates and added or removed jars since the folder was last open here." },
       { key: "confirmDelete", label: "Ask before deleting", desc: "Off sends mods straight to the Recycle Bin, where they can still be restored." }
     ] },
     { title: "Sources", items: [
@@ -4881,7 +4959,15 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   var DEP_STATUS = { ok: "installed", "built-in": "built in", off: "turned off", missing: "missing", "wrong-version": "wrong version" };
+  // The Needs tab: a list of what it needs and what needs it, or the whole tree of what it needs.
+  var depView = "list";
   function renderDeps(body, d) {
+    var seg = h("div", { class: "seg-control", role: "group", "aria-label": "Show as", style: "margin-bottom:12px" });
+    [["list", "List"], ["tree", "Tree"]].forEach(function (v) {
+      seg.append(h("button", { type: "button", "aria-pressed": String(depView === v[0]), onclick: function () { depView = v[0]; renderDetails(); } }, v[1]));
+    });
+    body.append(seg);
+    if (depView === "tree") { renderDepTree(body); return; }
     body.append(h("h3", { style: "margin:0 0 4px;font:700 15px/1.3 var(--font-display)" }, "What it needs"));
     if (!d.deps.length) body.append(h("p", { class: "hint" }, "It doesn't list any other mods."));
     d.deps.forEach(function (dep) {
@@ -4906,6 +4992,29 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         h("div", null, h("div", null, x.name), h("div", { class: "sub" }, x.file)),
         h("span", { class: "st " + (x.type === "required" ? "ok" : "optional") }, (x.type === "required" ? "requires it" : "optional") + (x.enabled ? "" : " · off"))));
     });
+  }
+
+  function renderDepTree(body) {
+    var box = h("div", { class: "dtree" }, h("p", { class: "search-empty" }, "Following what it needs…"));
+    body.append(h("p", { class: "hint", style: "margin:0 0 8px" }, "Everything it requires, and what those require, from the jars in this folder. Optional mods aren't shown; a mod that appears again higher up isn't opened twice."), box);
+    var seq = det.seq;
+    api("GET", "/api/mod/deptree?file=" + encodeURIComponent(det.row.file)).then(function (res) {
+      if (seq !== det.seq) return;
+      box.replaceChildren();
+      if (!res.children.length) { box.append(h("p", { class: "search-empty" }, "It doesn't require any other mod.")); return; }
+      var STATUS = { ok: "", off: "turned off", missing: "missing", bundled: "bundled in another jar" };
+      var node = function (n) {
+        var r = n.file ? rowsFor([n.file.replace(/\.disabled$/i, "")])[0] : null;
+        var label = r ? h("button", { type: "button", class: "linkish dt-name", onclick: function () { openDetails(r); } }, n.name) : h("span", { class: "dt-name" }, n.name);
+        var li = h("li", { class: "dt-" + n.status + (n.repeat ? " dt-repeat" : "") }, h("div", { class: "dt-row" }, label,
+          STATUS[n.status] ? h("span", { class: "st " + (n.status === "ok" ? "ok" : n.status === "bundled" ? "built-in" : n.status) }, STATUS[n.status]) : null,
+          n.repeat ? h("span", { class: "dt-note" }, "(above)") : null));
+        if (n.children.length) li.append(h("ul", null, n.children.map(node)));
+        return li;
+      };
+      box.append(h("ul", { class: "dt-root" }, h("li", null, h("div", { class: "dt-row" }, h("strong", null, res.name)), h("ul", null, res.children.map(node)))));
+      box.append(h("p", { class: "hint" }, count(res.total, "mod in this folder is", "mods in this folder are") + " needed for it to load."));
+    }, function (e) { box.replaceChildren(h("p", { class: "search-empty" }, e.message)); });
   }
 
   function renderConfigs(body, d) {
@@ -6268,6 +6377,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     searchTimer = setTimeout(function () { runSearch(true); }, 350);
   });
   $("search-sort").addEventListener("change", function () { runSearch(true); });
+  $("search-cat").addEventListener("change", function () { runSearch(true); });
+  $("search-side").addEventListener("change", function () { runSearch(true); });
   $("search-more").addEventListener("click", function () { runSearch(false); });
 
   function closeTargetForm() {

@@ -363,13 +363,41 @@ namespace MinecraftModManager
 
         // ---- Search and install, from the Add mods dialog ----
 
-        static Dictionary<string, object> CurseForgeSearch(string query, int offset, string sort)
+        // Modrinth's category slugs and the CurseForge category names that mean the same.
+        static readonly Dictionary<string, string[]> CfCategoryNames = new Dictionary<string, string[]>
+        {
+            { "adventure", new[] { "Adventure and RPG" } }, { "equipment", new[] { "Armor, Tools, and Weapons" } }, { "library", new[] { "API and Library" } },
+            { "food", new[] { "Food" } }, { "magic", new[] { "Magic" } }, { "storage", new[] { "Storage" } }, { "technology", new[] { "Technology" } },
+            { "worldgen", new[] { "World Gen" } }, { "utility", new[] { "Utility & QoL" } }, { "mobs", new[] { "Mobs" } }, { "transportation", new[] { "Player Transport" } },
+            { "decoration", new[] { "Cosmetic", "Decoration" } }, { "optimization", new[] { "Performance" } }, { "economy", new[] { "Economy" } }, { "management", new[] { "Server Utility" } },
+            { "game-mechanics", new[] { "Miscellaneous" } }, { "social", new[] { "Server Utility" } }, { "minigame", new[] { "Minigames" } }
+        };
+        static List<Dictionary<string, object>> cfCategories;
+
+        // CurseForge's id for a Modrinth category slug, or 0 when it has no such category.
+        static long CfCategoryId(string slug)
+        {
+            string[] names;
+            if (!CfCategoryNames.TryGetValue(slug ?? "", out names)) return 0;
+            if (cfCategories == null) cfCategories = CfList(CfHttp("GET", "/categories?gameId=" + CfMinecraft + "&classId=" + CfModsClass, null)).Select(D).Where(c => c != null).ToList();
+            Dictionary<string, object> hit = cfCategories.FirstOrDefault(c => names.Any(n => string.Equals(S(c, "name"), n, StringComparison.OrdinalIgnoreCase)));
+            return hit == null ? 0 : CfId(Get(hit, "id"));
+        }
+
+        static Dictionary<string, object> CurseForgeSearch(string query, int offset, string sort, string category = null)
         {
             // CurseForge sort fields: 2 popularity, 3 last updated, 6 total downloads, 11 release date.
             int field = sort == "downloads" ? 6 : sort == "updated" ? 3 : sort == "newest" ? 11 : 2;
+            long categoryId = 0;
+            if (!string.IsNullOrEmpty(category))
+            {
+                categoryId = CfCategoryId(category);
+                // No matching category there: say so rather than show unfiltered results.
+                if (categoryId == 0) return Obj("ok", true, "target", TargetObj(), "total", 0, "offset", offset, "hits", new List<object>(), "noCategory", true);
+            }
             Dictionary<string, object> result = D(CfHttp("GET", "/mods/search?gameId=" + CfMinecraft + "&classId=" + CfModsClass +
                 "&gameVersion=" + Uri.EscapeDataString(gameVersion) + "&modLoaderType=" + CfLoader() + "&sortField=" + field + "&sortOrder=desc" +
-                "&index=" + Math.Max(0, offset) + "&pageSize=20" + (string.IsNullOrWhiteSpace(query) ? "" : "&searchFilter=" + Uri.EscapeDataString(query.Trim())), null));
+                "&index=" + Math.Max(0, offset) + "&pageSize=20" + (categoryId > 0 ? "&categoryId=" + categoryId : "") + (string.IsNullOrWhiteSpace(query) ? "" : "&searchFilter=" + Uri.EscapeDataString(query.Trim())), null));
             if (result == null) throw new UserError("CurseForge's search didn't answer. Try again.");
             HashSet<long> installed;
             lock (ModrinthLock)

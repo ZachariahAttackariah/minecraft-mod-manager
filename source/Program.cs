@@ -343,14 +343,14 @@ namespace MinecraftModManager
                 {
                     int cfOffset;
                     int.TryParse(req.QueryString["offset"], out cfOffset);
-                    SendJson(ctx, 200, CurseForgeSearch(req.QueryString["q"], cfOffset, req.QueryString["sort"]));
+                    SendJson(ctx, 200, CurseForgeSearch(req.QueryString["q"], cfOffset, req.QueryString["sort"], req.QueryString["category"]));
                     return;
                 }
                 if (method == "GET" && path == "/api/modrinth/search")
                 {
                     int offset;
                     int.TryParse(req.QueryString["offset"], out offset);
-                    SendJson(ctx, 200, ModrinthSearch(req.QueryString["q"], offset, req.QueryString["sort"]));
+                    SendJson(ctx, 200, ModrinthSearch(req.QueryString["q"], offset, req.QueryString["sort"], req.QueryString["category"], req.QueryString["side"]));
                     return;
                 }
                 if (method == "GET" && path == "/api/packs/search")
@@ -392,6 +392,9 @@ namespace MinecraftModManager
                             break;
                         case "/api/modrinth/versions":
                             result = ModrinthVersions(req.QueryString["file"]);
+                            break;
+                        case "/api/mod/deptree":
+                            result = DependencyTree(req.QueryString["file"]);
                             break;
                         case "/api/tags/suggest":
                             result = TagSuggestionSources();
@@ -1153,11 +1156,20 @@ namespace MinecraftModManager
             return string.CompareOrdinal(S(latest, "date_published") ?? "", S(current, "date_published") ?? "") > 0 ? latest : null;
         }
 
-        static Dictionary<string, object> ModrinthSearch(string query, int offset, string sort)
+        // Loaders show up among Modrinth's display categories; they aren't topics.
+        static readonly HashSet<string> LoaderNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "fabric", "forge", "neoforge", "quilt", "liteloader", "modloader", "rift", "babric", "bta-babric", "java-agent", "legacy-fabric", "ornithe", "nilloader", "risugami", "datapack", "minecraft" };
+
+        // category: a Modrinth category slug (or empty). side: "client" (client-only mods), "server"
+        // (mods that do something on a server), or empty.
+        static Dictionary<string, object> ModrinthSearch(string query, int offset, string sort, string category = null, string side = null)
         {
             string index = sort == "downloads" || sort == "updated" || sort == "newest" || sort == "follows" ? sort : "relevance";
-            string facets = new JavaScriptSerializer().Serialize(new object[] {
-                new[] { "project_type:mod" }, new[] { "categories:" + loader }, new[] { "versions:" + gameVersion } });
+            var facetList = new List<object> { new[] { "project_type:mod" }, new[] { "categories:" + loader }, new[] { "versions:" + gameVersion } };
+            if (!string.IsNullOrEmpty(category) && Regex.IsMatch(category, "^[a-z-]{2,30}$")) facetList.Add(new[] { "categories:" + category });
+            if (side == "client") facetList.Add(new[] { "server_side:unsupported" });
+            else if (side == "server") facetList.Add(new[] { "server_side:required", "server_side:optional" });
+            string facets = new JavaScriptSerializer().Serialize(facetList.ToArray());
             Dictionary<string, object> result = D(ModrinthGet("/search?limit=20&offset=" + Math.Max(0, offset) + "&index=" + index +
                 "&query=" + Uri.EscapeDataString(query ?? "") + "&facets=" + Uri.EscapeDataString(facets)));
             if (result == null) throw new UserError("Modrinth's search didn't answer. Try again.");
@@ -1170,6 +1182,7 @@ namespace MinecraftModManager
                 hits.Add(Obj("projectId", S(hit, "project_id"), "slug", S(hit, "slug"), "title", S(hit, "title"), "author", S(hit, "author"),
                     "description", S(hit, "description"), "icon", S(hit, "icon_url"), "downloads", Get(hit, "downloads"),
                     "clientSide", S(hit, "client_side"), "serverSide", S(hit, "server_side"), "updated", S(hit, "date_modified"),
+                    "categories", A(Get(hit, "display_categories")).OfType<string>().Where(c => !LoaderNames.Contains(c)).ToList(),
                     "installed", installed.Contains(S(hit, "project_id") ?? "")));
             }
             return Obj("ok", true, "target", TargetObj(), "total", Get(result, "total_hits"), "offset", offset, "hits", hits);

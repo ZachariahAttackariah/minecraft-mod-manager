@@ -23,7 +23,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Recognises installed jars by their SHA-1 hash.
   - Checks for updates and shows every changelog between your version and the new one before updating.
   - Lets you switch to any older or newer version.
-  - Searches and installs mods, together with the mods they require.
+  - Searches and installs mods, together with the mods they require. Filters for category and side, and "more like this".
   - Checks every download against Modrinth's checksum.
 - **Pre-launch check:** on demand (the Check mods button), the app reads every jar's `neoforge.mods.toml` / `mods.toml` / `fabric.mod.json`. It reports what would stop NeoForge from loading, with one-click fixes:
   - required mods that are missing or turned off;
@@ -38,6 +38,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Where its updates come from (match what's installed, releases, betas, everything), pin this version, and a note.
 - **Notes, pins and skipped updates:** a note on any mod (shown on hover, found by search), pinning a mod so Update all leaves it alone, and skipping one update until a newer one comes out. Kept per mods folder in the app's data folder.
 - **Turning off or deleting a library** that other mods need says which ones first.
+- **What changed:** on opening, new updates and jars added or gone since the folder was last open (optional).
 - **Drag and drop:** `.jar` files dropped on the window go into the mods folder; pack `.zip` files are sorted by what's inside them.
 - **Command palette (Ctrl+K)** to jump to any mod, tag, page or action; **?** lists every shortcut.
 - **Auto-tag:** suggests your existing tags from each mod's Modrinth / CurseForge categories, reviewed per tag before anything changes, with Undo.
@@ -46,7 +47,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
 - **Crash reader:** after a crash, a banner offers to read the newest crash report (or `latest.log`) and lists the mods it points at, most likely first, with one-click Turn off or Find for a missing dependency.
 - **Jobs:** a thin progress bar under the tabs while anything runs, and a list of running and recent jobs. Messages stack with Undo where it applies.
 - **Check before Play** (optional): the pre-launch check runs first and only interrupts when something would stop the game.
-  - What a mod needs and what needs it, including mods bundled inside jars.
+  - What a mod needs and what needs it, including mods bundled inside jars, as a list or a full dependency tree.
   - Its config files, and whether the server's copies match.
 - **Server**
   - Starts and stops a NeoForge dedicated server the way its `run.bat` would.
@@ -126,6 +127,7 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/Presets.cs` | On/off presets |
 | `source/Compare.cs` | Comparing two mods folders |
 | `source/AutoTag.cs` | Site categories for Auto-tag |
+| `source/DepTree.cs` | The dependency tree in mod details |
 | `source/Loose.cs` | Matching jars by mod id and name when no file matches exactly |
 | `source/Crash.cs` | Reading the last crash report and naming the mods it points at |
 | `source/ModExtras.cs` | Notes, pinned versions, skipped updates and release channels |
