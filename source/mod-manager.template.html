@@ -1426,7 +1426,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // never look alike), alternating lighter and deeper, all light enough to read on the dark theme.
   function colorOf(tag) {
     if (TAG_COLORS[tag]) return "var(" + TAG_COLORS[tag] + ")";
-    var i = model && model.topics ? model.topics.indexOf(tag) : -1;
+    var i = model && model.colorTopics ? model.colorTopics.indexOf(tag) : -1;
     if (i < 0) {
       var n = 0;
       for (var k = 0; k < tag.length; k++) n = (n * 31 + tag.charCodeAt(k)) >>> 0;
@@ -1532,6 +1532,16 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
 
     rows.forEach(function (r) { r.tags.forEach(function (t) { if (order.indexOf(t) < 0) order.push(t); }); });
+    // Colours follow the order in the file, so sorting never changes a tag's colour.
+    var colorTopics = order.filter(function (t) { return SIDE_TAGS.indexOf(t) < 0; });
+    // Tags show A to Z everywhere (Settings > Mod list can keep the file's order); client and server stay first.
+    if (pref("tagOrder") !== "file") {
+      order.sort(function (a, b) {
+        var sa = SIDE_TAGS.indexOf(a), sb = SIDE_TAGS.indexOf(b);
+        if (sa >= 0 || sb >= 0) return (sa < 0 ? 99 : sa) - (sb < 0 ? 99 : sb);
+        return a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
+      });
+    }
     rows.forEach(function (r) {
       r.topics = r.tags.filter(function (t) { return SIDE_TAGS.indexOf(t) < 0; })
         .sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); });
@@ -1549,7 +1559,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var byKey = {};
     rows.forEach(function (r) { byKey[r.key] = r; });
     var built = { rows: rows, present: present, byKey: byKey, order: order, defs: defs, counts: counts, byStatus: byStatus,
-      topics: order.filter(function (t) { return SIDE_TAGS.indexOf(t) < 0; }), tagsProblem: tagsProblem };
+      topics: order.filter(function (t) { return SIDE_TAGS.indexOf(t) < 0; }), colorTopics: colorTopics, tagsProblem: tagsProblem };
     applyScan(built);
     return built;
   }
@@ -4513,7 +4523,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // settings file) and sends it with every state. A copy in localStorage paints the right theme before
   // the first state arrives.
 
-  var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3",
+  var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha",
     worldBackups: false, updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false,
     serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false };
   var localPrefs = {};
@@ -4552,7 +4562,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (server) { server.prefs = server.prefs || {}; server.prefs[key] = value; }
     if (applyPrefs() && model) render();
     if (currentView === "settings") renderPrefs();
-    var after = key === "updateChannel" ? function () { return runScan(false); } : null;
+    var after = key === "updateChannel" ? function () { return runScan(false); } : key === "tagOrder" ? function () { return refresh(true); } : null;
     return api("POST", "/api/prefs", body).then(function (res) {
       if (server) server.prefs = res.prefs;
       if (after) return after();
@@ -4573,6 +4583,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "rowActions", label: "Row buttons", desc: "Update, on / off and delete stay visible, or only show strongly on hover. Updates always show.", choices: [["hover", "On hover"], ["always", "Always"]] },
       { key: "tagsPerRow", label: "Tags per row", desc: "Extra tags fold into +N (hover to see them).", choices: [["3", "3"], ["5", "5"], ["all", "All"]] },
       { key: "whatChanged", label: "What changed, on opening", desc: "A short note of new updates and added or removed jars since the folder was last open here." },
+      { key: "tagOrder", label: "Tag order", desc: "How tags are listed in the side panel, on rows and when picking tags for a mod.", choices: [["alpha", "A to Z"], ["file", "As in the file"]] },
       { key: "confirmDelete", label: "Ask before deleting", desc: "Off sends mods straight to the Recycle Bin, where they can still be restored." }
     ] },
     { title: "Folders", items: [

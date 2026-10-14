@@ -15,7 +15,9 @@ Settings (the gear at the right end of the section tabs)
                       lettering for the title, PLAY and headings.
   Folders ........... the mods folder and the server folder (open or change), the app's data folder
                       (snapshots, backups, notes, presets) and the app's own folder (settings, actions.log).
-  Mod list .......... show file names, row buttons always or on hover, tags per row (3, 5 or all; the rest
+  Mod list .......... tag order (A to Z, the default, or as in the file; client and server stay first,
+                      and a tag keeps its colour either way), show file names, row buttons always or on
+                      hover, tags per row (3, 5 or all; the rest
                       fold into +N), ask before deleting.
   Sources ........... where Add mods searches (both sites, Modrinth or CurseForge), and the CurseForge API
                       key (tested before it's kept; Turn off removes it).
