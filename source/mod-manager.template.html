@@ -1842,8 +1842,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var many = model.topics.length > 20;
     $("tag-filter").hidden = !many;
     var f = many ? $("tag-filter").value.trim().toLowerCase() : "";
-    // The library tag only means something on the Libraries page (the Mods page never shows library mods).
-    var shownTags = model.topics.filter(function (t) { return currentView === "libraries" || LIBRARY_TAGS.indexOf(t) < 0; })
+    // The Libraries page shows only the library tag(s); the Mods page shows every tag but those (it never shows library mods).
+    var shownTags = model.topics.filter(function (t) { return (LIBRARY_TAGS.indexOf(t) >= 0) === (currentView === "libraries"); })
       .filter(function (t) { return !f || t.indexOf(f) >= 0 || state.tags.indexOf(t) >= 0 || state.excluded.indexOf(t) >= 0; });
     var lists = shownTags.filter(function (t) { return LIST_TAGS.test(t); });
     var topics = shownTags.filter(function (t) { return !LIST_TAGS.test(t); });
@@ -1865,7 +1865,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         h("span", { class: "row1" }, h("span", { class: "name" }, exc ? h("span", { class: "not-mark" }, "not") : null, t), h("span", { class: "count" }, String(area.counts[t])))));
     }
     var untagged = area.present.filter(function (r) { return !r.topics.length; }).length;
-    grid.append(h("button", { type: "button", class: "tag-card", style: "--c:var(--muted)", "aria-pressed": String(state.untagged), onclick: toggleUntagged,
+    if (currentView !== "libraries") grid.append(h("button", { type: "button", class: "tag-card", style: "--c:var(--muted)", "aria-pressed": String(state.untagged), onclick: toggleUntagged,
         title: "Jars with no tags besides client / server." },
       h("span", { class: "row1" }, h("span", { class: "name" }, "untagged"), h("span", { class: "count" }, String(untagged)))));
   }
