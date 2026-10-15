@@ -663,6 +663,13 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .kv.keys { gap: 8px 18px; }
 .kv.keys kbd, .hint kbd { padding: 1px 6px; font: 600 12px/1.5 var(--font-mono); color: var(--ink); background: var(--raised); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; }
 /* Drag and drop */
+/* Switching to another instance or folder (startSwitching). */
+html.switching-shown #view-mods .mods-bar, html.switching-shown #view-mods .side-col, html.switching-shown #view-mods .toolbar, html.switching-shown #view-mods .list-head,
+html.switching-shown #selection-bar, html.switching-shown #active, html.switching-shown #folder-stats { opacity: 0.35; pointer-events: none; transition: opacity 0.15s; }
+html.switching #inst-btn, html.switching #play { pointer-events: none; }
+.crumbs .opening { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { #inst-icon.loading { animation: block-hop 0.9s ease-in-out infinite; } }
+@keyframes block-hop { 0%, 100% { transform: none; } 35% { transform: translateY(-5px) rotate(-8deg); } 65% { transform: translateY(-5px) rotate(8deg); } }
 .result.stale { opacity: 0.45; pointer-events: none; transition: opacity 0.12s; }
 .search-empty.searching { padding-block: 8px; }
 .drop-zone { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px; background: color-mix(in srgb, var(--bg) 70%, transparent); pointer-events: none; }
@@ -1895,6 +1902,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   function renderHeader() {
+    if (isSwitching()) return; // the old folder's name and counts don't come back mid-switch
     $("live-dot").className = "live-dot" + (connected ? " on" : "");
     var line = $("folder-line"), stats = $("folder-stats");
     line.replaceChildren();
@@ -2210,6 +2218,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       r.topics.filter(function (x) { return state.tags.indexOf(x) >= 0; }).join(",")].join("\u0001");
   }
   function renderList(rows) {
+    if (isSwitching()) return;
     var epoch = [appliedLook, connected, pref("tagsPerRow"), model ? model.defsSig : ""].join("\u0002");
     if (epoch !== rowCacheEpoch || (model && Object.keys(rowCache).length > model.rows.length * 2)) { rowCache = {}; rowCacheEpoch = epoch; }
     var els = rows.map(function (r) {
@@ -3887,14 +3896,57 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function selectInstance(it) {
     closeInstances(true);
     if (it.current) return;
-    api("POST", "/api/instances/select", { path: it.path }).then(function (res) {
-      toast("Now managing " + it.name + " (Minecraft " + res.target.gameVersion + ", " + (LOADER_NAMES[res.target.loader] || res.target.loader) + ").");
-      return folderChanged(res);
-    }, function (e) { toast(e.message); });
+    startSwitching(it.name);
+    track("Opening " + it.name, api("POST", "/api/instances/select", { path: it.path }).then(function (res) {
+      return folderChanged(res).then(function () {
+        toast("Now managing " + it.name + " (Minecraft " + res.target.gameVersion + ", " + (LOADER_NAMES[res.target.loader] || res.target.loader) + ").");
+      });
+    })).then(null, function (e) { endSwitching(); toast(e.message); });
+  }
+
+  // Shimmering placeholder rows (on startup, and while another folder opens).
+  function skeletonRows() {
+    var skel = document.createDocumentFragment();
+    for (var si = 0; si < 9; si++) {
+      skel.append(h("div", { class: "row skel", "aria-hidden": "true" }, h("div", { class: "c-check" }), h("div", { class: "c-name" }, h("span", { class: "sk ic" }),
+        h("div", { class: "c-name-text" }, h("span", { class: "sk", style: "width:" + (40 + (si * 37) % 45) + "%" }), h("span", { class: "sk thin", style: "width:" + (30 + (si * 23) % 40) + "%" }))),
+        h("div", { class: "c-slots" }, h("span", { class: "sk", style: "width:36px" })), h("div", { class: "c-chips" }, h("span", { class: "sk", style: "width:" + (60 + (si * 41) % 90) + "px" })), h("div")));
+    }
+    return skel;
+  }
+  // Switching to another instance or folder: the instance button shows the new name at once (its block
+  // hopping). If opening takes more than a moment, placeholder rows replace the list and the rest of the
+  // Mods page dims, until the new folder has loaded (or the switch failed). A quick switch goes straight
+  // from the old list to the new one, without a flash of placeholders.
+  var switchTimer = 0, switchName = null;
+  function isSwitching() { return document.documentElement.classList.contains("switching"); }
+  function startSwitching(name) {
+    if (isSwitching()) return;
+    switchName = name || "the folder";
+    document.documentElement.classList.add("switching");
+    if (!menuEl.hidden) closeMenu();
+    if (name) $("inst-name").textContent = name;
+    $("inst-sub").textContent = "Opening…";
+    $("inst-icon").classList.add("loading");
+    switchTimer = setTimeout(function () {
+      if (!isSwitching()) return;
+      document.documentElement.classList.add("switching-shown");
+      $("rows").replaceChildren(skeletonRows());
+      $("empty").hidden = true;
+      $("folder-line").replaceChildren(h("span", { class: "opening" }, h("span", { class: "spin", "aria-hidden": "true" }), "Opening " + switchName + "…"));
+    }, 150);
+  }
+  function endSwitching() {
+    if (!isSwitching()) return;
+    clearTimeout(switchTimer);
+    document.documentElement.classList.remove("switching", "switching-shown");
+    $("inst-icon").classList.remove("loading");
+    if (model) render(); else renderHeader();
   }
 
   // Everything that belonged to the previous mods folder is dropped, then the new one loads.
   function folderChanged(res) {
+    startSwitching(res && (res.name || (res.modsDir && folderLabel(res.modsDir))));
     selected = {};
     anchorKey = null;
     // The folder being left keeps its remembered filters: nothing is saved until the new one's are restored.
@@ -3915,10 +3967,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (currentView === "packs") loadPacks(false);
     if (res && res.target && server) server.target = res.target;
     return refresh(true).then(function () {
+      endSwitching();
       if (currentView === "snapshots") loadSnapshots();
       if (currentView === "cleanup") loadCleanup();
       if (currentView === "server" && srv.sub === "sync") loadSync();
-    });
+    }, function (e) { endSwitching(); throw e; });
   }
 
   // The settings instances can share: the Java arguments are edited here; the shared pack folders
@@ -4383,7 +4436,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
             .then(function (res) { return res.json().then(function (d) { if (!res.ok) throw new Error(d.error || "Couldn't import it."); return d; }); });
         })
           .then(function (res) {
-            folderChanged({});
+            folderChanged({ name: res.name });
             var body = h("div", null, h("p", null, "Downloaded " + count(res.downloaded, "file", "files") + ", unpacked " + count(res.extracted, "file", "files") + " from the pack."));
             if (res.manual.length) {
               body.append(h("h3", { style: "margin:12px 0 4px;font:700 15px/1.3 var(--font-display)" }, "Download these from CurseForge yourself"),
@@ -7475,15 +7528,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
   setView(startHash || "mods", true);
   // Placeholder rows until the first state arrives, so the list doesn't jump in from nothing.
-  if (!model) {
-    var skel = document.createDocumentFragment();
-    for (var si = 0; si < 9; si++) {
-      skel.append(h("div", { class: "row skel", "aria-hidden": "true" }, h("div", { class: "c-check" }), h("div", { class: "c-name" }, h("span", { class: "sk ic" }),
-        h("div", { class: "c-name-text" }, h("span", { class: "sk", style: "width:" + (40 + (si * 37) % 45) + "%" }), h("span", { class: "sk thin", style: "width:" + (30 + (si * 23) % 40) + "%" }))),
-        h("div", { class: "c-slots" }, h("span", { class: "sk", style: "width:36px" })), h("div", { class: "c-chips" }, h("span", { class: "sk", style: "width:" + (60 + (si * 41) % 90) + "px" })), h("div")));
-    }
-    $("rows").replaceChildren(skel);
-  }
+  if (!model) $("rows").replaceChildren(skeletonRows());
   if (!hasToken) {
     renderHeader();
     showNotice("Open this page by double-clicking MinecraftModManager.exe. Opened straight from disk, it can't read the mods folder.", "info");
