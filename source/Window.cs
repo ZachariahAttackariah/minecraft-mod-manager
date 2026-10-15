@@ -1,8 +1,9 @@
 // The app window: a tab strip whose first, pinned tab is the manager page. Links from the manager
 // and pop-ups from websites open as more tabs in the same window, each with back / forward /
 // reload and an address bar. A .jar downloaded in any tab goes straight into the mods folder.
-// The strip: the manager as a small icon-only tab, then Modrinth and CurseForge buttons (each shows its
-// site's tab, or opens one; Ctrl+click or middle-click always opens another), then the site tabs.
+// The strip: the manager as a small icon-only tab, then Modrinth and CurseForge as tabs that are always
+// there (each loads its site the first time it's shown, and links to that site from the manager open in it;
+// Ctrl+click or middle-click opens another tab of it), then any other tabs.
 // Colours follow Windows' light/dark app setting and match the page.
 //
 // Keys: Ctrl+T new tab (Modrinth), Ctrl+W close tab, Ctrl+Tab / Ctrl+Shift+Tab switch tabs,
@@ -106,6 +107,9 @@ namespace MinecraftModManager
         {
             public WebView2 View;
             public bool IsManager;
+            // The always-open site tabs: their label, home page, host and where their icon comes from.
+            public string Label, Home, SiteHost, IconUrl, PendingUrl;
+            public bool IsPinnedSite { get { return Home != null; } }
             public string Title = "New tab";
             public string Url = "";
             public Image Icon;
@@ -119,6 +123,8 @@ namespace MinecraftModManager
             readonly List<BrowserTab> tabs = new List<BrowserTab>();
             readonly Stack<string> closedUrls = new Stack<string>();
             readonly BrowserTab manager = new BrowserTab { IsManager = true, Title = "Mod manager" };
+            readonly BrowserTab modrinthTab = new BrowserTab { Label = "Modrinth", Title = "Modrinth", Home = NewTabUrl, SiteHost = "modrinth.com", IconUrl = "https://modrinth.com/favicon.ico", Loading = false };
+            readonly BrowserTab curseforgeTab = new BrowserTab { Label = "CurseForge", Title = "CurseForge", Home = CurseForgeTabUrl, SiteHost = "curseforge.com", IconUrl = "https://static-beta.curseforge.com/images/favicon.ico", Loading = false };
             readonly TabStrip strip;
             readonly ToolStrip nav = new ToolStrip();
             readonly ToolStripButton back = new ToolStripButton("←");
@@ -186,6 +192,9 @@ namespace MinecraftModManager
                 Controls.Add(strip);
 
                 tabs.Add(manager);
+                tabs.Add(modrinthTab);
+                tabs.Add(curseforgeTab);
+                LoadSiteIcons();
                 ApplyPalette();
                 SystemEvents.UserPreferenceChanged += OnThemeChanged;
                 Load += OnLoad;
@@ -394,20 +403,96 @@ namespace MinecraftModManager
                 Close();
             }
 
-            // A site button: the most recent tab on that site, or a new one (always new when asked).
-            public void ShowSite(string url, string host, bool newTab)
+            // A page on Modrinth or CurseForge opens in that site's own tab; anything else gets a new tab.
+            public void OpenTab(string url)
             {
-                BrowserTab open = newTab ? null : tabs.LastOrDefault(t => !t.IsManager && OnSite(t, host));
-                if (open != null) ShowTab(open); else OpenTab(url);
+                Uri uri;
+                if (!Uri.TryCreate(url ?? "", UriKind.Absolute, out uri) || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp)) return;
+                BrowserTab pinned = tabs.FirstOrDefault(t => t.IsPinnedSite && (uri.Host == t.SiteHost || uri.Host.EndsWith("." + t.SiteHost, StringComparison.OrdinalIgnoreCase)));
+                if (pinned == null) { OpenNewTab(uri.AbsoluteUri); return; }
+                CoreWebView2 core = Core(pinned);
+                if (core != null) core.Navigate(uri.AbsoluteUri); else pinned.PendingUrl = uri.AbsoluteUri;
+                ShowTab(pinned);
             }
 
-            static bool OnSite(BrowserTab tab, string host)
+            // The site tabs show their sites' icons from the start, not only once opened: kept in the data folder
+            // (icons\<host>.png) and fetched in the background when missing or a month old. If that fetch fails,
+            // the icon the site shows when its tab is first opened is kept instead.
+            static string SiteIconPath(BrowserTab tab) { return Path.Combine(dataDir, "icons", tab.SiteHost + ".png"); }
+
+            void LoadSiteIcons()
             {
-                Uri u;
-                return Uri.TryCreate(tab.Url ?? "", UriKind.Absolute, out u) && (u.Host == host || u.Host.EndsWith("." + host, StringComparison.OrdinalIgnoreCase));
+                foreach (BrowserTab tab in tabs.Where(t => t.IsPinnedSite))
+                {
+                    string file = SiteIconPath(tab);
+                    try { if (File.Exists(file)) using (var img = Image.FromFile(file)) tab.Icon = new Bitmap(img); } catch { }
+                    if (tab.Icon != null && DateTime.UtcNow - File.GetLastWriteTimeUtc(file) < TimeSpan.FromDays(30)) continue;
+                    BrowserTab site = tab;
+                    Task.Run(() => FetchIcon(site.IconUrl)).ContinueWith(done =>
+                    {
+                        Bitmap icon = done.Status == TaskStatus.RanToCompletion ? done.Result : null;
+                        if (icon == null) return;
+                        SaveSiteIcon(site, icon);
+                        if (site.Icon != null) site.Icon.Dispose();
+                        site.Icon = icon;
+                        strip.Invalidate();
+                    }, TaskScheduler.FromCurrentSynchronizationContext());
+                }
             }
 
-            public async void OpenTab(string url)
+            static Bitmap FetchIcon(string url)
+            {
+                try
+                {
+                    var request = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(url);
+                    request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+                    request.Timeout = 15000;
+                    var data = new MemoryStream();
+                    using (var response = request.GetResponse())
+                    using (Stream input = response.GetResponseStream()) input.CopyTo(data);
+                    data.Position = 0;
+                    // An .ico holds several sizes: take the 32px one (or the nearest), else read it as any image.
+                    try { using (var ico = new Icon(data, new Size(32, 32))) return ico.ToBitmap(); }
+                    catch { data.Position = 0; using (Image img = Image.FromStream(data)) return new Bitmap(img); }
+                }
+                catch { return null; }
+            }
+
+            static void SaveSiteIcon(BrowserTab tab, Image icon)
+            {
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(SiteIconPath(tab)));
+                    icon.Save(SiteIconPath(tab), System.Drawing.Imaging.ImageFormat.Png);
+                }
+                catch { }
+            }
+
+            // Loads a site tab's page the first time it's shown (or when a link sends it somewhere first).
+            async void LoadPinned(BrowserTab tab)
+            {
+                if (tab.View != null) return;
+                tab.View = NewView();
+                tab.Loading = true;
+                if (tab == active) { tab.View.Visible = true; tab.View.BringToFront(); }
+                strip.Invalidate();
+                try
+                {
+                    await tab.View.EnsureCoreWebView2Async(await GetEnvironment());
+                    WireWebTab(tab);
+                    string url = tab.PendingUrl ?? tab.Home;
+                    tab.PendingUrl = null;
+                    tab.Url = url;
+                    tab.View.CoreWebView2.Navigate(url);
+                    if (tab == active) UpdateChrome();
+                }
+                catch (Exception ex)
+                {
+                    Notify("status:Couldn't open " + tab.Label + ": " + ex.Message);
+                }
+            }
+
+            public async void OpenNewTab(string url)
             {
                 Uri uri;
                 if (!Uri.TryCreate(url ?? "", UriKind.Absolute, out uri) || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp)) return;
@@ -466,6 +551,11 @@ namespace MinecraftModManager
                         }
                     }
                     catch { icon = null; }
+                    if (tab.IsPinnedSite)
+                    {
+                        if (tab.Icon != null || icon == null) { if (icon != null) icon.Dispose(); return; }
+                        SaveSiteIcon(tab, icon);
+                    }
                     tab.Icon = icon;
                     strip.Invalidate();
                 };
@@ -523,6 +613,7 @@ namespace MinecraftModManager
                     tab.View.BringToFront();
                 }
                 if (previous != null && previous.View != null) previous.View.Visible = false;
+                if (tab.IsPinnedSite && tab.View == null) LoadPinned(tab);
                 UpdateChrome();
                 strip.Invalidate();
                 if (tab.View != null && ContainsFocus) tab.View.Focus();
@@ -578,7 +669,7 @@ namespace MinecraftModManager
 
             void CloseTab(BrowserTab tab)
             {
-                if (tab == null || tab.IsManager) return;
+                if (tab == null || tab.IsManager || tab.IsPinnedSite) return;
                 int index = tabs.IndexOf(tab);
                 if (index < 0) return;
                 tabs.RemoveAt(index);
@@ -620,11 +711,11 @@ namespace MinecraftModManager
                 switch (keyData)
                 {
                     case Keys.Control | Keys.T:
-                        OpenTab(NewTabUrl);
+                        OpenNewTab(NewTabUrl);
                         return true;
                     case Keys.Control | Keys.W:
                     case Keys.Control | Keys.F4:
-                        if (active != null && !active.IsManager) { CloseTab(active); return true; }
+                        if (active != null && !active.IsManager && !active.IsPinnedSite) { CloseTab(active); return true; }
                         break;
                     case Keys.Control | Keys.Tab:
                     case Keys.Control | Keys.PageDown:
@@ -701,11 +792,8 @@ namespace MinecraftModManager
             {
                 readonly AppWindow w;
                 readonly ToolTip tip = new ToolTip();
-                // The site buttons: label, home page, host, colour.
-                static readonly string[][] Sites = { new[] { "Modrinth", NewTabUrl, "modrinth.com", "#1bd96a" }, new[] { "CurseForge", CurseForgeTabUrl, "curseforge.com", "#f16436" } };
-                readonly Rectangle[] siteButtons = new Rectangle[2];
                 int divider;
-                int hover = -1, hoverSite = -1;
+                int hover = -1;
                 bool hoverClose;
                 string tipText = "";
                 // The window's own minimize / maximize / close buttons, drawn at the right end of the strip
@@ -728,56 +816,29 @@ namespace MinecraftModManager
                     int x = Px(8), top = Px(7), height = Height - top;
                     int buttonWidth = Px(46);
                     for (int i = 0; i < 3; i++) caption[i] = new Rectangle(Width - buttonWidth * (3 - i), 0, buttonWidth, Height);
-                    // The manager: a small pinned tab showing just the app's icon.
-                    w.manager.Bounds = new Rectangle(x, top, Px(44), height);
-                    w.manager.Close = Rectangle.Empty;
-                    x += Px(44) + Px(8);
-                    // Modrinth and CurseForge.
-                    for (int i = 0; i < Sites.Length; i++)
+                    // The manager: a small tab showing just the app's icon. Then the always-open site tabs, as wide as their names.
+                    foreach (BrowserTab tab in w.tabs.Where(t => t.IsManager || t.IsPinnedSite))
                     {
-                        int width = Px(10) + Px(10) + Px(8) + TextRenderer.MeasureText(Sites[i][0], Font).Width + Px(12);
-                        siteButtons[i] = new Rectangle(x, top + Px(3), width, height - Px(9));
-                        x += width + Px(4);
+                        int width = tab.IsManager ? Px(44) : (tab.Icon == null ? Px(14) : Px(11) + Px(16) + Px(8)) + TextRenderer.MeasureText(tab.Label, Font).Width + Px(14);
+                        tab.Bounds = new Rectangle(x, top, width, height);
+                        tab.Close = Rectangle.Empty;
+                        x += width + Px(2);
                     }
                     divider = x + Px(4);
-                    x += Px(12);
-                    // The site tabs. Some empty strip stays before the window buttons, to drag the window by.
-                    int webCount = w.tabs.Count - 1;
+                    x += Px(10);
+                    // Other tabs. Some empty strip stays before the window buttons, to drag the window by.
+                    int webCount = w.tabs.Count(t => !t.IsManager && !t.IsPinnedSite);
                     int room = caption[0].Left - x - Px(56);
                     int each = webCount == 0 ? 0 : Math.Max(Px(56), Math.Min(Px(230), room / webCount));
                     foreach (BrowserTab tab in w.tabs)
                     {
-                        if (tab.IsManager) continue;
+                        if (tab.IsManager || tab.IsPinnedSite) continue;
                         tab.Bounds = new Rectangle(x, top, each, height);
                         int c = Px(16);
                         tab.Close = each < Px(90) && tab != w.active ? Rectangle.Empty
                             : new Rectangle(x + each - c - Px(9), top + (height - c) / 2, c, c);
                         x += each + Px(2);
                     }
-                }
-
-                int HitSite(Point pt)
-                {
-                    ArrangeTabs();
-                    for (int i = 0; i < siteButtons.Length; i++) if (siteButtons[i].Contains(pt)) return i;
-                    return -1;
-                }
-
-                void DrawSiteButtons(Graphics g, Palette p)
-                {
-                    for (int i = 0; i < Sites.Length; i++)
-                    {
-                        Rectangle r = siteButtons[i];
-                        // Lit while one of its tabs is the one showing.
-                        bool on = w.active != null && !w.active.IsManager && OnSite(w.active, Sites[i][2]);
-                        if (on || hoverSite == i) using (var b = new SolidBrush(on ? p.Tab : p.Hover)) FillRound(g, b, r, Px(5));
-                        var mark = new Rectangle(r.X + Px(10), r.Y + (r.Height - Px(10)) / 2, Px(10), Px(10));
-                        using (var b = new SolidBrush(ColorTranslator.FromHtml(Sites[i][3]))) FillRound(g, b, mark, Px(2));
-                        var text = new Rectangle(mark.Right + Px(8), r.Y, r.Right - mark.Right - Px(8), r.Height);
-                        TextRenderer.DrawText(g, Sites[i][0], Font, text, on || hoverSite == i ? p.Ink : p.Muted,
-                            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
-                    }
-                    using (var pen = new Pen(p.Line)) g.DrawLine(pen, divider, Px(14), divider, Height - Px(8));
                 }
 
                 protected override void OnPaint(PaintEventArgs e)
@@ -788,7 +849,9 @@ namespace MinecraftModManager
                     using (var b = new SolidBrush(p.Strip)) g.FillRectangle(b, ClientRectangle);
                     ArrangeTabs();
                     for (int i = 0; i < w.tabs.Count; i++) DrawTab(g, p, w.tabs[i], i);
-                    DrawSiteButtons(g, p);
+                    // A thin line between the tabs that are always there and the rest.
+                    if (w.tabs.Any(t => !t.IsManager && !t.IsPinnedSite))
+                        using (var pen = new Pen(p.Line)) g.DrawLine(pen, divider, Px(15), divider, Height - Px(8));
                     DrawCaptionButtons(g, p);
                 }
 
@@ -839,7 +902,7 @@ namespace MinecraftModManager
                 // Empty strip (not a tab, not +, not a window button) moves the window like a title bar.
                 public bool IsDragArea(Point pt)
                 {
-                    return ClientRectangle.Contains(pt) && HitTab(pt) < 0 && HitSite(pt) < 0 && HitCaption(pt) < 0;
+                    return ClientRectangle.Contains(pt) && HitTab(pt) < 0 && HitCaption(pt) < 0;
                 }
 
                 protected override void WndProc(ref Message m)
@@ -881,6 +944,11 @@ namespace MinecraftModManager
                         g.DrawIcon(w.appIcon, new Rectangle(r.X + (r.Width - icon) / 2, iconRect.Y, icon, icon));
                         return;
                     }
+                    else if (tab.IsPinnedSite && tab.Icon == null)
+                    {
+                        // No icon yet: the name starts where the icon would be.
+                        iconRect = new Rectangle(r.X + Px(14) - Px(8), iconRect.Y, 0, icon);
+                    }
                     else if (tab.Loading && tab.Icon == null)
                     {
                         using (var pen = new Pen(p.Accent, Px(2))) g.DrawArc(pen, Rectangle.Inflate(iconRect, -Px(2), -Px(2)), 0, 270);
@@ -900,7 +968,7 @@ namespace MinecraftModManager
                     var textRect = new Rectangle(textLeft, r.Y, Math.Max(0, textRight - textLeft), r.Height);
                     Color ink = isActive ? p.Ink : p.Muted;
                     using (Font f = tab.IsManager ? new Font(Font, FontStyle.Bold) : null)
-                        TextRenderer.DrawText(g, tab.Title, f ?? Font, textRect, ink,
+                        TextRenderer.DrawText(g, tab.IsPinnedSite ? tab.Label : tab.Title, f ?? Font, textRect, ink,
                             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
 
                     if (!tab.Close.IsEmpty && (isActive || index == hover))
@@ -952,18 +1020,18 @@ namespace MinecraftModManager
                 {
                     int h = HitTab(e.Location);
                     bool hc = h >= 0 && w.tabs[h].Close.Contains(e.Location);
-                    int hs = HitSite(e.Location);
                     int cb = HitCaption(e.Location);
-                    if (h != hover || hc != hoverClose || hs != hoverSite || cb != hoverCaption)
+                    if (h != hover || hc != hoverClose || cb != hoverCaption)
                     {
                         hover = h;
                         hoverClose = hc;
-                        hoverSite = hs;
                         hoverCaption = cb;
                         Invalidate();
                     }
                     string text = cb == 0 ? "Minimize" : cb == 1 ? (w.WindowState == FormWindowState.Maximized ? "Restore down" : "Maximize") : cb == 2 ? "Close"
-                        : hs >= 0 ? Sites[hs][0] + " (Ctrl+click for another tab)" : hc ? "Close tab (Ctrl+W)" : h < 0 ? "" : w.tabs[h].IsManager ? "Minecraft Mod Manager" : w.tabs[h].Title + "\n" + w.tabs[h].Url;
+                        : hc ? "Close tab (Ctrl+W)" : h < 0 ? "" : w.tabs[h].IsManager ? "Minecraft Mod Manager"
+                        : w.tabs[h].IsPinnedSite ? w.tabs[h].Label + (string.IsNullOrEmpty(w.tabs[h].Url) ? "" : "\n" + w.tabs[h].Url) + "\nCtrl+click or middle-click: another tab"
+                        : w.tabs[h].Title + "\n" + w.tabs[h].Url;
                     if (text != tipText)
                     {
                         tipText = text;
@@ -975,7 +1043,6 @@ namespace MinecraftModManager
                 {
                     hover = -1;
                     hoverCaption = -1;
-                    hoverSite = -1;
                     hoverClose = false;
                     Invalidate();
                 }
@@ -1003,15 +1070,13 @@ namespace MinecraftModManager
                     }
                     if (e.Button == MouseButtons.Left)
                     {
-                        int hs = HitSite(e.Location);
-                        if (hs >= 0) w.ShowSite(Sites[hs][1], Sites[hs][2], (ModifierKeys & Keys.Control) != 0);
+                        if (h >= 0 && w.tabs[h].IsPinnedSite && (ModifierKeys & Keys.Control) != 0) w.OpenNewTab(w.tabs[h].Home);
                         else if (h >= 0 && w.tabs[h].Close.Contains(e.Location)) w.CloseTab(w.tabs[h]);
                         else if (h >= 0) w.ShowTab(w.tabs[h]);
                     }
-                    else if (e.Button == MouseButtons.Middle && HitSite(e.Location) >= 0)
+                    else if (e.Button == MouseButtons.Middle && h >= 0 && w.tabs[h].IsPinnedSite)
                     {
-                        int hs = HitSite(e.Location);
-                        w.ShowSite(Sites[hs][1], Sites[hs][2], true);
+                        w.OpenNewTab(w.tabs[h].Home);
                     }
                     else if (e.Button == MouseButtons.Middle && h >= 0 && !w.tabs[h].IsManager)
                     {
