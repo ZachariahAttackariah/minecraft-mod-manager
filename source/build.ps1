@@ -24,7 +24,13 @@ try {
     $template = [System.IO.File]::ReadAllText((Join-Path $src "mod-manager.template.html"))
     if (-not $template.Contains("/*__NAMES__*/{}")) { throw "The template is missing the /*__NAMES__*/{} placeholder." }
     $page = Join-Path $temp "mod-manager.html"
-    [System.IO.File]::WriteAllText($page, $template.Replace("/*__NAMES__*/{}", $names), (New-Object System.Text.UTF8Encoding($false)))
+    # The pixel font for the stylised text (fonts\Minecraft.otf, SIL OFL, see fonts\Minecraft-OFL.txt) goes into
+    # the page itself, so it shows without an internet connection.
+    $fontFile = Join-Path $src "fonts\Minecraft.otf"
+    if (-not $template.Contains("__FONT_MINECRAFT__")) { throw "The template is missing the __FONT_MINECRAFT__ placeholder." }
+    if (-not (Test-Path $fontFile)) { throw "Missing $fontFile" }
+    $font = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($fontFile))
+    [System.IO.File]::WriteAllText($page, $template.Replace("/*__NAMES__*/{}", $names).Replace("__FONT_MINECRAFT__", $font), (New-Object System.Text.UTF8Encoding($false)))
 
     # Syntax-check the page's script with Windows' own JavaScript engine (Chakra) so a typo can't ship.
     # That engine is older than the app's, so a few modern-but-valid spellings are rewritten in the check copy only.

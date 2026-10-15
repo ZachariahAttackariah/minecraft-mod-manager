@@ -420,6 +420,9 @@ Files
   source\names.json                       Optional display names and Modrinth links for known jars (kept local).
   source\build.ps1                        Rebuilds the exe (and syntax-checks the page). Close the app first.
   source\make-icon.ps1, app.ico           The icon (a grass block).
+  source\fonts\                           The pixel font for the title, PLAY and headings: "Minecraft" by
+                                          Idrees Hassan (github.com/IdreesInc/Minecraft-Font), SIL Open Font
+                                          License 1.1 (Minecraft-OFL.txt). Built into the app; works offline.
 
 Command line (optional): MinecraftModManager.exe --mods "D:\some\mods" --server "D:\server" --port 8737 --no-window
   (--restart-minutes N makes scheduled server restarts and backups come every N minutes, for testing.)
