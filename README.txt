@@ -17,7 +17,7 @@ Settings (the gear at the right end of the section tabs)
                       Fine-tune (click to unfold): background (glow, plain, or a faint block grid), a
                       background picture of your own (Choose a picture...; the app keeps its own copy,
                       dimmed so text stays readable: Bold, Clear, Soft or Faint), corners (rounded or
-                      square), row spacing, animation (follow Windows or reduce), blocky lettering for the
+                      square), row spacing, animation (follow Windows, always, or reduce), blocky lettering for the
                       title, PLAY and headings, and your own styles: Edit user.css opens user.css in the
                       app data folder (made the first time with a few commented examples); save it, then
                       Reload it. Delete the file to undo it all.

@@ -333,10 +333,8 @@ html[data-actions="always"] .act { opacity: 1; }
 .not-mark { padding: 1px 4px; font: 700 10px/1.2 var(--font-body); text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink); background: color-mix(in srgb, var(--c) 35%, transparent); border-radius: 2px; text-decoration: none; display: inline-block; }
 .pill.not { border-style: dashed; }
 
-/* The search bar has no backing of its own until it sticks to the top with rows passing under it; then it
-   takes the list panel's tone (nearly opaque, blurred) and a soft shadow, exactly as wide as the list. */
-.toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-inline: calc(-1 * var(--gutter)); padding: 10px var(--gutter); background: transparent; border-radius: 0 0 6px 6px; transition: background-color 0.15s, box-shadow 0.15s; }
-.toolbar.stuck { background: color-mix(in srgb, color-mix(in srgb, var(--surface) 55%, var(--bg)) 94%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 10px 14px -12px rgba(0, 0, 0, 0.7); }
+/* The search bar has no backing of its own, scrolled or not. */
+.toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-inline: calc(-1 * var(--gutter)); padding: 10px var(--gutter); background: transparent; }
 /* Search, status, side, sort, count and the dots share one line; the search box takes what's left (it wraps only when there's no room). */
 .search { position: relative; flex: 1 1 96px; min-width: 96px; }
 .toolbar .seg-control button { padding-inline: 8px; }
@@ -433,7 +431,7 @@ a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--acce
 .sk.thin { height: 9px; opacity: 0.7; }
 .sk.ic { width: var(--icon); height: var(--icon); margin: 0; border-radius: 6px; }
 @keyframes sk { from { background-position: 100% 0; } to { background-position: -100% 0; } }
-@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+html[data-anim="off"] .sk { animation: none; }
 button.chip { cursor: pointer; }
 button.chip:hover { border-color: var(--c); }
 button.chip[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 32%, transparent); border-color: var(--c); }
@@ -523,25 +521,22 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
 .toast.leaving { animation: toast-out 0.16s ease-in forwards; pointer-events: none; }
 @keyframes toast-out { to { opacity: 0; transform: translateX(12px); } }
-/* Dialogs, drawers, menus and pages ease in instead of popping up (off with reduced motion). */
-@media (prefers-reduced-motion: no-preference) {
-  .scrim:not([hidden]), .drawer-scrim:not([hidden]), .pal-scrim { animation: fade-in 0.14s ease-out; }
-  .scrim:not([hidden]) > .dialog, .drawer-scrim:not([hidden]) > .drawer, .pal-scrim > .pal { animation: rise-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
-  .menu:not([hidden]), .pop-menu:not([hidden]), .inst-pop:not([hidden]) { animation: pop-in 0.11s ease-out; }
-  section.view:not([hidden]) { animation: fade-in 0.16s ease-out; }
-  .lightbox { animation: fade-in 0.14s ease-out; }
-}
+/* Dialogs, drawers, menus and pages ease in instead of popping up. Animation is on or off for the whole page
+   (html[data-anim], set by applyPrefs from Settings > Animation: Follow Windows, Always, or Reduce). */
+html[data-anim="on"] :is(.scrim:not([hidden]), .drawer-scrim:not([hidden]), .pal-scrim) { animation: fade-in 0.14s ease-out; }
+html[data-anim="on"] :is(.scrim:not([hidden]) > .dialog, .drawer-scrim:not([hidden]) > .drawer, .pal-scrim > .pal) { animation: rise-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); }
+html[data-anim="on"] :is(.menu:not([hidden]), .pop-menu:not([hidden]), .inst-pop:not([hidden])) { animation: pop-in 0.11s ease-out; }
+html[data-anim="on"] section.view:not([hidden]) { animation: fade-in 0.16s ease-out; }
+html[data-anim="on"] .lightbox { animation: fade-in 0.14s ease-out; }
 @keyframes fade-in { from { opacity: 0; } }
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.22s; }
 @keyframes rise-in { from { opacity: 0; transform: translateY(10px) scale(0.985); } }
 @keyframes pop-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } }
-@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+html[data-anim="off"] .toast { animation: none; }
 .toast .msg { flex: 1 1 auto; }
 .toast .x { display: inline-grid; place-items: center; margin-left: -4px; color: var(--muted); }
 .toast button { padding: 0; font-weight: 600; color: var(--accent-fg); background: none; border: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; white-space: nowrap; }
-@media (prefers-reduced-motion: no-preference) {
-  .tag-card, .legend-item, .btn, .pill, .act, .check, .row { transition: border-color 120ms ease, background-color 120ms ease, opacity 120ms ease; }
-}
+html[data-anim="on"] :is(.tag-card, .legend-item, .btn, .pill, .act, .check, .row) { transition: border-color 120ms ease, background-color 120ms ease, opacity 120ms ease; }
 
 /* ---- Sections (Mods / Server / Snapshots / Cleanup) ---- */
 .server-chip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; font: 600 13.5px/1 var(--font-body); color: var(--ink); background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
@@ -568,7 +563,7 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .view-nav .jobs-btn.idle .spin { display: none; }
 .spin { flex: none; width: 11px; height: 11px; border: 2px solid color-mix(in srgb, var(--accent-fg) 30%, transparent); border-top-color: var(--accent-fg); border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .spin, .jobbar span { animation-duration: 3s; } }
+html[data-anim="off"] :is(.spin, .jobbar span) { animation-duration: 3s; }
 .jobs-pop { min-width: 320px; max-width: 420px; gap: 2px; }
 .jobs-head { padding: 6px 8px 2px; font: 700 11px/1.2 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .job { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 8px; font-size: 13px; }
@@ -709,7 +704,7 @@ html[data-icons="off"] .off-tag { position: static; transform: none; }
 html[data-rows="zebra"] .row { border-bottom-color: transparent; }
 html[data-rows="zebra"] .row:nth-child(even) { background: color-mix(in srgb, var(--surface) 60%, transparent); }
 html[data-rows="zebra"] .row:hover { background: var(--surface); }
-html[data-motion="reduce"] *, html[data-motion="reduce"] *::before, html[data-motion="reduce"] *::after { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; transition-duration: 0.001s !important; }
+html[data-anim="off"] *, html[data-anim="off"] *::before, html[data-anim="off"] *::after { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; transition-duration: 0.001s !important; }
 /* Which list columns show (Settings > Mod list). */
 html[data-col-version="off"] .col-version, html[data-col-side="off"] .c-slots, html[data-col-side="off"] #sort-side-col,
 html[data-col-tags="off"] .c-chips, html[data-col-tags="off"] .col-tags { display: none; }
@@ -4941,6 +4936,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     { key: "redstone", label: "Redstone", color: "#d9443b" }
   ];
   var systemDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  var reducedMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
   var appliedLook = "", appliedZoom = null;
   function applyPrefs() {
     var root = document.documentElement;
@@ -4948,7 +4944,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var look = { "data-theme": theme, "data-accent": pref("accent"), "data-density": pref("density"), "data-tags": pref("tagColors"),
       "data-files": pref("fileNames") ? "on" : "off", "data-actions": pref("rowActions"), "data-blocky": pref("blockyTitle") ? "on" : "off",
       "data-bg": pref("background"), "data-corners": pref("corners"), "data-tagstyle": pref("tagStyle"), "data-icons": pref("showIcons") ? "on" : "off",
-      "data-rows": pref("rowStyle"), "data-motion": pref("motion") };
+      "data-rows": pref("rowStyle"), "data-motion": pref("motion"),
+      // Always plays animations whatever Windows says; Follow Windows plays them unless its animation effects are off.
+      "data-anim": pref("motion") === "on" ? "on" : pref("motion") === "reduce" ? "off" : (reducedMotion && reducedMotion.matches ? "off" : "on") };
     Object.keys(look).forEach(function (k) { root.setAttribute(k, look[k]); });
     if (pref("accent") === "custom") root.style.setProperty("--accent", pref("accentColor")); else root.style.removeProperty("--accent");
     var cols = ["22px", "minmax(0, 1.25fr)"];
@@ -4982,6 +4980,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
   applyPrefs();
   if (systemDark && systemDark.addEventListener) systemDark.addEventListener("change", function () { if (pref("theme") === "system" && applyPrefs() && model) render(); });
+  if (reducedMotion && reducedMotion.addEventListener) reducedMotion.addEventListener("change", function () { applyPrefs(); });
 
   // keepPage: the control already shows the change (a switch that slid), so the Settings page stays as it is.
   var LOOK_KEYS = ["theme", "accent", "accentColor", "background", "corners", "tagColors", "tagStyle", "density", "rowStyle", "bgDim", "blockyTitle"];
@@ -4997,7 +4996,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (currentView === "settings") { if (keepPage) prefsSig = settingsSig(); else renderPrefs(); }
     };
     // A new theme or colour cross-fades instead of snapping (where the window supports it).
-    var motion = pref("motion") !== "reduce" && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    var motion = document.documentElement.getAttribute("data-anim") === "on";
     if (LOOK_KEYS.indexOf(key) >= 0 && motion && document.startViewTransition && document.visibilityState === "visible") {
       var fade = document.startViewTransition(apply);
       // A quicker second change skips the first fade (its promises reject); nothing is lost.
@@ -5024,7 +5023,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "bgPicture", label: "Background picture", desc: "", custom: backgroundPictureControl, fine: true },
       { key: "corners", label: "Corners", desc: "Square corners look more like the game.", choices: [["round", "Rounded"], ["square", "Square"]], fine: true },
       { key: "density", label: "Row spacing", desc: "Compact fits more mods on screen.", choices: [["comfortable", "Comfortable"], ["compact", "Compact"]], fine: true },
-      { key: "motion", label: "Animation", desc: "Spinners, slides and fades. Reduce turns them down.", choices: [["system", "Follow Windows"], ["reduce", "Reduce"]], fine: true },
+      { key: "motion", label: "Animation", desc: "Spinners, slides and fades. Follow Windows plays them unless its animation effects are off; Always plays them anyway; Reduce turns them down.", choices: [["system", "Follow Windows"], ["on", "Always"], ["reduce", "Reduce"]], fine: true },
       { key: "blockyTitle", label: "Blocky lettering", desc: "The title, PLAY and headings in a pixel font.", fine: true },
       { key: "userCss", label: "Your own styles (user.css)", desc: "", custom: userCssControl, fine: true }
     ] },

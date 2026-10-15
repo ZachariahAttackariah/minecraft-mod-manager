@@ -20,7 +20,7 @@ namespace MinecraftModManager
             { "corners", new[] { "round", "square" } },
             { "textSize", new[] { "90", "100", "110", "120" } },
             { "tagStyle", new[] { "tint", "solid", "outline" } },
-            { "motion", new[] { "system", "reduce" } },
+            { "motion", new[] { "system", "on", "reduce" } },
             { "rowStyle", new[] { "lines", "zebra" } },
             { "startPage", new[] { "last", "mods", "libraries", "packs", "server", "snapshots" } },
             { "bgDim", new[] { "40", "60", "75", "90" } },
