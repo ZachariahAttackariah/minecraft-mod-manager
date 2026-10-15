@@ -227,7 +227,10 @@ namespace MinecraftModManager
             int found = 0;
             List<FileInfo> jarList = jars.ToList();
             Dictionary<string, Dictionary<string, object>> matches = CfIdentify(jarList);
-            foreach (FileInfo jar in jarList.Where(j => !matches.ContainsKey(j.Name)))
+            List<FileInfo> unmatched = jarList.Where(j => !matches.ContainsKey(j.Name)).ToList();
+            // Matching by mod id asks CurseForge per jar: six at a time (each answer is kept), then in order.
+            System.Threading.Tasks.Parallel.ForEach(unmatched, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 6 }, jar => { try { CfLooseMatch(jar); } catch (Exception) { } });
+            foreach (FileInfo jar in unmatched)
             {
                 Dictionary<string, object> loose = CfLooseMatch(jar);
                 if (loose != null) matches[jar.Name] = loose;

@@ -872,7 +872,9 @@ namespace MinecraftModManager
             {
                 var jars = new DirectoryInfo(dir).GetFiles()
                     .Where(f => JarName.IsMatch(f.Name))
-                    .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase);
+                    .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList();
+                // Each jar's metadata is read once and kept; the first read of a folder goes four jars at a time.
+                System.Threading.Tasks.Parallel.ForEach(jars, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 4 }, f => { try { GetJarMeta(f); } catch (Exception) { } });
                 // How many mods that are on require each jar (by the mod ids it has), so the page can tell
                 // a library nobody needs any more.
                 var providerOf = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -1141,19 +1143,22 @@ namespace MinecraftModManager
         static Dictionary<string, string> IdentifyFiles(IEnumerable<FileInfo> fileList)
         {
             List<FileInfo> files = fileList.ToList();
-            var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (FileInfo file in files)
+            // Hashing (four jars at a time) and the lookups (all chunks at once) run side by side; the
+            // answers are written to the caches afterwards, on this thread.
+            var sums = new System.Collections.Concurrent.ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            System.Threading.Tasks.Parallel.ForEach(files, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 4 }, file =>
             {
-                try { hashes[file.Name] = FileSha1(file); }
+                try { sums[file.Name] = FileSha1(file); }
                 catch (IOException) { }
-            }
+            });
+            var hashes = new Dictionary<string, string>(sums, StringComparer.OrdinalIgnoreCase);
             List<string> unknown = hashes.Values.Distinct().Where(h => !VersionByHash.ContainsKey(h)).ToList();
-            for (int i = 0; i < unknown.Count; i += 500)
-            {
-                List<string> chunk = unknown.Skip(i).Take(500).ToList();
-                Dictionary<string, object> found = D(ModrinthPost("/version_files", Obj("hashes", chunk, "algorithm", "sha1"))) ?? new Dictionary<string, object>();
-                foreach (string h in chunk) VersionByHash[h] = D(Get(found, h));
-            }
+            var chunks = new List<List<string>>();
+            for (int i = 0; i < unknown.Count; i += 500) chunks.Add(unknown.Skip(i).Take(500).ToList());
+            List<Dictionary<string, object>> answers = AllAtOnce(chunks.Select(chunk => (Func<Dictionary<string, object>>)(() =>
+                D(ModrinthPost("/version_files", Obj("hashes", chunk, "algorithm", "sha1"))) ?? new Dictionary<string, object>())).ToList());
+            for (int i = 0; i < chunks.Count; i++)
+                foreach (string h in chunks[i]) VersionByHash[h] = D(Get(answers[i], h));
             FetchProjects(hashes.Values.Select(h => VersionByHash[h]).Where(v => v != null)
                 .Select(v => S(v, "project_id")).Where(id => id != null && !ProjectById.ContainsKey(id)).Distinct().ToList());
             // Jars Modrinth doesn't know byte for byte: CurseForge's fingerprint comes first; what neither
@@ -1167,21 +1172,40 @@ namespace MinecraftModManager
                     try { onCurseForge.UnionWith(CfIdentify(rest).Keys); }
                     catch (UserError) { }
                 }
-                foreach (FileInfo f in rest.Where(f => !onCurseForge.Contains(f.Name))) LooseModrinth(f, hashes[f.Name]);
+                List<FileInfo> loose = rest.Where(f => !onCurseForge.Contains(f.Name)).ToList();
+                PrefetchLoose(loose, hashes);
+                foreach (FileInfo f in loose) LooseModrinth(f, hashes[f.Name]);
             }
             return hashes;
         }
 
         static void FetchProjects(List<string> ids)
         {
-            for (int i = 0; i < ids.Count; i += 100)
-            {
-                foreach (object item in A(ModrinthGet("/projects?ids=" + JsonArrayParam(ids.Skip(i).Take(100).ToArray()))))
+            var chunks = new List<string[]>();
+            for (int i = 0; i < ids.Count; i += 100) chunks.Add(ids.Skip(i).Take(100).ToArray());
+            foreach (object[] page in AllAtOnce(chunks.Select(chunk => (Func<object[]>)(() => A(ModrinthGet("/projects?ids=" + JsonArrayParam(chunk))))).ToList()))
+                foreach (object item in page)
                 {
                     Dictionary<string, object> project = D(item);
                     if (project != null) ProjectById[S(project, "id")] = project;
                 }
+        }
+
+        // Runs requests at the same time (six at most) and returns their answers in order. A failure
+        // comes out as itself (a UserError stays a UserError), as if they had run one after another.
+        static List<T> AllAtOnce<T>(List<Func<T>> jobs)
+        {
+            var results = new T[jobs.Count];
+            if (jobs.Count == 1) { results[0] = jobs[0](); return results.ToList(); }
+            try
+            {
+                System.Threading.Tasks.Parallel.For(0, jobs.Count, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 6 }, i => { results[i] = jobs[i](); });
             }
+            catch (AggregateException ex)
+            {
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex.Flatten().InnerExceptions[0]).Throw();
+            }
+            return results.ToList();
         }
 
         static Dictionary<string, object> GetProject(string idOrSlug)

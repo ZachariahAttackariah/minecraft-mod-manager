@@ -1590,7 +1590,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   var inflight = null;
   var busy = {};
   var tagBusy = false;
-  var mr = { data: null, loading: false, error: null, again: null }; // Modrinth scan
+  var mr = { data: null, loading: false, error: null, again: null, waiters: [] }; // Modrinth scan
   var lastFilesSig = "";
   var state = { q: "", sides: [], status: "all", tags: [], excluded: [], match: "all", untagged: false, sort: "name", sortDir: 1 };
   var selected = {};
@@ -2433,7 +2433,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       mr.loading = false;
       renderMrBar();
       if (mr.again !== null) { var f = mr.again; mr.again = null; runScan(f); }
+      else { var w = mr.waiters; mr.waiters = []; w.forEach(function (fn) { fn(); }); }
     });
+  }
+  // Resolves once no lookup is running (or after maxMs, whatever comes first).
+  function scanSettled(maxMs) {
+    if (!mr.loading) return Promise.resolve();
+    return new Promise(function (res) { mr.waiters.push(res); setTimeout(res, maxMs); });
   }
 
   // Every update shows what changed first (Modrinth changelogs), then updates the ticked mods.
@@ -3919,11 +3925,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // hopping). If opening takes more than a moment, placeholder rows replace the list and the rest of the
   // Mods page dims, until the new folder has loaded (or the switch failed). A quick switch goes straight
   // from the old list to the new one, without a flash of placeholders.
-  var switchTimer = 0, switchName = null;
+  var switchTimer = 0, switchName = null, switchText = "";
   function isSwitching() { return document.documentElement.classList.contains("switching"); }
   function startSwitching(name) {
     if (isSwitching()) return;
     switchName = name || "your mods";
+    switchText = "Opening " + switchName + "…";
     document.documentElement.classList.add("switching");
     if (!menuEl.hidden) closeMenu();
     if (name) $("inst-name").textContent = name;
@@ -3935,8 +3942,20 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       document.documentElement.classList.add("switching-shown");
       $("rows").replaceChildren(skeletonRows());
       $("empty").hidden = true;
-      $("folder-line").replaceChildren(h("span", { class: "opening" }, h("span", { class: "spin", "aria-hidden": "true" }), "Opening " + switchName + "…"));
+      $("folder-line").replaceChildren(h("span", { class: "opening" }, h("span", { class: "spin", "aria-hidden": "true" }), switchText));
     }, 150);
+  }
+  // The second phase of opening: the jars are read, now Modrinth and CurseForge are asked what they are,
+  // so the list appears once with its names, icons and versions. 20 seconds at most (the lookup carries
+  // on as a job after that).
+  function switchLookup() {
+    if (!isSwitching() || !mr.loading) return Promise.resolve();
+    var n = server && server.files ? server.files.length : 0;
+    switchText = "Looking up " + (n ? count(n, "mod", "mods") : "mods") + " on Modrinth" + (server && server.curseforge ? " and CurseForge" : "") + "…";
+    $("inst-sub").textContent = "Looking up mods…";
+    if (document.documentElement.classList.contains("switching-shown"))
+      $("folder-line").replaceChildren(h("span", { class: "opening" }, h("span", { class: "spin", "aria-hidden": "true" }), switchText));
+    return scanSettled(20000);
   }
   function endSwitching() {
     if (!isSwitching()) return;
@@ -3968,7 +3987,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     packs.places = {};
     if (currentView === "packs") loadPacks(false);
     if (res && res.target && server) server.target = res.target;
-    return refresh(true).then(function () {
+    return refresh(true).then(switchLookup).then(function () {
       endSwitching();
       if (currentView === "snapshots") loadSnapshots();
       if (currentView === "cleanup") loadCleanup();
@@ -7539,7 +7558,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var lastInstance = null;
     try { lastInstance = localStorage.getItem("mmm.lastInstance"); } catch (e) {}
     startSwitching(lastInstance);
-    refresh(true).then(function () {
+    refresh(true).then(switchLookup).then(function () {
       endSwitching();
       // Opened on Packs: its list waits for the connection, which only exists now.
       if (currentView === "packs" && !packs.data) loadPacks(false);

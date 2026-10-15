@@ -11,12 +11,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace MinecraftModManager
 {
     static partial class Program
     {
         static readonly HashSet<string> LooseTried = new HashSet<string>();
+        static readonly HashSet<string> LooseMissing = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // mod ids Modrinth has no project for
         static readonly Dictionary<string, Dictionary<string, object>> CfLooseByFile = new Dictionary<string, Dictionary<string, object>>();
         static readonly Dictionary<string, Dictionary<string, object>> CfModBySlug = new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
 
@@ -46,7 +48,7 @@ namespace MinecraftModManager
             ModInfo main = MainMod(GetJarMeta(file));
             if (main == null || string.IsNullOrEmpty(main.Id)) return false;
             Dictionary<string, object> project;
-            try { project = GetProject(main.Id) ?? GetProject(main.Id.Replace('_', '-')); }
+            try { project = LooseProject(main.Id) ?? LooseProject(main.Id.Replace('_', '-')); }
             catch (UserError) { return false; }
             if (project == null || S(project, "project_type") != "mod" || !NamesAgree(S(project, "title"), main.Name, main.Id)) return false;
             List<Dictionary<string, object>> versions;
@@ -62,6 +64,61 @@ namespace MinecraftModManager
                 "version_number", main.Version ?? "?", "date_published", current != null ? S(current, "date_published") : null,
                 "version_type", current != null ? S(current, "version_type") : "release", "loose", true, "dependencies", new object[0]);
             return true;
+        }
+
+        static Dictionary<string, object> LooseProject(string slug)
+        {
+            lock (LooseMissing) if (LooseMissing.Contains(slug)) return null;
+            return GetProject(slug);
+        }
+
+        // Called with ModrinthLock held, before the jars are matched one by one: everything they'll ask
+        // Modrinth is asked at once instead (their mod ids in one request per 100, then the version lists
+        // of the projects found, six at a time), so opening a folder with many such jars takes seconds
+        // rather than a request per jar after another.
+        static void PrefetchLoose(List<FileInfo> files, Dictionary<string, string> hashes)
+        {
+            var slugs = new List<string>();
+            foreach (FileInfo f in files)
+            {
+                string hash;
+                if (!hashes.TryGetValue(f.Name, out hash) || LooseTried.Contains("mr|" + hash)) continue;
+                ModInfo main = MainMod(GetJarMeta(f));
+                if (main == null || string.IsNullOrEmpty(main.Id)) continue;
+                slugs.Add(main.Id);
+                if (main.Id.Contains("_")) slugs.Add(main.Id.Replace('_', '-'));
+            }
+            var known = new HashSet<string>(ProjectById.Values.SelectMany(p => new[] { S(p, "id"), S(p, "slug") }).Where(s => s != null), StringComparer.OrdinalIgnoreCase);
+            List<string> ask;
+            lock (LooseMissing) ask = slugs.Where(s => Regex.IsMatch(s, @"^[\w.\-]{2,64}$") && !known.Contains(s) && !LooseMissing.Contains(s)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var found = new List<Dictionary<string, object>>();
+            try
+            {
+                for (int i = 0; i < ask.Count; i += 100)
+                {
+                    List<string> chunk = ask.Skip(i).Take(100).ToList();
+                    var got = A(ModrinthGet("/projects?ids=" + JsonArrayParam(chunk.ToArray()))).Select(D).Where(p => p != null).ToList();
+                    foreach (Dictionary<string, object> p in got) { ProjectById[S(p, "id")] = p; found.Add(p); }
+                    var answered = new HashSet<string>(got.SelectMany(p => new[] { S(p, "id"), S(p, "slug") }).Where(s => s != null), StringComparer.OrdinalIgnoreCase);
+                    lock (LooseMissing) foreach (string s in chunk) if (!answered.Contains(s)) LooseMissing.Add(s);
+                }
+            }
+            catch (UserError) { return; } // Modrinth unreachable: the one-by-one matching tries (and fails) as before
+            var lists = new System.Collections.Concurrent.ConcurrentDictionary<string, List<Dictionary<string, object>>>();
+            string mc = gameVersion, ld = loader;
+            List<string> ids = found.Where(p => S(p, "project_type") == "mod").Select(p => S(p, "id")).Distinct()
+                .Where(id => { KeyValuePair<DateTime, List<Dictionary<string, object>>> c; return !(VersionListCache.TryGetValue(id + "|" + mc + "|" + ld, out c) && DateTime.UtcNow - c.Key < TimeSpan.FromMinutes(10)); }).ToList();
+            Parallel.ForEach(ids, new ParallelOptions { MaxDegreeOfParallelism = 6 }, id =>
+            {
+                try
+                {
+                    lists[id] = A(ModrinthGet("/project/" + Uri.EscapeDataString(id) + "/version?loaders=" + JsonArrayParam(ld) + "&game_versions=" + JsonArrayParam(mc)))
+                        .Select(D).Where(v => v != null).OrderByDescending(v => S(v, "date_published")).ToList();
+                }
+                catch (Exception) { } // left for the one-by-one matching to ask again
+            });
+            foreach (KeyValuePair<string, List<Dictionary<string, object>>> kv in lists)
+                VersionListCache[kv.Key + "|" + mc + "|" + ld] = new KeyValuePair<DateTime, List<Dictionary<string, object>>>(DateTime.UtcNow, kv.Value);
         }
 
         // The newest allowed version for a loosely matched jar, worked out from the version list (Modrinth's
