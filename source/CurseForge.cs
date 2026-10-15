@@ -401,11 +401,7 @@ namespace MinecraftModManager
             if (result == null) throw new UserError("CurseForge's search didn't answer. Try again.");
             HashSet<long> installed;
             HashSet<string> installedOnModrinth;
-            lock (ModrinthLock)
-            {
-                installed = new HashSet<long>(CfIdentify(new DirectoryInfo(modsDir).GetFiles().Where(f => JarName.IsMatch(f.Name))).Values.Select(m => CfId(Get(m, "id"))));
-                installedOnModrinth = InstalledProjects(modsDir);
-            }
+            SearchInstalled(true, out installedOnModrinth, out installed);
             List<Dictionary<string, object>> mods = A(Get(result, "data")).Select(D).Where(m => m != null).ToList();
             // Each result's Modrinth twin, when it has one (CrossSite.cs): the page shows the pair once.
             Dictionary<long, Dictionary<string, object>> twins = ModrinthTwins(mods);

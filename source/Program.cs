@@ -89,6 +89,10 @@ namespace MinecraftModManager
             try { ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)12288; }
             catch (NotSupportedException) { ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; }
             ServicePointManager.DefaultConnectionLimit = 8;
+            // Requests with a body (hash lookups, searches) go in one round trip: no "100 Continue" wait,
+            // and small packets aren't held back.
+            ServicePointManager.Expect100Continue = false;
+            ServicePointManager.UseNagleAlgorithm = false;
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
@@ -1309,7 +1313,8 @@ namespace MinecraftModManager
                 "&query=" + Uri.EscapeDataString(query ?? "") + "&facets=" + Uri.EscapeDataString(facets)));
             if (result == null) throw new UserError("Modrinth's search didn't answer. Try again.");
             HashSet<string> installed;
-            lock (ModrinthLock) installed = InstalledProjects(modsDir);
+            HashSet<long> unused;
+            SearchInstalled(false, out installed, out unused);
             var hits = new List<object>();
             foreach (object item in A(Get(result, "hits")))
             {

@@ -663,6 +663,8 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .kv.keys { gap: 8px 18px; }
 .kv.keys kbd, .hint kbd { padding: 1px 6px; font: 600 12px/1.5 var(--font-mono); color: var(--ink); background: var(--raised); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; }
 /* Drag and drop */
+.result.stale { opacity: 0.45; pointer-events: none; transition: opacity 0.12s; }
+.search-empty.searching { padding-block: 8px; }
 .drop-zone { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px; background: color-mix(in srgb, var(--bg) 70%, transparent); pointer-events: none; }
 .drop-card { max-width: 460px; padding: 28px 32px; text-align: center; background: var(--surface); border: 3px dashed var(--accent); border-radius: 6px; box-shadow: var(--shadow-lg); }
 .drop-title { font: 700 22px/1.2 var(--font-display); color: var(--accent-fg); }
@@ -2380,6 +2382,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var filesSig = s.modsDir + "|" + s.target.gameVersion + "|" + s.target.loader + "|" + s.files.map(function (f) { return f.name + ":" + f.size; }).join(",");
       if (filesSig !== lastFilesSig && s.folderExists) {
         lastFilesSig = filesSig;
+        forgetSearches();
         runScan(false);
         // The pre-launch check only runs when asked; a result from before this change would be stale.
         if (check.data) { check.data = null; renderCheckBar(); }
@@ -2477,8 +2480,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var s = searchSource();
     return s === "both" ? "Modrinth and CurseForge" : s === "curseforge" ? "CurseForge" : "Modrinth";
   }
+  // Search answers by address, for a few minutes; installing or switching folders forgets them (the
+  // "installed" marks change).
+  var searchCache = {};
+  function forgetSearches() { searchCache = {}; }
   function resetSearch() {
-    search.hits = []; search.total = 0; search.error = null; search.warn = null; search.loading = false; search.seq++;
+    search.hits = []; search.prevHits = null; search.total = 0; search.error = null; search.warn = null; search.loading = false; search.seq++;
     search.mr = { offset: 0, total: 0, done: false };
     search.cf = { offset: 0, total: 0, done: false };
   }
@@ -2582,7 +2589,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   function runSearch(reset) {
-    if (reset) resetSearch();
+    if (reset) {
+      // The last results stay up (dimmed) until the new ones arrive, instead of the list blanking each time.
+      var before = search.hits.length ? search.hits : search.prevHits;
+      resetSearch();
+      search.prevHits = before;
+    }
     var seq = ++search.seq;
     var q = $("search-q").value.trim();
     var sort = $("search-sort").value;
@@ -2605,7 +2617,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (st.done) return Promise.resolve([]);
       var url = site === "packs" ? "/api/packs/search?kind=" + search.kind + "&place=" + encodeURIComponent(packs.places[search.kind] || "") + "&q=" + encodeURIComponent(q)
         : "/api/" + site + "/search?q=" + encodeURIComponent(q) + (cat ? "&category=" + encodeURIComponent(cat) : "") + (side && site === "modrinth" ? "&side=" + side : "");
-      return api("GET", url + "&offset=" + st.offset + "&sort=" + sort).then(function (res) {
+      var full = url + "&offset=" + st.offset + "&sort=" + sort;
+      var kept = searchCache[full];
+      var ask = kept && Date.now() - kept.at < 180000 ? Promise.resolve(kept.res) : api("GET", full).then(function (res) { searchCache[full] = { at: Date.now(), res: res }; return res; });
+      return ask.then(function (res) {
         if (res.noCategory) search.warn = "CurseForge has no matching category, so only Modrinth results show.";
         st.total = Number(res.total) || 0;
         st.offset += res.hits.length;
@@ -2649,6 +2664,15 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var list = $("search-results");
     list.replaceChildren();
     if (search.warn) list.append(h("p", { class: "hint search-warn" }, search.warn));
+    var stale = search.loading && !search.hits.length && search.prevHits && search.prevHits.length;
+    if (stale) {
+      list.append(h("p", { class: "search-empty searching" }, "Searching " + searchSite() + "…"));
+      search.prevHits.forEach(function (hit) { list.append(resultCard(hit, true)); });
+      $("search-count").textContent = "";
+      $("search-more").hidden = true;
+      return;
+    }
+    search.prevHits = null;
     search.hits.forEach(function (hit) { list.append(resultCard(hit)); });
     if (search.error) list.append(h("p", { class: "search-empty" }, search.error));
     else if (search.loading) list.append(h("p", { class: "search-empty" }, search.hits.length ? "Loading more…" : "Searching " + searchSite() + "…"));
@@ -2668,7 +2692,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
   $("search-results").addEventListener("scroll", maybeLoadMore);
 
-  function resultCard(hit) {
+  function resultCard(hit, stale) {
     var busyNow = !!installing[hit.projectId];
     var sides = [];
     if (hit.clientSide !== "unsupported") sides.push("client");
@@ -2681,7 +2705,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           cf ? null : h("span", { class: "src mr", title: hit.also ? "On Modrinth and CurseForge (matched by " + (hit.matchedBy === "file" ? "the same file on both" : hit.matchedBy) + "). Installs from Modrinth." : "From Modrinth" }, "Modrinth"),
           cf || hit.also ? h("a", { class: "src cf", href: (hit.also || hit).url, target: "_blank", rel: "noopener", title: "Open its CurseForge page" }, "CurseForge") : null)
       : null;
-    return h("article", { class: "result" },
+    return h("article", { class: "result" + (stale ? " stale" : ""), "aria-hidden": stale ? "true" : null },
       hit.icon ? h("img", { class: "result-icon", src: hit.icon, alt: "", loading: "lazy" }) : h("span", { class: "result-icon" }),
       h("div", null,
         h("div", { class: "result-top" },
@@ -2734,6 +2758,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       toast(e.message);
     }).then(function () {
       delete installing[hit.projectId];
+      forgetSearches();
       renderSearch();
       return refresh(true);
     });
@@ -2943,6 +2968,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       toast(e.message);
     }).then(function () {
       delete installing[hit.projectId];
+      forgetSearches();
       renderSearch();
       if (currentView === "packs") loadPacks(false);
     });
@@ -3879,6 +3905,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     renderCheckBar();
     snaps.data = null;
     srv.sync = null;
+    forgetSearches();
     resetSearch();
     inst.data = null;
     packs.data = null;
@@ -7319,7 +7346,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   var searchTimer = 0;
   $("search-q").addEventListener("input", function () {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(function () { runSearch(true); }, 350);
+    searchTimer = setTimeout(function () { runSearch(true); }, 250);
   });
   $("search-sort").addEventListener("change", function () { runSearch(true); });
   $("search-cat").addEventListener("change", function () { runSearch(true); });
@@ -7365,6 +7392,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     api("POST", "/api/settings", { gameVersion: $("target-version").value, loader: $("target-loader").value }).then(function (res) {
       server.target = res.target;
       closeTargetForm();
+      forgetSearches();
       resetSearch();
       mr.data = null;
       lastFilesSig = "";
