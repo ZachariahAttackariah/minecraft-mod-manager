@@ -333,12 +333,14 @@ html[data-actions="always"] .act { opacity: 1; }
 .not-mark { padding: 1px 4px; font: 700 10px/1.2 var(--font-body); text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink); background: color-mix(in srgb, var(--c) 35%, transparent); border-radius: 2px; text-decoration: none; display: inline-block; }
 .pill.not { border-style: dashed; }
 
-/* The search bar has no backing of its own, scrolled or not. */
+/* The search bar has no backing of its own. Once it sticks to the top, the mods scrolling behind it are blurred
+   (no tint, so the background or picture keeps its own colour). */
 .toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-inline: calc(-1 * var(--gutter)); padding: 10px var(--gutter); background: transparent; }
 /* Search, status, side, sort, count and the dots share one line; the search box takes what's left (it wraps only when there's no room). */
 .search { position: relative; flex: 1 1 96px; min-width: 96px; }
 .toolbar .seg-control button { padding-inline: 8px; }
 #view-mods .toolbar { column-gap: 8px; }
+.toolbar.stuck { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
 .search input { width: 100%; padding: 8px 10px 8px 32px; font-size: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; }
 .search input::placeholder { color: var(--muted); }
