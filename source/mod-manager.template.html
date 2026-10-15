@@ -3579,6 +3579,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var prism = (server && server.prism) || {};
     var t = server && server.target;
     $("inst-name").textContent = prism.instanceName || (server ? folderLabel(server.modsDir) : "Choose an instance");
+    if (server) { try { localStorage.setItem("mmm.lastInstance", $("inst-name").textContent); } catch (e) {} }
     var sub = [];
     if (t) sub.push("Minecraft " + t.gameVersion, LOADER_NAMES[t.loader] || t.loader);
     if (model) sub.push(count(model.byStatus.all, "mod", "mods"));
@@ -3922,10 +3923,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function isSwitching() { return document.documentElement.classList.contains("switching"); }
   function startSwitching(name) {
     if (isSwitching()) return;
-    switchName = name || "the folder";
+    switchName = name || "your mods";
     document.documentElement.classList.add("switching");
     if (!menuEl.hidden) closeMenu();
     if (name) $("inst-name").textContent = name;
+    else if (!server) $("inst-name").textContent = "Loading…";
     $("inst-sub").textContent = "Opening…";
     $("inst-icon").classList.add("loading");
     switchTimer = setTimeout(function () {
@@ -7533,7 +7535,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     renderHeader();
     showNotice("Open this page by double-clicking MinecraftModManager.exe. Opened straight from disk, it can't read the mods folder.", "info");
   } else {
+    // Starting up looks like switching to the instance used last time, until its mods have loaded.
+    var lastInstance = null;
+    try { lastInstance = localStorage.getItem("mmm.lastInstance"); } catch (e) {}
+    startSwitching(lastInstance);
     refresh(true).then(function () {
+      endSwitching();
       // Opened on Packs: its list waits for the connection, which only exists now.
       if (currentView === "packs" && !packs.data) loadPacks(false);
       return refreshServer();
