@@ -340,7 +340,12 @@ html[data-actions="always"] .act { opacity: 1; }
 .search { position: relative; flex: 1 1 96px; min-width: 96px; }
 .toolbar .seg-control button { padding-inline: 8px; }
 #view-mods .toolbar { column-gap: 8px; }
-.toolbar.stuck { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+/* The blur is a layer behind the bar that reaches a little past its bottom and fades out there, so it eases
+   into the list instead of ending on a hard edge. */
+.toolbar::before { content: ""; position: absolute; inset: 0 0 -10px; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 0.15s;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent); }
+.toolbar.stuck::before { opacity: 1; }
 .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
 .search input { width: 100%; padding: 8px 10px 8px 32px; font-size: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; }
 .search input::placeholder { color: var(--muted); }
