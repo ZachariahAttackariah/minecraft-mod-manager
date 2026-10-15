@@ -67,7 +67,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Taken automatically before bulk changes.
 - **Find a problem mod:** a guided search that turns off half the suspects each round. Libraries stay on while something that's still on needs them, and everything is put back at the end.
 - **Disk cleanup:** old logs, crash reports, Java crash dumps, debug output and Distant Horizons LOD data, all moved to the Recycle Bin.
-- **Tabs:** links open as tabs in the same window, and the tab strip doubles as the title bar (Firefox-style, with the window's own snap, resize and maximize behaviour). A `.jar` downloaded in any tab goes straight into the mods folder, and a pack `.zip` into its pack folder.
+- **Tabs:** links open as tabs in the same window, and the tab strip doubles as the title bar (Firefox-style, with the window's own snap, resize and maximize behaviour). The tabs only show once a second one is open; + opens Modrinth or CurseForge. A `.jar` downloaded in any tab goes straight into the mods folder, and a pack `.zip` into its pack folder.
 - **Instances and Play:** launcher-style, at the top right: an instance picker next to a big PLAY button, with the pre-launch check under them. The server's status sits at the end of the section tabs, and the Mods page shows its client/server and topic-tag filters on either side of the list.
   - The picker lists every [Prism Launcher](https://prismlauncher.org/) instance with its Minecraft version, loader and mod count, plus other mods folders you've used.
   - Choosing an instance also sets the Minecraft version and loader used for Modrinth lookups.

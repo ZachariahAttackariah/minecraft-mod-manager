@@ -120,10 +120,6 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
 @media (max-width: 640px) { .launch { width: 100%; } .launch-row { flex: 1; justify-content: stretch; } .launch .inst-btn { flex: 1; max-width: none; } }
 .wordmark { margin: 0; display: flex; align-items: center; gap: 12px; font: 700 clamp(20px, 2.2vw, 25px)/1 var(--font-title); letter-spacing: -0.01em; }
 html[data-blocky="on"] .wordmark { font-family: var(--font-blocky); font-weight: 600; letter-spacing: 0.01em; }
-.wordmark .mark { width: 30px; height: 30px; }
-.block { flex: none; display: inline-block; width: 36px; height: 36px; border-radius: 3px; background: linear-gradient(180deg, #74b84b 0 30%, #4f8f34 30% 38%, #8b5d3b 38% 100%); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.18); }
-.block.folder { background: linear-gradient(180deg, #9a9a9a 0 30%, #7a7a7a 30% 100%); }
-.block.sm { width: 28px; height: 28px; }
 .eyebrow { margin: 0; display: flex; align-items: center; gap: 8px; font: 600 12px/1.2 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .live-dot.on { background: var(--c-worldgen); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-worldgen) 22%, transparent); }
@@ -668,8 +664,9 @@ html.switching-shown #view-mods .mods-bar, html.switching-shown #view-mods .side
 html.switching-shown #selection-bar, html.switching-shown #active, html.switching-shown #folder-stats { opacity: 0.35; pointer-events: none; transition: opacity 0.15s; }
 html.switching #inst-btn, html.switching #play { pointer-events: none; }
 .crumbs .opening { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
-@media (prefers-reduced-motion: no-preference) { #inst-icon.loading { animation: block-hop 0.9s ease-in-out infinite; } }
-@keyframes block-hop { 0%, 100% { transform: none; } 35% { transform: translateY(-5px) rotate(-8deg); } 65% { transform: translateY(-5px) rotate(8deg); } }
+.inst-sub .spin { display: inline-block; width: 9px; height: 9px; margin-right: 6px; vertical-align: -1px; }
+html[data-bgimage="on"] .toolbar:not(.stuck) { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom-color: transparent; }
+html[data-bgimage="on"] .toolbar { transition: background-color 0.15s, border-color 0.15s; }
 .result.stale { opacity: 0.45; pointer-events: none; transition: opacity 0.12s; }
 .search-empty.searching { padding-block: 8px; }
 .drop-zone { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px; background: color-mix(in srgb, var(--bg) 70%, transparent); pointer-events: none; }
@@ -962,7 +959,7 @@ button.mod-name { padding: 0; font: inherit; font-weight: 600; font-size: 14.5px
 button.mod-name:hover { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 2px; }
 
 /* ---- Instance picker + PLAY (top right), like the Minecraft Launcher ---- */
-.inst-btn { display: flex; align-items: center; gap: 12px; min-width: 0; max-width: 100%; padding: 8px 14px 8px 8px; color: var(--ink); text-align: left; background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
+.inst-btn { display: flex; align-items: center; gap: 12px; min-width: 0; max-width: 100%; padding: 8px 14px; color: var(--ink); text-align: left; background: var(--surface); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
 .inst-btn:hover, .inst-btn[aria-expanded="true"] { background: var(--btn); }
 .inst-text { display: grid; min-width: 0; gap: 3px; }
 .inst-name { font: 700 15px/1.2 var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -972,7 +969,7 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
 .inst-pop .head { padding: 12px 14px; font: 700 12px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
 .inst-list { overflow: auto; padding: 6px; }
 .inst-group { padding: 10px 8px 4px; font: 700 11px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.inst-item { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; width: 100%; padding: 8px; color: var(--ink); text-align: left; background: none; border: 0; border-radius: 3px; cursor: pointer; }
+.inst-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; width: 100%; padding: 8px; color: var(--ink); text-align: left; background: none; border: 0; border-radius: 3px; cursor: pointer; }
 .inst-item:hover, .inst-item:focus-visible { background: var(--surface); outline: none; }
 .inst-item[aria-current="true"] { background: color-mix(in srgb, var(--accent) 28%, transparent); }
 .inst-item:disabled { opacity: 0.5; cursor: default; }
@@ -1030,13 +1027,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 <div class="wrap">
   <header class="top">
     <div class="brand-row">
-      <h1 class="wordmark"><span class="block mark" aria-hidden="true"></span>Minecraft Mod Manager</h1>
+      <h1 class="wordmark">Minecraft Mod Manager</h1>
       <!-- Top right, like a launcher, on one row: the pre-launch check, which instance, PLAY. -->
       <div class="launch">
         <div class="check-bar" id="check-bar" hidden></div>
         <div class="launch-row">
           <button class="inst-btn" type="button" id="inst-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="inst-pop" title="Choose an instance">
-            <span class="block" id="inst-icon" aria-hidden="true"></span>
             <span class="inst-text"><span class="inst-name" id="inst-name">Choose an instance</span><span class="inst-sub" id="inst-sub"></span></span>
             <span class="caret" aria-hidden="true">▼</span>
           </button>
@@ -3590,7 +3586,6 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (t) sub.push("Minecraft " + t.gameVersion, LOADER_NAMES[t.loader] || t.loader);
     if (model) sub.push(count(model.byStatus.all, "mod", "mods"));
     $("inst-sub").textContent = sub.join(" · ");
-    $("inst-icon").className = "block" + (prism.instanceId ? "" : " folder");
     $("inst-btn").title = server ? "Change instance (now " + server.modsDir + ")" : "Choose an instance";
   }
 
@@ -3641,7 +3636,6 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       : ["Minecraft " + (it.minecraft || "?"), LOADER_NAMES[it.loader] || it.loader, count(it.mods, "mod", "mods")].join(" · ");
     var main = h("button", { type: "button", class: "inst-item", "aria-current": it.current ? "true" : null, disabled: noLoader || missing || !connected, title: it.path,
         onclick: function () { selectInstance(it); } },
-      h("span", { class: "block" + (isFolder ? " folder" : ""), "aria-hidden": "true" }),
       h("span", { style: "min-width:0" }, h("span", { class: "n", style: "display:block" }, it.name), h("span", { class: "d", style: "display:block" }, details)),
       it.current ? h("span", { class: "tick", "aria-label": "current" }, "✓") : h("span"));
     if (isFolder) return main;
@@ -3921,8 +3915,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }
     return skel;
   }
-  // Switching to another instance or folder: the instance button shows the new name at once (its block
-  // hopping). If opening takes more than a moment, placeholder rows replace the list and the rest of the
+  // Switching to another instance or folder: the instance button shows the new name at once (with a
+  // spinner). If opening takes more than a moment, placeholder rows replace the list and the rest of the
   // Mods page dims, until the new folder has loaded (or the switch failed). A quick switch goes straight
   // from the old list to the new one, without a flash of placeholders.
   var switchTimer = 0, switchName = null, switchText = "";
@@ -3935,8 +3929,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!menuEl.hidden) closeMenu();
     if (name) $("inst-name").textContent = name;
     else if (!server) $("inst-name").textContent = "Loading…";
-    $("inst-sub").textContent = "Opening…";
-    $("inst-icon").classList.add("loading");
+    $("inst-sub").replaceChildren(h("span", { class: "spin", "aria-hidden": "true" }), "Opening…");
     switchTimer = setTimeout(function () {
       if (!isSwitching()) return;
       document.documentElement.classList.add("switching-shown");
@@ -3952,7 +3945,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!isSwitching() || !mr.loading) return Promise.resolve();
     var n = server && server.files ? server.files.length : 0;
     switchText = "Looking up " + (n ? count(n, "mod", "mods") : "mods") + " on Modrinth" + (server && server.curseforge ? " and CurseForge" : "") + "…";
-    $("inst-sub").textContent = "Looking up mods…";
+    $("inst-sub").replaceChildren(h("span", { class: "spin", "aria-hidden": "true" }), "Looking up mods…");
     if (document.documentElement.classList.contains("switching-shown"))
       $("folder-line").replaceChildren(h("span", { class: "opening" }, h("span", { class: "spin", "aria-hidden": "true" }), switchText));
     return scanSettled(20000);
@@ -3961,7 +3954,6 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!isSwitching()) return;
     clearTimeout(switchTimer);
     document.documentElement.classList.remove("switching", "switching-shown");
-    $("inst-icon").classList.remove("loading");
     if (model) render(); else renderHeader();
   }
 
@@ -7208,6 +7200,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // and the bottom of the window, so its end is always visible and a long tag list scrolls on its own.
   // Done straight away (two elements, so it's cheap), so the height never lags behind the scroll.
   function queueFit() {
+    // The search bar only needs its backing once it sticks to the top with rows passing under it; with
+    // a background picture it's see-through until then.
+    var bar = document.querySelector("#view-mods .toolbar");
+    if (bar) bar.classList.toggle("stuck", window.scrollY > 0 && bar.getBoundingClientRect().top <= 1);
     // Two-column layout: the tags panel shares the side chart's grid area, so it's pushed down by the
     // chart's height and sticks just below it.
     var L = document.querySelector(".side-left"), R = document.querySelector(".side-right");

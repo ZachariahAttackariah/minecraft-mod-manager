@@ -1,6 +1,8 @@
 // The app window: a tab strip whose first, pinned tab is the manager page. Links from the manager
 // and pop-ups from websites open as more tabs in the same window, each with back / forward /
 // reload and an address bar. A .jar downloaded in any tab goes straight into the mods folder.
+// While the manager is the only tab, the strip is just a title bar (no tabs) with + for a new
+// Modrinth or CurseForge tab; the tabs show as soon as a second one is open.
 // Colours follow Windows' light/dark app setting and match the page.
 //
 // Keys: Ctrl+T new tab (Modrinth), Ctrl+W close tab, Ctrl+Tab / Ctrl+Shift+Tab switch tabs,
@@ -25,6 +27,7 @@ namespace MinecraftModManager
     static partial class Program
     {
         const string NewTabUrl = "https://modrinth.com/mods";
+        const string CurseForgeTabUrl = "https://www.curseforge.com/minecraft/search?class=mc-mods";
 
         static Task<CoreWebView2Environment> environment;
 
@@ -702,6 +705,9 @@ namespace MinecraftModManager
 
                 int Px(int px) { return (int)Math.Round(px * DeviceDpi / 96.0); }
 
+                // Tabs only show once a site is open next to the manager.
+                bool TabsShown { get { return w.tabs.Count > 1; } }
+
                 void ArrangeTabs()
                 {
                     int x = Px(8), top = Px(7), height = Height - top;
@@ -715,6 +721,7 @@ namespace MinecraftModManager
                     int each = webCount == 0 ? 0 : Math.Max(Px(56), Math.Min(Px(230), room / webCount));
                     foreach (BrowserTab tab in w.tabs)
                     {
+                        if (!TabsShown) { tab.Bounds = tab.Close = Rectangle.Empty; continue; }
                         int width = tab.IsManager ? pinned : each;
                         tab.Bounds = new Rectangle(x, top, width, height);
                         int c = Px(16);
@@ -732,8 +739,8 @@ namespace MinecraftModManager
                     g.SmoothingMode = SmoothingMode.AntiAlias;
                     using (var b = new SolidBrush(p.Strip)) g.FillRectangle(b, ClientRectangle);
                     ArrangeTabs();
-                    for (int i = 0; i < w.tabs.Count; i++) DrawTab(g, p, w.tabs[i], i);
-                    // + opens Modrinth in a new tab.
+                    if (TabsShown) for (int i = 0; i < w.tabs.Count; i++) DrawTab(g, p, w.tabs[i], i);
+                    // + offers Modrinth or CurseForge in a new tab.
                     if (hoverPlus) using (var b = new SolidBrush(p.Hover)) FillRound(g, b, plus, Px(5));
                     using (var pen = new Pen(p.Muted, Px(2) * 0.8f))
                     {
@@ -891,6 +898,24 @@ namespace MinecraftModManager
                     }
                 }
 
+                ContextMenuStrip newTabMenu;
+                void ShowNewTabMenu()
+                {
+                    if (newTabMenu == null)
+                    {
+                        newTabMenu = new ContextMenuStrip { ShowImageMargin = false, Font = new Font("Segoe UI", 10f), Padding = new Padding(Px(2)) };
+                        foreach (string[] site in new[] { new[] { "Modrinth", NewTabUrl }, new[] { "CurseForge", CurseForgeTabUrl } })
+                        {
+                            string url = site[1];
+                            var item = new ToolStripMenuItem(site[0]) { Padding = new Padding(Px(8), Px(5), Px(24), Px(5)) };
+                            item.Click += delegate { w.OpenTab(url); };
+                            newTabMenu.Items.Add(item);
+                        }
+                    }
+                    newTabMenu.Renderer = new MenuRenderer(w.palette);
+                    newTabMenu.Show(this, new Point(plus.Left, plus.Bottom + Px(6)));
+                }
+
                 int HitTab(Point pt)
                 {
                     ArrangeTabs();
@@ -913,7 +938,7 @@ namespace MinecraftModManager
                         Invalidate();
                     }
                     string text = cb == 0 ? "Minimize" : cb == 1 ? (w.WindowState == FormWindowState.Maximized ? "Restore down" : "Maximize") : cb == 2 ? "Close"
-                        : hp ? "New tab (Ctrl+T)" : hc ? "Close tab (Ctrl+W)" : h < 0 ? "" : w.tabs[h].IsManager ? "Minecraft Mod Manager" : w.tabs[h].Title + "\n" + w.tabs[h].Url;
+                        : hp ? "New tab: Modrinth or CurseForge (Ctrl+T opens Modrinth)" : hc ? "Close tab (Ctrl+W)" : h < 0 ? "" : w.tabs[h].IsManager ? "Minecraft Mod Manager" : w.tabs[h].Title + "\n" + w.tabs[h].Url;
                     if (text != tipText)
                     {
                         tipText = text;
@@ -952,7 +977,7 @@ namespace MinecraftModManager
                     }
                     if (e.Button == MouseButtons.Left)
                     {
-                        if (plus.Contains(e.Location)) w.OpenTab(NewTabUrl);
+                        if (plus.Contains(e.Location)) ShowNewTabMenu();
                         else if (h >= 0 && w.tabs[h].Close.Contains(e.Location)) w.CloseTab(w.tabs[h]);
                         else if (h >= 0) w.ShowTab(w.tabs[h]);
                     }
@@ -960,6 +985,31 @@ namespace MinecraftModManager
                     {
                         w.CloseTab(w.tabs[h]);
                     }
+                }
+            }
+
+            // The + menu, in the strip's colours.
+            sealed class MenuRenderer : ToolStripProfessionalRenderer
+            {
+                readonly Palette p;
+                public MenuRenderer(Palette palette) { p = palette; RoundedEdges = false; }
+                protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
+                {
+                    using (var b = new SolidBrush(p.Tab)) e.Graphics.FillRectangle(b, e.AffectedBounds);
+                }
+                protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+                {
+                    using (var pen = new Pen(p.Line)) e.Graphics.DrawRectangle(pen, 0, 0, e.ToolStrip.Width - 1, e.ToolStrip.Height - 1);
+                }
+                protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
+                {
+                    if (!e.Item.Selected) return;
+                    using (var b = new SolidBrush(p.Hover)) e.Graphics.FillRectangle(b, new Rectangle(Point.Empty, e.Item.Size));
+                }
+                protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
+                {
+                    e.TextColor = p.Ink;
+                    base.OnRenderItemText(e);
                 }
             }
 

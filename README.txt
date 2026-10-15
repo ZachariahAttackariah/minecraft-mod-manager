@@ -128,9 +128,10 @@ Mods page
 Tabs
   Links (Modrinth, CurseForge, mod pages) open as tabs in the same window, next to the pinned
   "Mod manager" tab. Each tab has back / forward / reload, an address bar and "Open in my browser".
-  + ................. new tab (Modrinth)
+  While the manager is the only one open, the title bar shows no tabs; they appear with the second.
+  + ................. new tab: pick Modrinth or CurseForge
   Middle-click / x .. close a tab
-  Ctrl+T new tab, Ctrl+W close tab, Ctrl+Tab / Ctrl+Shift+Tab next / previous tab, Ctrl+1..9 jump to a tab,
+  Ctrl+T new Modrinth tab, Ctrl+W close tab, Ctrl+Tab / Ctrl+Shift+Tab next / previous tab, Ctrl+1..9 jump to a tab,
   Ctrl+Shift+T reopen the last closed tab, Ctrl+L or F6 address bar.
   Any .jar you download in a tab goes straight into the current mods folder, and pack .zip files go to
   their pack folder (see Packs).
@@ -418,7 +419,7 @@ Files
   source\lib\                             The WebView2 DLLs used for building (from Microsoft's NuGet package).
   source\names.json                       Optional display names and Modrinth links for known jars (kept local).
   source\build.ps1                        Rebuilds the exe (and syntax-checks the page). Close the app first.
-  source\make-icon.ps1, app.ico           The icon (the grass block from the instance picker).
+  source\make-icon.ps1, app.ico           The icon (a grass block).
 
 Command line (optional): MinecraftModManager.exe --mods "D:\some\mods" --server "D:\server" --port 8737 --no-window
   (--restart-minutes N makes scheduled server restarts and backups come every N minutes, for testing.)
