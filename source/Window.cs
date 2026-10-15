@@ -1,8 +1,8 @@
 // The app window: a tab strip whose first, pinned tab is the manager page. Links from the manager
 // and pop-ups from websites open as more tabs in the same window, each with back / forward /
 // reload and an address bar. A .jar downloaded in any tab goes straight into the mods folder.
-// While the manager is the only tab, the strip is just a title bar (no tabs) with + for a new
-// Modrinth or CurseForge tab; the tabs show as soon as a second one is open.
+// The strip: the manager as a small icon-only tab, then Modrinth and CurseForge buttons (each shows its
+// site's tab, or opens one; Ctrl+click or middle-click always opens another), then the site tabs.
 // Colours follow Windows' light/dark app setting and match the page.
 //
 // Keys: Ctrl+T new tab (Modrinth), Ctrl+W close tab, Ctrl+Tab / Ctrl+Shift+Tab switch tabs,
@@ -394,6 +394,19 @@ namespace MinecraftModManager
                 Close();
             }
 
+            // A site button: the most recent tab on that site, or a new one (always new when asked).
+            public void ShowSite(string url, string host, bool newTab)
+            {
+                BrowserTab open = newTab ? null : tabs.LastOrDefault(t => !t.IsManager && OnSite(t, host));
+                if (open != null) ShowTab(open); else OpenTab(url);
+            }
+
+            static bool OnSite(BrowserTab tab, string host)
+            {
+                Uri u;
+                return Uri.TryCreate(tab.Url ?? "", UriKind.Absolute, out u) && (u.Host == host || u.Host.EndsWith("." + host, StringComparison.OrdinalIgnoreCase));
+            }
+
             public async void OpenTab(string url)
             {
                 Uri uri;
@@ -688,9 +701,12 @@ namespace MinecraftModManager
             {
                 readonly AppWindow w;
                 readonly ToolTip tip = new ToolTip();
-                Rectangle plus;
-                int hover = -1;
-                bool hoverClose, hoverPlus;
+                // The site buttons: label, home page, host, colour.
+                static readonly string[][] Sites = { new[] { "Modrinth", NewTabUrl, "modrinth.com", "#1bd96a" }, new[] { "CurseForge", CurseForgeTabUrl, "curseforge.com", "#f16436" } };
+                readonly Rectangle[] siteButtons = new Rectangle[2];
+                int divider;
+                int hover = -1, hoverSite = -1;
+                bool hoverClose;
                 string tipText = "";
                 // The window's own minimize / maximize / close buttons, drawn at the right end of the strip
                 // because the strip replaces the title bar (see AppWindow.WndProc).
@@ -707,31 +723,61 @@ namespace MinecraftModManager
 
                 int Px(int px) { return (int)Math.Round(px * DeviceDpi / 96.0); }
 
-                // Tabs only show once a site is open next to the manager.
-                bool TabsShown { get { return w.tabs.Count > 1; } }
-
                 void ArrangeTabs()
                 {
                     int x = Px(8), top = Px(7), height = Height - top;
-                    int plusWidth = Px(34);
-                    int pinned = Px(168);
-                    int webCount = w.tabs.Count - 1;
                     int buttonWidth = Px(46);
                     for (int i = 0; i < 3; i++) caption[i] = new Rectangle(Width - buttonWidth * (3 - i), 0, buttonWidth, Height);
-                    // Keep some empty strip before the window buttons, so there's always somewhere to drag the window.
-                    int room = caption[0].Left - x - pinned - plusWidth - Px(56);
+                    // The manager: a small pinned tab showing just the app's icon.
+                    w.manager.Bounds = new Rectangle(x, top, Px(44), height);
+                    w.manager.Close = Rectangle.Empty;
+                    x += Px(44) + Px(8);
+                    // Modrinth and CurseForge.
+                    for (int i = 0; i < Sites.Length; i++)
+                    {
+                        int width = Px(10) + Px(10) + Px(8) + TextRenderer.MeasureText(Sites[i][0], Font).Width + Px(12);
+                        siteButtons[i] = new Rectangle(x, top + Px(3), width, height - Px(9));
+                        x += width + Px(4);
+                    }
+                    divider = x + Px(4);
+                    x += Px(12);
+                    // The site tabs. Some empty strip stays before the window buttons, to drag the window by.
+                    int webCount = w.tabs.Count - 1;
+                    int room = caption[0].Left - x - Px(56);
                     int each = webCount == 0 ? 0 : Math.Max(Px(56), Math.Min(Px(230), room / webCount));
                     foreach (BrowserTab tab in w.tabs)
                     {
-                        if (!TabsShown) { tab.Bounds = tab.Close = Rectangle.Empty; continue; }
-                        int width = tab.IsManager ? pinned : each;
-                        tab.Bounds = new Rectangle(x, top, width, height);
+                        if (tab.IsManager) continue;
+                        tab.Bounds = new Rectangle(x, top, each, height);
                         int c = Px(16);
-                        tab.Close = tab.IsManager || width < Px(90) && tab != w.active ? Rectangle.Empty
-                            : new Rectangle(x + width - c - Px(9), top + (height - c) / 2, c, c);
-                        x += width + Px(2);
+                        tab.Close = each < Px(90) && tab != w.active ? Rectangle.Empty
+                            : new Rectangle(x + each - c - Px(9), top + (height - c) / 2, c, c);
+                        x += each + Px(2);
                     }
-                    plus = new Rectangle(x + Px(4), top + Px(4), Px(28), height - Px(8));
+                }
+
+                int HitSite(Point pt)
+                {
+                    ArrangeTabs();
+                    for (int i = 0; i < siteButtons.Length; i++) if (siteButtons[i].Contains(pt)) return i;
+                    return -1;
+                }
+
+                void DrawSiteButtons(Graphics g, Palette p)
+                {
+                    for (int i = 0; i < Sites.Length; i++)
+                    {
+                        Rectangle r = siteButtons[i];
+                        // Lit while one of its tabs is the one showing.
+                        bool on = w.active != null && !w.active.IsManager && OnSite(w.active, Sites[i][2]);
+                        if (on || hoverSite == i) using (var b = new SolidBrush(on ? p.Tab : p.Hover)) FillRound(g, b, r, Px(5));
+                        var mark = new Rectangle(r.X + Px(10), r.Y + (r.Height - Px(10)) / 2, Px(10), Px(10));
+                        using (var b = new SolidBrush(ColorTranslator.FromHtml(Sites[i][3]))) FillRound(g, b, mark, Px(2));
+                        var text = new Rectangle(mark.Right + Px(8), r.Y, r.Right - mark.Right - Px(8), r.Height);
+                        TextRenderer.DrawText(g, Sites[i][0], Font, text, on || hoverSite == i ? p.Ink : p.Muted,
+                            TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
+                    }
+                    using (var pen = new Pen(p.Line)) g.DrawLine(pen, divider, Px(14), divider, Height - Px(8));
                 }
 
                 protected override void OnPaint(PaintEventArgs e)
@@ -741,15 +787,8 @@ namespace MinecraftModManager
                     g.SmoothingMode = SmoothingMode.AntiAlias;
                     using (var b = new SolidBrush(p.Strip)) g.FillRectangle(b, ClientRectangle);
                     ArrangeTabs();
-                    if (TabsShown) for (int i = 0; i < w.tabs.Count; i++) DrawTab(g, p, w.tabs[i], i);
-                    // + offers Modrinth or CurseForge in a new tab.
-                    if (hoverPlus) using (var b = new SolidBrush(p.Hover)) FillRound(g, b, plus, Px(5));
-                    using (var pen = new Pen(p.Muted, Px(2) * 0.8f))
-                    {
-                        int cx = plus.X + plus.Width / 2, cy = plus.Y + plus.Height / 2, r = Px(6);
-                        g.DrawLine(pen, cx - r, cy, cx + r, cy);
-                        g.DrawLine(pen, cx, cy - r, cx, cy + r);
-                    }
+                    for (int i = 0; i < w.tabs.Count; i++) DrawTab(g, p, w.tabs[i], i);
+                    DrawSiteButtons(g, p);
                     DrawCaptionButtons(g, p);
                 }
 
@@ -800,7 +839,7 @@ namespace MinecraftModManager
                 // Empty strip (not a tab, not +, not a window button) moves the window like a title bar.
                 public bool IsDragArea(Point pt)
                 {
-                    return ClientRectangle.Contains(pt) && HitTab(pt) < 0 && !plus.Contains(pt) && HitCaption(pt) < 0;
+                    return ClientRectangle.Contains(pt) && HitTab(pt) < 0 && HitSite(pt) < 0 && HitCaption(pt) < 0;
                 }
 
                 protected override void WndProc(ref Message m)
@@ -838,7 +877,9 @@ namespace MinecraftModManager
                     var iconRect = new Rectangle(r.X + Px(11), r.Y + (r.Height - icon) / 2, icon, icon);
                     if (tab.IsManager)
                     {
-                        g.DrawIcon(w.appIcon, iconRect);
+                        // Just the app's icon, in the middle of its small tab.
+                        g.DrawIcon(w.appIcon, new Rectangle(r.X + (r.Width - icon) / 2, iconRect.Y, icon, icon));
+                        return;
                     }
                     else if (tab.Loading && tab.Icon == null)
                     {
@@ -900,24 +941,6 @@ namespace MinecraftModManager
                     }
                 }
 
-                ContextMenuStrip newTabMenu;
-                void ShowNewTabMenu()
-                {
-                    if (newTabMenu == null)
-                    {
-                        newTabMenu = new ContextMenuStrip { ShowImageMargin = false, Font = new Font("Segoe UI", 10f), Padding = new Padding(Px(2)) };
-                        foreach (string[] site in new[] { new[] { "Modrinth", NewTabUrl }, new[] { "CurseForge", CurseForgeTabUrl } })
-                        {
-                            string url = site[1];
-                            var item = new ToolStripMenuItem(site[0]) { Padding = new Padding(Px(8), Px(5), Px(24), Px(5)) };
-                            item.Click += delegate { w.OpenTab(url); };
-                            newTabMenu.Items.Add(item);
-                        }
-                    }
-                    newTabMenu.Renderer = new MenuRenderer(w.palette);
-                    newTabMenu.Show(this, new Point(plus.Left, plus.Bottom + Px(6)));
-                }
-
                 int HitTab(Point pt)
                 {
                     ArrangeTabs();
@@ -929,18 +952,18 @@ namespace MinecraftModManager
                 {
                     int h = HitTab(e.Location);
                     bool hc = h >= 0 && w.tabs[h].Close.Contains(e.Location);
-                    bool hp = plus.Contains(e.Location);
+                    int hs = HitSite(e.Location);
                     int cb = HitCaption(e.Location);
-                    if (h != hover || hc != hoverClose || hp != hoverPlus || cb != hoverCaption)
+                    if (h != hover || hc != hoverClose || hs != hoverSite || cb != hoverCaption)
                     {
                         hover = h;
                         hoverClose = hc;
-                        hoverPlus = hp;
+                        hoverSite = hs;
                         hoverCaption = cb;
                         Invalidate();
                     }
                     string text = cb == 0 ? "Minimize" : cb == 1 ? (w.WindowState == FormWindowState.Maximized ? "Restore down" : "Maximize") : cb == 2 ? "Close"
-                        : hp ? "New tab: Modrinth or CurseForge (Ctrl+T opens Modrinth)" : hc ? "Close tab (Ctrl+W)" : h < 0 ? "" : w.tabs[h].IsManager ? "Minecraft Mod Manager" : w.tabs[h].Title + "\n" + w.tabs[h].Url;
+                        : hs >= 0 ? Sites[hs][0] + " (Ctrl+click for another tab)" : hc ? "Close tab (Ctrl+W)" : h < 0 ? "" : w.tabs[h].IsManager ? "Minecraft Mod Manager" : w.tabs[h].Title + "\n" + w.tabs[h].Url;
                     if (text != tipText)
                     {
                         tipText = text;
@@ -952,7 +975,8 @@ namespace MinecraftModManager
                 {
                     hover = -1;
                     hoverCaption = -1;
-                    hoverClose = hoverPlus = false;
+                    hoverSite = -1;
+                    hoverClose = false;
                     Invalidate();
                 }
 
@@ -979,39 +1003,20 @@ namespace MinecraftModManager
                     }
                     if (e.Button == MouseButtons.Left)
                     {
-                        if (plus.Contains(e.Location)) ShowNewTabMenu();
+                        int hs = HitSite(e.Location);
+                        if (hs >= 0) w.ShowSite(Sites[hs][1], Sites[hs][2], (ModifierKeys & Keys.Control) != 0);
                         else if (h >= 0 && w.tabs[h].Close.Contains(e.Location)) w.CloseTab(w.tabs[h]);
                         else if (h >= 0) w.ShowTab(w.tabs[h]);
                     }
-                    else if (e.Button == MouseButtons.Middle && h >= 0)
+                    else if (e.Button == MouseButtons.Middle && HitSite(e.Location) >= 0)
+                    {
+                        int hs = HitSite(e.Location);
+                        w.ShowSite(Sites[hs][1], Sites[hs][2], true);
+                    }
+                    else if (e.Button == MouseButtons.Middle && h >= 0 && !w.tabs[h].IsManager)
                     {
                         w.CloseTab(w.tabs[h]);
                     }
-                }
-            }
-
-            // The + menu, in the strip's colours.
-            sealed class MenuRenderer : ToolStripProfessionalRenderer
-            {
-                readonly Palette p;
-                public MenuRenderer(Palette palette) { p = palette; RoundedEdges = false; }
-                protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
-                {
-                    using (var b = new SolidBrush(p.Tab)) e.Graphics.FillRectangle(b, e.AffectedBounds);
-                }
-                protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
-                {
-                    using (var pen = new Pen(p.Line)) e.Graphics.DrawRectangle(pen, 0, 0, e.ToolStrip.Width - 1, e.ToolStrip.Height - 1);
-                }
-                protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
-                {
-                    if (!e.Item.Selected) return;
-                    using (var b = new SolidBrush(p.Hover)) e.Graphics.FillRectangle(b, new Rectangle(Point.Empty, e.Item.Size));
-                }
-                protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
-                {
-                    e.TextColor = p.Ink;
-                    base.OnRenderItemText(e);
                 }
             }
 

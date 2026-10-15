@@ -126,10 +126,11 @@ Mods page
   merges any mod-tags.json it finds into its own), so tags there are edited in that launcher only.
 
 Tabs
-  Links (Modrinth, CurseForge, mod pages) open as tabs in the same window, next to the pinned
-  "Mod manager" tab. Each tab has back / forward / reload, an address bar and "Open in my browser".
-  While the manager is the only one open, the title bar shows no tabs; they appear with the second.
-  + ................. new tab: pick Modrinth or CurseForge
+  The title bar starts with the manager (the small tab with the app's icon), then Modrinth and
+  CurseForge buttons, then any open site tabs. Links (mod pages and the like) open as tabs there too.
+  Each tab has back / forward / reload, an address bar and "Open in my browser".
+  Modrinth / CurseForge  that site's tab (the one used last), or a new one; Ctrl+click or
+                         middle-click always opens another
   Middle-click / x .. close a tab
   Ctrl+T new Modrinth tab, Ctrl+W close tab, Ctrl+Tab / Ctrl+Shift+Tab next / previous tab, Ctrl+1..9 jump to a tab,
   Ctrl+Shift+T reopen the last closed tab, Ctrl+L or F6 address bar.
