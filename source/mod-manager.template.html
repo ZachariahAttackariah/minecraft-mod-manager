@@ -332,7 +332,10 @@ html[data-actions="always"] .act { opacity: 1; }
 .pill.not { border-style: dashed; }
 
 .toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-inline: calc(-1 * var(--gutter)); padding: 10px var(--gutter); background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
-.search { position: relative; flex: 1 1 220px; min-width: 0; }
+/* Search, status, side, sort, count and the dots share one line; the search box takes what's left (it wraps only when there's no room). */
+.search { position: relative; flex: 1 1 96px; min-width: 96px; }
+.toolbar .seg-control button { padding-inline: 8px; }
+#view-mods .toolbar { column-gap: 8px; }
 .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
 .search input { width: 100%; padding: 8px 10px 8px 32px; font-size: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; }
 .search input::placeholder { color: var(--muted); }
@@ -341,7 +344,9 @@ html[data-actions="always"] .act { opacity: 1; }
 .seg-control button:last-child { border-right: 0; }
 .seg-control button[aria-pressed="true"] { background: var(--accent); color: #fff; }
 .seg-control .k { font-family: var(--font-mono); font-variant-numeric: tabular-nums; opacity: 0.75; margin-left: 4px; }
-.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.tools { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; margin-left: auto; }
+.selection-bar .tools { margin-left: 4px; padding-left: 12px; border-left: 1px solid var(--line); }
+.selection-bar .sel-actions + .tools { margin-left: 4px; }
 .count-label { font: 500 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
 .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px 9px; font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap; color: var(--ink); background: var(--btn); border: 0; border-radius: 3px; box-shadow: inset 0 -2px 0 var(--bevel-lo); cursor: pointer; }
 .btn:hover { background: var(--btn-hover); }
@@ -369,7 +374,9 @@ html[data-actions="always"] .act { opacity: 1; }
 .check[aria-checked="mixed"]::after { content: ""; width: 9px; height: 2px; background: var(--accent-ink); }
 .check:disabled { opacity: 0.4; cursor: default; }
 
-.list { margin-top: 6px; }
+/* The list sits on a see-through panel, so it reads as its own section over the background (or a picture). */
+.list { margin-top: 8px; background: color-mix(in srgb, var(--surface) 55%, transparent); border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); border-radius: 6px; overflow: hidden; }
+.list .row:last-child { border-bottom: 0; }
 /* The columns follow Settings > Mod list (applyPrefs sets --cols). */
 .list-head, .row { display: grid; grid-template-columns: var(--cols, 22px minmax(0, 1.25fr) 64px minmax(0, 1fr) 100px); gap: 14px; align-items: center; padding: var(--row-pad) 12px; }
 .list-head { padding-block: 12px 8px; font: 600 11.5px/1 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
@@ -462,7 +469,7 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
   .c-slots { grid-area: slots; }
   .c-chips { grid-area: chips; }
   .c-version { display: none; }
-  .tools { width: 100%; margin-left: 0; }
+  .selection-bar .tools { width: 100%; margin-left: 0; padding-left: 0; border-left: 0; }
   .count-label { margin-right: auto; }
   .sel-actions { margin-left: 0; }
 }
@@ -1153,14 +1160,15 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   <div class="toolbar" role="search">
     <label class="search">
       <span data-icon="search" data-size="15"></span>
-      <input id="q" type="search" placeholder="Search mods or filenames  ( / )" aria-label="Search mods or filenames" autocomplete="off" spellcheck="false">
+      <input id="q" type="search" placeholder="Search mods  ( / )" title="Search mod names and file names (also #tag, is:off, side:client…)" aria-label="Search mods or filenames" autocomplete="off" spellcheck="false">
     </label>
     <div class="seg-control" id="status-control" role="group" aria-label="Filter by status"></div>
     <div class="seg-control" id="side-control" role="group" aria-label="Filter by side"></div>
-    <div class="tools">
-      <select id="sort-pick" class="sort-pick" aria-label="Sort by" title="Sort the list (the Mod and Side headings sort too)">
-        <option value="name">Name</option><option value="side">Side</option><option value="added">Newest first</option><option value="size">Largest first</option>
-      </select>
+    <select id="sort-pick" class="sort-pick" aria-label="Sort by" title="Sort the list (the Mod and Side headings sort too)">
+      <option value="name">Name</option><option value="side">Side</option><option value="added">Newest</option><option value="size">Largest</option>
+    </select>
+    <!-- Shown at the right end of the selection row (renderSelectionBar puts it there). -->
+    <div class="tools" id="list-tools">
       <span class="count-label" id="count" aria-live="polite"></span>
       <button class="btn danger-outline" id="forget-missing" type="button" hidden title="Remove the leftover tags of jars that aren't in the folder any more">Forget these</button>
       <!-- Less-used list tools sit behind the dots. -->
@@ -2071,15 +2079,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       // "Not in folder" lives in the dots menu unless it's the filter in use.
       if (s.key === "missing" && state.status !== "missing") return;
       if (s.key === "updates" && !b[s.key] && state.status !== s.key) return;
-      sc.append(h("button", { type: "button", "aria-pressed": String(state.status === s.key), onclick: function () { setStatus(s.key); } },
-        s.label, h("span", { class: "k" }, String(b[s.key]))));
+      sc.append(h("button", { type: "button", "aria-pressed": String(state.status === s.key), onclick: function () { setStatus(s.key); }, title: s.key === "all" ? "All jars in the folder" : null },
+        s.key === "all" ? "All" : s.label, h("span", { class: "k" }, String(b[s.key]))));
     });
     var ctl = $("side-control");
     ctl.replaceChildren();
+    // Short labels keep the top row to one line; the full meaning is in each tooltip.
+    var SHORT = { all: "Any side", client: "Client", both: "Both", server: "Server" };
     [{ key: "all", label: "Any side" }].concat(SIDES.slice(0, 3)).forEach(function (s) {
       var on = s.key === "all" ? !state.sides.length : state.sides.indexOf(s.key) >= 0;
-      ctl.append(h("button", { type: "button", "aria-pressed": String(on), onclick: function () { setSide(s.key); },
-        title: s.key === "all" ? "Show every side" : "Click to add or remove " + s.label.toLowerCase() + " (pick several to see them together)" }, s.label));
+      ctl.append(h("button", { type: "button", "aria-pressed": String(on), onclick: function () { setSide(s.key); }, "aria-label": s.label,
+        title: s.key === "all" ? "Show every side" : s.label + ". Click to add or remove it (pick several to see them together)" }, SHORT[s.key]));
     });
 
     var total = state.status === "all" ? b.all : b[state.status];
@@ -2267,20 +2277,23 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     cb.title = n && n === rows.length ? "Clear selection" : "Select all " + rows.length + " shown";
   }
 
+  var listTools = $("list-tools"); // the count, Forget and the dots: kept, and put back at the end of the row each time
   function renderSelectionBar() {
     var bar = $("selection-bar");
     var rows = selectedRows();
     bar.hidden = !model;
     bar.replaceChildren();
+    var end = function () { bar.append(listTools); };
     // Always shown, so selecting the first mod doesn't push the list down (that shift used to close a
     // just-opened right-click menu). Empty, it keeps the same height with its buttons greyed out.
     bar.classList.toggle("is-empty", !rows.length);
     if (!rows.length) {
       bar.append(
-        h("span", { class: "sel-count" }, "No mods selected", h("span", { class: "note" }, " · click a mod to select it, right-click for actions")),
+        h("span", { class: "sel-count", title: "Click a mod to select it (Ctrl+click: several, Shift+click: a range)" }, "No mods selected", h("span", { class: "note" }, " · right-click a mod for actions")),
         h("span", { class: "sel-actions" },
           h("button", { type: "button", class: "btn", disabled: true }, "Tags…"),
-          h("button", { type: "button", class: "btn", disabled: true }, "Copy filenames")));
+          h("button", { type: "button", class: "btn", disabled: true }, "Copy names")));
+      end();
       return;
     }
     var shown = {};
@@ -2300,10 +2313,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           var rect = e.currentTarget.getBoundingClientRect();
           openMenu(keys, rect.left, rect.bottom + 6, e.currentTarget);
         } }, "Tags…"),
-        h("button", { type: "button", class: "btn", onclick: function () {
+        h("button", { type: "button", class: "btn", title: "Copy the selected mods' file names", onclick: function () {
           copyText(rows.map(function (r) { return r.file; }).join("\n"), "Copied " + count(rows.length, "filename", "filenames"));
-        } }, "Copy filenames"),
-        h("button", { type: "button", class: "linkish", onclick: clearSelection }, "Clear selection")));
+        } }, "Copy names"),
+        h("button", { type: "button", class: "linkish", title: "Clear selection (Esc)", onclick: clearSelection }, "Clear")));
+    end();
   }
 
   // ---------- Filters ----------
