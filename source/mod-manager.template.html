@@ -1113,7 +1113,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       </span>
       <span class="mr-status" id="mr-status">Checking Modrinth…</span>
       <span class="mr-actions">
-        <button class="btn icon-btn" type="button" id="mr-check" title="Check for updates now (it also checks by itself every 30 minutes)" aria-label="Check for updates"><span data-icon="refresh" data-size="14"></span></button>
+        <button class="btn" type="button" id="mr-check" title="Asks Modrinth and CurseForge for newer versions of every mod. The app never checks by itself."><span data-icon="refresh" data-size="14"></span> Check for updates</button>
         <button class="btn primary" type="button" id="mr-update-all" hidden>Updates</button>
       </span>
     </div>
@@ -1701,7 +1701,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (msg) { if (undo) toast(msg, "Undo", undo); else toast(msg); }
       applyScan();
       render();
-      if ("pin" in fields || "skip" in fields || "channel" in fields) return runScan(false);
+      if ("pin" in fields || "skip" in fields || "channel" in fields) return runScan("channel" in fields && !!(mr.data && mr.data.checkedAt));
     }, function (e) { toast(e.message); });
   }
   function pinMods(rows, pin) {
@@ -1942,11 +1942,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     } else if (mr.data) {
       var checked = mr.data.checkedAt ? new Date(mr.data.checkedAt) : null;
       // The update count is the button beside this; the line just says what was checked and when.
-      append(st, [mr.data.updates ? "" : h("strong", null, "Up to date"), mr.data.updates ? "" : " · ",
+      // Updates are only looked for with the Check for updates button.
+      var unchecked = !mr.data.checkedAt;
+      append(st, [unchecked ? "Updates not checked yet · " : mr.data.updates ? "" : h("strong", null, "Up to date"), unchecked || mr.data.updates ? "" : " · ",
         h("strong", null, String(mr.data.identified + (mr.data.identifiedCurseForge || 0))), " of " + mr.data.total + " jars known",
         mr.data.identifiedCurseForge ? " (" + mr.data.identified + " Modrinth, " + mr.data.identifiedCurseForge + " CurseForge)" : " to Modrinth",
         mr.data.curseforgeError ? " · CurseForge: " + mr.data.curseforgeError : "",
-        mr.loading ? " · checking…" : checked ? " · checked " + clock(checked) : ""]);
+        mr.loading ? " · checking…" : checked ? " · updates checked " + clock(checked) : ""]);
     } else {
       append(st, mr.loading ? "Checking Modrinth…" : "");
     }
@@ -4913,7 +4915,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       [fade.ready, fade.finished, fade.updateCallbackDone].forEach(function (pr) { if (pr) pr.then(null, function () {}); });
       setTimeout(apply, 300); // a window that isn't drawing (minimised) never runs the fade, so apply anyway
     } else apply();
-    var after = key === "updateChannel" ? function () { return runScan(false); } : key === "tagOrder" ? function () { return refresh(true); } : null;
+    var after = key === "updateChannel" ? function () { return runScan(!!(mr.data && mr.data.checkedAt)); } : key === "tagOrder" ? function () { return refresh(true); } : null;
     return api("POST", "/api/prefs", body).then(function (res) {
       if (server) server.prefs = res.prefs;
       if (after) return after();

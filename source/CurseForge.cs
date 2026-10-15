@@ -220,7 +220,9 @@ namespace MinecraftModManager
         // ---- Used by the Modrinth scan, update and changelog code for jars Modrinth doesn't know ----
 
         // Adds CurseForge's answer for these jars to the scan's mods map; returns how many it recognised.
-        static int CfScanInto(Dictionary<string, object> mods, IEnumerable<FileInfo> jars, ref int updates)
+        // showUpdates: only once updates have been checked (the button); fresh: that check is now, so each
+        // mod's newest files are fetched again rather than taken from when it was first recognised.
+        static int CfScanInto(Dictionary<string, object> mods, IEnumerable<FileInfo> jars, ref int updates, bool showUpdates, bool fresh)
         {
             int found = 0;
             List<FileInfo> jarList = jars.ToList();
@@ -230,12 +232,18 @@ namespace MinecraftModManager
                 Dictionary<string, object> loose = CfLooseMatch(jar);
                 if (loose != null) matches[jar.Name] = loose;
             }
+            if (fresh)
+            {
+                List<long> ids = matches.Values.Select(m => CfId(Get(m, "id"))).Distinct().ToList();
+                lock (CfModById) foreach (long id in ids) CfModById.Remove(id);
+                CfFetchMods(ids);
+            }
             foreach (KeyValuePair<string, Dictionary<string, object>> p in matches)
             {
                 Dictionary<string, object> match = p.Value, file = D(Get(match, "file"));
                 Dictionary<string, object> mod = CfMod(CfId(Get(match, "id")));
                 if (mod == null) continue;
-                Dictionary<string, object> latest = CfUpdateFor(match);
+                Dictionary<string, object> latest = showUpdates ? CfUpdateFor(match) : null;
                 string key = "cf:" + CfId(Get(mod, "id"));
                 string held = latest == null ? null : UpdateHeld(modsDir, key, "cf:" + CfId(Get(latest, "fileId")));
                 Dictionary<string, object> heldUpdate = null;

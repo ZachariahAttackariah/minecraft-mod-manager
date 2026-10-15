@@ -75,8 +75,9 @@ Mods and Libraries
 Mods page
   One bar above the list: Add mods on the left (its arrow also has "Add .jar or .zip files..." and the
   Modrinth and CurseForge websites), and on the right the Minecraft version and loader that updates and
-  search look for, what's known about the jars, a check-now button, and "N updates", which shows what
-  changed and updates them. Updates are checked by themselves every 30 minutes.
+  search look for, what's known about the jars, Check for updates, and "N updates", which shows what
+  changed and updates them. The app never looks for updates by itself: only Check for updates does (on
+  opening, the jars are only recognised, so the line says "Updates not checked yet").
   Add mods searches Modrinth and CurseForge in one list (with a CurseForge key; Both / Modrinth /
   CurseForge at its top). A mod on both sites shows once, marked with both, and installs from Modrinth.
   Pairs are found by the same file on both sites (CurseForge's file hashes looked up on Modrinth), or the

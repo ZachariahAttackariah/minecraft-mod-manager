@@ -1204,8 +1204,8 @@ namespace MinecraftModManager
             return installed;
         }
 
-        // Identifies every jar on Modrinth and checks each for a newer version for the chosen
-        // Minecraft version + loader (re-checked every 30 minutes, or now when forced).
+        // Identifies every jar on Modrinth. Updates are only looked for when asked (force: the Check for
+        // updates button); other scans repeat that check's answers and never ask the sites about updates.
         static Dictionary<string, object> ModrinthScan(bool force)
         {
             lock (ModrinthLock)
@@ -1220,10 +1220,12 @@ namespace MinecraftModManager
                     latestTarget = target;
                     latestCheckedAt = DateTime.MinValue;
                 }
-                bool stale = force || DateTime.UtcNow - latestCheckedAt > TimeSpan.FromMinutes(30);
-                List<string> toCheck = stale ? identified : identified.Where(h => !LatestByHash.ContainsKey(h)).ToList();
-                CheckLatest(modsDir, toCheck);
-                if (stale) latestCheckedAt = DateTime.UtcNow;
+                if (force)
+                {
+                    CheckLatest(modsDir, identified);
+                    latestCheckedAt = DateTime.UtcNow;
+                }
+                bool updatesChecked = latestCheckedAt != DateTime.MinValue;
 
                 var mods = new Dictionary<string, object>();
                 int updates = 0;
@@ -1257,7 +1259,7 @@ namespace MinecraftModManager
                 {
                     // Jars Modrinth doesn't know: ask CurseForge (CurseForge.cs).
                     List<FileInfo> rest = hashes.Where(p => VersionByHash[p.Value] == null).Select(p => new FileInfo(Path.Combine(modsDir, p.Key))).ToList();
-                    try { if (rest.Count > 0) onCurseForge = CfScanInto(mods, rest, ref updates); }
+                    try { if (rest.Count > 0) onCurseForge = CfScanInto(mods, rest, ref updates, updatesChecked, force); }
                     catch (UserError ex) { cfError = ex.Message; }
                 }
                 return Obj("ok", true, "target", TargetObj(), "checkedAt", latestCheckedAt == DateTime.MinValue ? null : latestCheckedAt.ToString("o"),
