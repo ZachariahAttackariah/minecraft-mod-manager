@@ -118,6 +118,7 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | --- | --- |
 | `source/Program.cs` | Core: the local web server, Modrinth, tags |
 | `source/Window.cs` | The window, its tabs, and the custom title bar they sit in |
+| `source/AdBlock.cs` | Blocks ads in the tabs with [uBlock Origin Lite](https://github.com/uBlockOrigin/uBOL-home) (GPLv3, by Raymond Hill), fetched from its GitHub releases into the data folder; not part of this repository or the exe |
 | `source/Instances.cs` | The instance picker, and creating, changing and deleting Prism instances |
 | `source/Sharing.cs` | Shared Java arguments, shader / resource packs and game settings between instances |
 | `source/Packs.cs` | Resource, shader and data packs, and installing Iris / Paxi when a pack needs them |

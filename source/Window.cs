@@ -38,7 +38,8 @@ namespace MinecraftModManager
             if (environment == null)
             {
                 string profileDir = Path.Combine(dataDir, "WebView2");
-                environment = CoreWebView2Environment.CreateAsync(null, profileDir, null);
+                // Extensions on, for the tabs' ad blocker (AdBlock.cs).
+                environment = CoreWebView2Environment.CreateAsync(null, profileDir, new CoreWebView2EnvironmentOptions { AreBrowserExtensionsEnabled = true });
             }
             return environment;
         }
@@ -320,6 +321,7 @@ namespace MinecraftModManager
                 }
                 CoreWebView2 core = manager.View.CoreWebView2;
                 core.Settings.IsStatusBarEnabled = false;
+                SetUpAdBlock(core.Profile);
                 // Keep the manager tab on the manager: anything else opens in a tab of its own.
                 core.NewWindowRequested += delegate (object s, CoreWebView2NewWindowRequestedEventArgs a)
                 {
