@@ -333,7 +333,10 @@ html[data-actions="always"] .act { opacity: 1; }
 .not-mark { padding: 1px 4px; font: 700 10px/1.2 var(--font-body); text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink); background: color-mix(in srgb, var(--c) 35%, transparent); border-radius: 2px; text-decoration: none; display: inline-block; }
 .pill.not { border-style: dashed; }
 
-.toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-inline: calc(-1 * var(--gutter)); padding: 10px var(--gutter); background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+/* The search bar has no backing of its own until it sticks to the top with rows passing under it; then it
+   takes the list panel's tone (nearly opaque, blurred) and a soft shadow, exactly as wide as the list. */
+.toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-inline: calc(-1 * var(--gutter)); padding: 10px var(--gutter); background: transparent; border-radius: 0 0 6px 6px; transition: background-color 0.15s, box-shadow 0.15s; }
+.toolbar.stuck { background: color-mix(in srgb, color-mix(in srgb, var(--surface) 55%, var(--bg)) 94%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 10px 14px -12px rgba(0, 0, 0, 0.7); }
 /* Search, status, side, sort, count and the dots share one line; the search box takes what's left (it wraps only when there's no room). */
 .search { position: relative; flex: 1 1 96px; min-width: 96px; }
 .toolbar .seg-control button { padding-inline: 8px; }
@@ -680,8 +683,6 @@ html.switching-shown #selection-bar, html.switching-shown #active, html.switchin
 html.switching #inst-btn, html.switching #play { pointer-events: none; }
 .crumbs .opening { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
 .inst-sub .spin { display: inline-block; width: 9px; height: 9px; margin-right: 6px; vertical-align: -1px; }
-html[data-bgimage="on"] .toolbar:not(.stuck) { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom-color: transparent; }
-html[data-bgimage="on"] .toolbar { transition: background-color 0.15s, border-color 0.15s; }
 .result.stale { opacity: 0.45; pointer-events: none; transition: opacity 0.12s; }
 .search-empty.searching { padding-block: 8px; }
 .drop-zone { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 24px; background: color-mix(in srgb, var(--bg) 70%, transparent); pointer-events: none; }
