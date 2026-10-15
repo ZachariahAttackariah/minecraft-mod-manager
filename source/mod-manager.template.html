@@ -96,6 +96,8 @@ html[data-theme="light"] {
 html[data-density="compact"] { --row-pad: 4px; --icon: 28px; }
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; }
+/* The scrollbar's room is always kept, so the page doesn't shift sideways when it appears or goes. */
+html { scrollbar-gutter: stable; }
 body { min-height: 100vh; color: var(--ink); font: 400 15px/1.5 var(--font-body);
   background: radial-gradient(1100px 460px at 12% -8%, var(--glow-a), transparent 70%), radial-gradient(900px 380px at 100% 0%, var(--glow-b), transparent 70%), var(--bg);
   background-attachment: fixed; }
