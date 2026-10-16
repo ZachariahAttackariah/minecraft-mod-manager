@@ -40,6 +40,9 @@ try {
     [System.IO.File]::WriteAllText($check, "function __check__() {`n" + $script + "`n}`nWScript.Echo('syntax ok');", [System.Text.Encoding]::Unicode)
     $result = (& cscript //nologo "//E:{16d51579-a30b-4c8b-a276-0ff4dc41e755}" $check 2>&1 | Out-String).Trim()
     if ($result -ne "syntax ok") { throw "The page's script has a syntax error (line numbers count from <script>, plus one):`n$result" }
+    # Two functions with the same name in the page: the later one silently replaces the earlier everywhere.
+    $dupes = [regex]::Matches($script, '(?m)^  function ([A-Za-z0-9_$]+)\(') | ForEach-Object { $_.Groups[1].Value } | Group-Object | Where-Object { $_.Count -gt 1 } | ForEach-Object { $_.Name }
+    if ($dupes) { throw "The page defines these functions more than once (the last one wins everywhere): $($dupes -join ', ')" }
 
     $icon = Join-Path $src "app.ico"
     if (-not (Test-Path $icon)) { & (Join-Path $src "make-icon.ps1") | Out-Host }

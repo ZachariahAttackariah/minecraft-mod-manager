@@ -98,6 +98,9 @@ html[data-density="compact"] { --row-pad: 4px; --icon: 28px; }
 html, body { margin: 0; }
 /* The scrollbar's room is always kept, so the page doesn't shift sideways when it appears or goes. */
 html { scrollbar-gutter: stable; }
+/* A dialog, the details window, Add mods, Manage tags or a gallery image in front: the page behind stays put
+   (the gutter above keeps the width the same while its scrollbar is gone). */
+html:has(.scrim:not([hidden])), html:has(.drawer-scrim:not([hidden])), html:has(.lightbox) { overflow: hidden; }
 body { min-height: 100vh; color: var(--ink); font: 400 15px/1.5 var(--font-body);
   background: radial-gradient(1100px 460px at 12% -8%, var(--glow-a), transparent 70%), radial-gradient(900px 380px at 100% 0%, var(--glow-b), transparent 70%), var(--bg);
   background-attachment: fixed; }
@@ -6365,7 +6368,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (currentView === "server") {
         renderServerCard();
         renderConsoleInput();
-        if (srv.sub === "overview") renderOverview();
+        if (srv.sub === "overview") renderServerOverview();
         if (srv.sub === "sync") updateSyncFoot();
       }
     });
@@ -6732,7 +6735,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       b.setAttribute("aria-selected", String(on));
     });
     SUBS.forEach(function (s) { $("server-" + s + "-panel").hidden = s !== sub; });
-    if (sub === "overview") renderOverview();
+    if (sub === "overview") renderServerOverview();
     if (sub === "sync") { if (!srv.sync && !srv.syncLoading) loadSync(); else renderSync(); }
     if (sub === "players") loadPlayers();
     if (sub === "settings") renderSettings(!srv.settingsBuilt);
@@ -7186,7 +7189,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   // ---- Overview ----
 
-  function renderOverview() {
+  function renderServerOverview() {
     var p = $("server-overview-panel");
     var i = srv.info;
     p.replaceChildren();
