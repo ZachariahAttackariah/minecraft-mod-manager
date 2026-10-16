@@ -128,8 +128,10 @@ namespace MinecraftModManager
                         string type = Val(v, "type");
                         if (type == null)
                         {
+                            // Old Forge's "mandatory". NeoForge doesn't read it: without a "type" its dependency is
+                            // required, so "mandatory = false" there still stops the game (Let's Do Camping and Curios).
                             string mandatory = Val(v, "mandatory");
-                            type = mandatory == null || mandatory == "true" ? "required" : "optional";
+                            type = kind == "neoforge" || mandatory == null || mandatory == "true" ? "required" : "optional";
                         }
                         meta.Deps.Add(new DepInfo
                         {
