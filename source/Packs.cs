@@ -642,6 +642,13 @@ namespace MinecraftModManager
             if (!Uri.TryCreate(S(file, "url"), UriKind.Absolute, out url) || url.Scheme != Uri.UriSchemeHttps
                 || !(url.Host == "cdn.modrinth.com" || url.Host.EndsWith(".modrinth.com", StringComparison.OrdinalIgnoreCase)))
                 throw new UserError("Modrinth gave an unexpected download address for " + name + ", so it wasn't installed.");
+            return DownloadPackZip(url, name, S(D(Get(file, "hashes")), "sha1"), "Modrinth", dir, replacing);
+        }
+
+        // Downloads a pack zip into dir (checked against the site's SHA-1), replacing an older file if given.
+        static string DownloadPackZip(Uri url, string name, string expected, string site, string dir, string replacing)
+        {
+            if (name.Length == 0 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) throw new UserError(site + " gave a file name that can't be used, so nothing was installed.");
             string target = Path.Combine(dir, name);
             bool sameName = replacing != null && string.Equals(Path.GetFileName(replacing), name, StringComparison.OrdinalIgnoreCase);
             if (!sameName && (File.Exists(target) || Directory.Exists(target))) throw new UserError(name + " is already there.");
@@ -660,12 +667,12 @@ namespace MinecraftModManager
                         input.CopyTo(output);
                 }
                 catch (WebException ex) { throw new UserError("Couldn't download " + name + " (" + ex.Message + ")."); }
-                string expected = S(D(Get(file, "hashes")), "sha1"), actual;
+                string actual;
                 using (SHA1 sha = SHA1.Create())
                 using (FileStream stream = File.OpenRead(temp))
                     actual = Hex(sha.ComputeHash(stream));
                 if (expected != null && !string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase))
-                    throw new UserError("The download of " + name + " didn't match Modrinth's checksum, so it was thrown away.");
+                    throw new UserError("The download of " + name + " didn't match " + site + "'s checksum, so it was thrown away.");
                 if (replacing != null && !RecyclePaths(new[] { replacing }))
                     throw new UserError("Couldn't move the old " + Path.GetFileName(replacing) + " to the Recycle Bin, so nothing was changed.");
                 File.Move(temp, target);

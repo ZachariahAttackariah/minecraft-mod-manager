@@ -136,8 +136,10 @@ Tabs
   their pack folder (see Packs).
 
 Packs
-  Resource packs, shader packs and data packs, each with the same tools as mods: Search Modrinth (installs
-  the right download for your Minecraft version), Add files... (.zip files, checked to be the right kind),
+  Resource packs, shader packs and data packs, each with the same tools as mods: Search (Modrinth, and
+  CurseForge too with a key, as for mods: a pack on both sites shows once and installs from Modrinth, or
+  from CurseForge when Modrinth has no fitting file; installs the right download for your Minecraft
+  version), Add files... (.zip files, checked to be the right kind),
   Open folder, Check for updates / Update, and delete (to the Recycle Bin). Packs from Modrinth show their
   name, description and icon, and any update.
   Resource packs .... On / Turn on edits the game's list of resource packs (options.txt); the one turned on
@@ -408,6 +410,7 @@ Files
   source\Instances.cs                     The instance picker, and creating / changing / deleting instances.
   source\Sharing.cs                       Sharing Java arguments, shader / resource packs and game settings.
   source\Packs.cs                         Resource, shader and data packs (and adding Iris / Paxi when needed).
+  source\CurseForgePacks.cs               Searching and installing packs from CurseForge.
   source\Server.cs                        Starting, stopping and talking to the Minecraft server.
   source\ServerCreate.cs                  Creating servers and switching between them.
   source\Sync.cs                          Comparing and syncing the game and the server.

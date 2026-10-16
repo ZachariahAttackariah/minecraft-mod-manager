@@ -384,6 +384,13 @@ namespace MinecraftModManager
                     SendJson(ctx, 200, SearchPacks(req.QueryString["kind"], req.QueryString["place"], req.QueryString["q"], offset, req.QueryString["sort"]));
                     return;
                 }
+                if (method == "GET" && path == "/api/curseforge/packs/search")
+                {
+                    int offset;
+                    int.TryParse(req.QueryString["offset"], out offset);
+                    SendJson(ctx, 200, CurseForgePackSearch(req.QueryString["kind"], req.QueryString["place"], req.QueryString["q"], offset, req.QueryString["sort"]));
+                    return;
+                }
                 if (method == "GET")
                 {
                     object result = null;
@@ -743,6 +750,9 @@ namespace MinecraftModManager
                         return;
                     case "/api/packs/install":
                         SendJson(ctx, 200, InstallPack(Str(body, "kind"), Str(body, "place"), Str(body, "projectId")));
+                        return;
+                    case "/api/curseforge/packs/install":
+                        SendJson(ctx, 200, CurseForgePackInstall(Str(body, "kind"), Str(body, "place"), Str(body, "projectId")));
                         return;
                     case "/api/packs/update":
                         SendJson(ctx, 200, UpdatePacks(Str(body, "kind"), Str(body, "place"), StrList(body, "names")));

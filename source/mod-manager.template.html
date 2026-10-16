@@ -1333,7 +1333,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <p class="lead" id="packs-lead"></p>
       <div class="packs-where" id="packs-where"></div>
       <div class="row-actions">
-        <button class="btn primary" type="button" id="packs-search">Search Modrinth</button>
+        <button class="btn primary" type="button" id="packs-search">Search</button>
         <button class="btn" type="button" id="packs-add">Add files…</button>
         <button class="btn" type="button" id="packs-open">Open folder</button>
         <button class="btn" type="button" id="packs-check">Check for updates</button>
@@ -2625,7 +2625,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // with a mod that's on both shown once and downloaded from Modrinth. Each site pages on its own.
   var search = { kind: "mods", source: null, hits: [], total: 0, loading: false, error: null, warn: null, seq: 0, mr: null, cf: null };
   function searchSource() {
-    if (search.kind !== "mods" || !(server && server.curseforge)) return "modrinth";
+    if (!(server && server.curseforge)) return "modrinth";
     return search.source || pref("searchSources");
   }
   function searchSite() {
@@ -2651,7 +2651,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     runSearch(true);
   }
   function labelSearch() {
-    var cf = search.kind === "mods" && server && server.curseforge;
+    var cf = !!(server && server.curseforge);
     $("search-source").hidden = !cf;
     Array.prototype.forEach.call(document.querySelectorAll("#search-source button"), function (b) { b.setAttribute("aria-pressed", String(b.dataset.src === searchSource())); });
     $("search-q").placeholder = "Search " + searchSite();
@@ -2669,7 +2669,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     kind = typeof kind === "string" ? kind : "mods";
     if (search.kind !== kind) { search.kind = kind; resetSearch(); }
     labelSearch();
-    $("search-title").textContent = kind === "mods" ? "Add mods" : "Add " + PACK_NOUNS[kind] + " from Modrinth";
+    $("search-title").textContent = kind === "mods" ? "Add mods" : "Add " + PACK_NOUNS[kind];
     $("search-target").textContent = kind === "mods" ? "Showing mods for " + targetText() + ". Installing also adds the mods it needs."
       : kind === "shaderpacks" ? "Showing shader packs that work with Iris. Iris is installed too if it isn't yet."
       : kind === "datapacks" ? "Showing data packs for Minecraft " + (server && server.target ? server.target.gameVersion : "") + ". They go into " + packPlaceLabel() + "."
@@ -2737,7 +2737,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
   function searchDone() {
     var src = searchSource();
-    return search.kind !== "mods" || src === "modrinth" ? search.mr.done : src === "curseforge" ? search.cf.done : search.mr.done && search.cf.done;
+    return src === "modrinth" ? search.mr.done : src === "curseforge" ? search.cf.done : search.mr.done && search.cf.done;
   }
 
   function runSearch(reset) {
@@ -2755,7 +2755,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     search.error = null;
     renderSearch();
     var src = searchSource();
-    var sites = search.kind !== "mods" ? ["packs"] : src === "both" ? ["modrinth", "curseforge"] : [src];
+    var sites = src === "both" ? ["modrinth", "curseforge"] : [src];
     var cat = search.kind === "mods" ? $("search-cat").value : "", side = search.kind === "mods" ? $("search-side").value : "";
     // CurseForge doesn't say which side a mod runs on, so a side filter leaves it out.
     if (side && sites.indexOf("curseforge") >= 0) {
@@ -2767,7 +2767,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var calls = sites.map(function (site) {
       var st = site === "curseforge" ? search.cf : search.mr;
       if (st.done) return Promise.resolve([]);
-      var url = site === "packs" ? "/api/packs/search?kind=" + search.kind + "&place=" + encodeURIComponent(packs.places[search.kind] || "") + "&q=" + encodeURIComponent(q)
+      var url = search.kind !== "mods" ? (site === "curseforge" ? "/api/curseforge/packs/search" : "/api/packs/search") + "?kind=" + search.kind + "&place=" + encodeURIComponent(packs.places[search.kind] || "") + "&q=" + encodeURIComponent(q)
         : "/api/" + site + "/search?q=" + encodeURIComponent(q) + (cat ? "&category=" + encodeURIComponent(cat) : "") + (side && site === "modrinth" ? "&side=" + side : "");
       var full = url + "&offset=" + st.offset + "&sort=" + sort;
       var kept = searchCache[full];
@@ -2852,7 +2852,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var isMod = search.kind === "mods", cf = hit.source === "curseforge";
     // A CurseForge author can switch off downloads through other apps: then the button opens their page.
     var pageOnly = cf && hit.downloadsAllowed === false && !hit.installed;
-    var sites = isMod && server && server.curseforge
+    var sites = server && server.curseforge
       ? h("span", { class: "src-marks" },
           cf ? null : h("span", { class: "src mr", title: hit.also ? "On Modrinth and CurseForge (matched by " + (hit.matchedBy === "file" ? "the same file on both" : hit.matchedBy) + "). Installs from Modrinth." : "From Modrinth" }, "Modrinth"),
           cf || hit.also ? h("a", { class: "src cf", href: (hit.also || hit).url, target: "_blank", rel: "noopener", title: "Open its CurseForge page" }, "CurseForge") : null)
@@ -2871,7 +2871,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         h("div", { class: "result-meta" }, formatNum(hit.downloads) + " downloads" + (isMod && !cf ? " · " + (sides.join(" + ") || "side unknown") : "") + (hit.updated ? " · updated " + ago(hit.updated) : "") +
           (pageOnly ? " · download from CurseForge's site only" : ""))),
       h("button", { type: "button", class: "btn" + (hit.installed || pageOnly ? "" : " primary"), disabled: hit.installed || busyNow || !connected,
-          title: pageOnly ? "The author only allows downloads from the CurseForge website. Opens its page; a jar you download there goes straight into this mods folder." : null,
+          title: pageOnly ? "The author only allows downloads from the CurseForge website. Opens its page; " + (isMod ? "a jar you download there goes straight into this mods folder." : "a zip you download there goes straight into the " + PACK_NOUNS[search.kind] + " folder.") : null,
           "aria-label": (hit.installed ? "Installed: " : pageOnly ? "Open the page of " : "Install ") + hit.title, onclick: function () { if (isMod) installMod(hit); else installPack(hit); } },
         hit.installed ? "Installed" : busyNow ? "Installing…" : pageOnly ? "Open page" : "Install"));
   }
@@ -3022,7 +3022,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (d.kind === "resourcepacks") rows.sort(function (a, b) { return (b.on >= 0) - (a.on >= 0) || (b.on - a.on) || packTitle(a).localeCompare(packTitle(b)); });
     else if (d.kind === "shaderpacks") rows.sort(function (a, b) { return (b.on === true) - (a.on === true) || packTitle(a).localeCompare(packTitle(b)); });
     else rows.sort(function (a, b) { return packTitle(a).localeCompare(packTitle(b)); });
-    if (!rows.length) list.append(h("p", { class: "packs-empty" }, "No " + PACK_NOUNS[d.kind] + " here yet. Search Modrinth, add .zip files, or download one in a tab (it lands here by itself)."));
+    if (!rows.length) list.append(h("p", { class: "packs-empty" }, "No " + PACK_NOUNS[d.kind] + " here yet. Search for some, add .zip files, or download one in a tab (it lands here by itself)."));
     rows.forEach(function (p) { list.append(packRow(d, p)); });
   }
 
@@ -3107,13 +3107,27 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       }
     });
   }
+  // Like a mod: a pack on both sites installs from Modrinth, and from CurseForge if Modrinth has no fitting file.
   function installPack(hit) {
     installing[hit.projectId] = true;
     renderSearch();
-    var kind = search.kind;
-    api("POST", "/api/packs/install", { kind: kind, place: packs.places[kind] || "", projectId: hit.projectId }).then(function (res) {
+    var kind = search.kind, fellBack = false;
+    function attempt(src) {
+      return api("POST", src.source === "curseforge" ? "/api/curseforge/packs/install" : "/api/packs/install", { kind: kind, place: packs.places[kind] || "", projectId: src.projectId });
+    }
+    track("Installing " + hit.title, attempt(hit).then(null, function (e) {
+      var cf = hit.also;
+      if (!cf || cf.downloadsAllowed === false || /already there/.test(e.message)) throw e;
+      fellBack = true;
+      return attempt(cf);
+    })).then(function (res) {
+      if (res.manual) {
+        if (res.url) window.open(res.url, "_blank", "noopener");
+        toast(res.title + "'s author only allows downloads from CurseForge's website. Its page is open in a tab: download it there and it goes into the " + PACK_NOUNS[kind] + " folder by itself.");
+        return;
+      }
       hit.installed = true;
-      toast("Installed " + hit.title + "." + (res.added.length ? " " + neededText(res.added) : "") + (res.notes.length ? " " + res.notes.join(" ") : ""));
+      toast("Installed " + hit.title + (fellBack ? " from CurseForge (Modrinth has no file for it)" : "") + "." + (res.added.length ? " " + neededText(res.added) : "") + (res.notes.length ? " " + res.notes.join(" ") : ""));
       if (res.added.length) refresh(true);
     }, function (e) {
       if (/already there/.test(e.message)) hit.installed = true;
@@ -5182,7 +5196,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "folders", label: "Where things are", desc: "", custom: foldersControl }
     ] },
     { title: "Sources", items: [
-      { key: "searchSources", label: "Search", desc: "Where Add mods looks. Mods on both sites show once, and download from Modrinth.", choices: [["both", "Both"], ["modrinth", "Modrinth"], ["curseforge", "CurseForge"]] },
+      { key: "searchSources", label: "Search", desc: "Where Add mods and adding packs look. Anything on both sites shows once, and downloads from Modrinth.", choices: [["both", "Both"], ["modrinth", "Modrinth"], ["curseforge", "CurseForge"]] },
       { key: "curseforgeKey", label: "CurseForge API key", desc: "", custom: curseforgeKeyControl }
     ] },
     { title: "Worlds", items: [
