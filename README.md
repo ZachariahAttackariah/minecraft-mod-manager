@@ -154,5 +154,5 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/Cleanup.cs` | Disk cleanup |
 | `source/mod-manager.template.html` | The page shown in the window |
 | `source/build.ps1` | Build script |
-| `source/make-icon.ps1` | Draws the icon, a grass block (`app.ico`) |
+| `source/make-icon.ps1` | Draws the icon, a pixel-art yin-yang (`app.ico`) |
 | `source/fonts/` | The pixel font for the title, PLAY and headings: [Minecraft](https://github.com/IdreesInc/Minecraft-Font) by Idrees Hassan, SIL Open Font License 1.1 (`Minecraft-OFL.txt`). Built into the page, so it works offline |
