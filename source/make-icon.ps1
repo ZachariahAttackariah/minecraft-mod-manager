@@ -1,52 +1,60 @@
-# Draws the app icon (the grass block from the instance picker) at several
-# sizes and writes app.ico. Small sizes are 32-bit BMP entries, 256 is PNG.
+# Draws the app icon, a grass block at Minecraft's in-game angle in 16x16 pixel art, at several sizes and
+# writes app.ico. Small sizes are 32-bit BMP entries, 256 is PNG. Pixels are scaled by whole numbers so they
+# stay square and sharp; a size that isn't a multiple of 16 gets the biggest whole scale that fits, centred,
+# unless that would leave too wide a margin, in which case the pixels stretch to fill it.
 Add-Type -AssemblyName System.Drawing
 $out = Join-Path $PSScriptRoot "app.ico"
 
-function New-RoundedRect([float]$x, [float]$y, [float]$w, [float]$h, [float]$r) {
-    $p = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $d = $r * 2
-    $p.AddArc($x, $y, $d, $d, 180, 90)
-    $p.AddArc($x + $w - $d, $y, $d, $d, 270, 90)
-    $p.AddArc($x + $w - $d, $y + $h - $d, $d, $d, 0, 90)
-    $p.AddArc($x, $y + $h - $d, $d, $d, 90, 90)
-    $p.CloseFigure()
-    return $p
+# One letter per colour; "." is transparent. Top face lit, left side a little darker, right side darker still.
+$palette = @{
+    A = "#86c75f"; B = "#6aab48"; C = "#7cbd56"; D = "#5f9f3f"; E = "#4e8234"; F = "#578c3b"; G = "#527d39"; H = "#3f692a"; I = "#467130"
+    J = "#724c30"; K = "#64422b"; L = "#669b47"; M = "#513522"; N = "#7b5739"; O = "#63462e"; P = "#49311f"; Q = "#5a3d27"; R = "#5c3d27"
 }
+$art = @(
+    "......ABAC......",
+    "....DACCCCBC....",
+    "..CCBCCDCCDCDA..",
+    "BCCCCCDDCCCDCBCD",
+    "EFDBCABAAABCDBGH",
+    "EEFFAAABACDBIGHH",
+    "JKELFFDCBDGHHHIM",
+    "NJNFLFFEGHIHGHOP",
+    "NQKJKNLLHGHMMOPP",
+    "JJKJJNJKHPPRORPM",
+    "KNJQKKNKOPMPROOR",
+    "NQNJQKKQPRPMRRRP",
+    "QNJKQKJJROOMORPR",
+    "..QJKJNKORRRRM..",
+    "....JQKJRMMO....",
+    "......QNOR......"
+)
 
 function New-IconBitmap([int]$s) {
-    # The same grass block as the instance picker (.block in the page): grass top, a darker edge, dirt
-    # below, a light line along the top and a shadow along the bottom, with slightly rounded corners.
-    $pad = if ($s -le 24) { 1 } else { [Math]::Round($s * 0.04) }
-    $size = $s - 2 * $pad
-    $grass = [Math]::Round($size * 0.30)
-    $edge = [Math]::Max(1, [Math]::Round($size * 0.08))
-    $light = [Math]::Max(1, [Math]::Round($size * 0.055))
-    $shade = [Math]::Max(1, [Math]::Round($size * 0.083))
-
-    # The bands are painted square first, then cut out with an anti-aliased rounded shape.
-    $tile = New-Object System.Drawing.Bitmap $s, $s, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
-    $t = [System.Drawing.Graphics]::FromImage($tile)
-    $t.Clear([System.Drawing.Color]::Transparent)
-    $t.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml("#8b5d3b"))), $pad, $pad, $size, $size)
-    $t.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml("#74b84b"))), $pad, $pad, $size, $grass)
-    $t.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml("#4f8f34"))), $pad, $pad + $grass, $size, $edge)
-    $t.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(46, 255, 255, 255))), $pad, $pad, $size, $light)
-    $t.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(77, 0, 0, 0))), $pad, $pad + $size - $shade, $size, $shade)
-    $t.Dispose()
-
     $bmp = New-Object System.Drawing.Bitmap $s, $s, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
-    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-    $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
     $g.Clear([System.Drawing.Color]::Transparent)
-    $radius = [Math]::Max(1, $size * 0.09)
-    $g.FillPath((New-Object System.Drawing.TextureBrush $tile), (New-RoundedRect $pad $pad $size $size $radius))
+    $whole = [Math]::Max(1, [Math]::Floor($s / 16))
+    $stretch = ($s - 16 * $whole) -gt $s * 0.2
+    $offset = if ($stretch) { 0 } else { [Math]::Floor(($s - 16 * $whole) / 2) }
+    for ($y = 0; $y -lt 16; $y++) {
+        for ($x = 0; $x -lt 16; $x++) {
+            $ch = [string]$art[$y][$x]
+            if ($ch -eq ".") { continue }
+            $brush = New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml($palette[$ch]))
+            if ($stretch) {
+                # Edges by rounding, so neighbouring pixels meet without gaps or overlaps.
+                $x0 = [Math]::Round($x * $s / 16); $x1 = [Math]::Round(($x + 1) * $s / 16)
+                $y0 = [Math]::Round($y * $s / 16); $y1 = [Math]::Round(($y + 1) * $s / 16)
+                $g.FillRectangle($brush, $x0, $y0, $x1 - $x0, $y1 - $y0)
+            } else {
+                $g.FillRectangle($brush, $offset + $x * $whole, $offset + $y * $whole, $whole, $whole)
+            }
+            $brush.Dispose()
+        }
+    }
     $g.Dispose()
-    $tile.Dispose()
     return $bmp
 }
-
 # 32-bit DIB icon entry: BITMAPINFOHEADER, bottom-up BGRA pixels, empty AND mask.
 function Get-DibBytes([System.Drawing.Bitmap]$bmp) {
     $s = $bmp.Width
