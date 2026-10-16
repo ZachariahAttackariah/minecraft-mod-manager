@@ -34,7 +34,7 @@ namespace MinecraftModManager
             { "searchSources", new[] { "both", "modrinth", "curseforge" } },
             { "serverRestart", new[] { "off", "6", "12", "24" } },
         };
-        static readonly string[] PrefFlags = { "fileNames", "blockyTitle", "checkBeforePlay", "serverExtras", "confirmDelete", "whatChanged", "serverBackups", "worldBackups", "showIcons", "colSide", "colTags", "colVersion" };
+        static readonly string[] PrefFlags = { "fileNames", "autoLibraries", "blockyTitle", "checkBeforePlay", "serverExtras", "confirmDelete", "whatChanged", "serverBackups", "worldBackups", "showIcons", "colSide", "colTags", "colVersion" };
 
         static Dictionary<string, object> PrefsCopy()
         {

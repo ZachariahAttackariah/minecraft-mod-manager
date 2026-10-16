@@ -26,6 +26,8 @@ Settings (the gear at the right end of the section tabs)
   Folders ........... the mods folder and the server folder (open or change), the app's data folder
                       (snapshots, backups, notes, presets) and the app's own folder (settings, actions.log).
   Mod list .......... open on (Mods, Libraries, Packs, Server, Snapshots, or wherever you left off),
+                      turn on what a mod needs (on by default: turning a mod on also turns on the turned-off
+                      libraries and mods it requires, the newest copy if there are several; Undo puts all back),
                       the Version column (each mod's installed version; off by default), the Side column
                       (C / S) and the Tags column (tags still filter from the side panel when it's off),
                       mod icons on or off, rows with lines or stripes, tag order (A to Z, the default, or as in the file; client and server stay first,

@@ -3359,7 +3359,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var ok = res.results.filter(function (x) { return !x.error; });
       var failed = res.results.filter(function (x) { return x.error; });
       var verb = enable ? "Turned on " : "Turned off ";
-      var label = labelFor(rows, ok);
+      // Libraries turned on with them (Settings > Mod list > Turn on what a mod needs).
+      var auto = ok.filter(function (x) { return x.auto; });
+      var label = labelFor(rows, ok.filter(function (x) { return !x.auto; }));
+      if (auto.length) {
+        var lib = model.rows.filter(function (r) { return r.file === auto[0].file; })[0];
+        label += ", plus " + (auto.length === 1 ? (lib ? lib.name : auto[0].file) : count(auto.length, "mod", "mods")) + " " + (rows.length === 1 ? "it needs" : "they need");
+      }
       if (failed.length) {
         toast((ok.length ? verb + label + ". " : "") + count(failed.length, "mod", "mods") + " couldn't be changed: " + failed[0].error);
       } else {
@@ -5045,7 +5051,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha", tagHide: "ctrl", accentColor: "#2fb465", background: "glow", corners: "round", textSize: "100", tagStyle: "tint",
     motion: "system", rowStyle: "lines", showIcons: true, colSide: true, colTags: true, colVersion: false, startPage: "mods", bgDim: "75", tagHues: {},
     worldBackups: false, updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false,
-    serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false };
+    serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false, autoLibraries: true };
   var localPrefs = {};
   try { localPrefs = JSON.parse(localStorage.getItem("mmm.prefs") || "{}") || {}; } catch (e) {}
   function pref(k) {
@@ -5162,7 +5168,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "whatChanged", label: "What changed, on opening", desc: "A short note of new updates and added or removed jars since the folder was last open here." },
       { key: "tagHide", label: "Hiding a tag", desc: "How to filter out the mods with a tag. Right-click a tag hides it either way.", choices: [["ctrl", "Ctrl+click"], ["cycle", "Click twice"]] },
       { key: "tagOrder", label: "Tag order", desc: "How tags are listed in the side panel, on rows and when picking tags for a mod.", choices: [["alpha", "A to Z"], ["file", "As in the file"]] },
-      { key: "confirmDelete", label: "Ask before deleting", desc: "Off sends mods straight to the Recycle Bin, where they can still be restored." }
+      { key: "confirmDelete", label: "Ask before deleting", desc: "Off sends mods straight to the Recycle Bin, where they can still be restored." },
+      { key: "autoLibraries", label: "Turn on what a mod needs", desc: "Turning a mod on also turns on the turned-off libraries and mods it requires (the newest copy, if there are several)." }
     ] },
     { title: "Folders", items: [
       { key: "folders", label: "Where things are", desc: "", custom: foldersControl }

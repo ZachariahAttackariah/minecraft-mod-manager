@@ -7,7 +7,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
 ## Features
 
 - **Mods**
-  - Turn mods on and off. Disabling renames `X.jar` to `X.jar.disabled`, the same as launchers do.
+  - Turn mods on and off. Disabling renames `X.jar` to `X.jar.disabled`, the same as launchers do. Turning a mod on also turns on the turned-off libraries it requires (a setting, on by default).
   - Delete mods to the Recycle Bin.
   - Select several mods at once, file-manager style.
   - Tag mods (client / server, plus your own tags), stored in `mod-tags.json` next to the jars. Click a tag to show only mods with it; Ctrl+click to hide mods with it (a Setting can make a second click hide instead); the library tag only shows on the Libraries page; sort the list by name or by side.

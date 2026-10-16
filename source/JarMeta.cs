@@ -778,6 +778,44 @@ namespace MinecraftModManager
 
         // The mod ids each enabled jar needs (required, for the given side), as jar names: used to keep
         // libraries switched on while their users are on, e.g. when finding a problem mod.
+        // Turning mods on: the turned-off jars in the folder that provide what they require (and what those
+        // require in turn), when nothing that's on provides it already. Where several turned-off jars provide
+        // the same mod, the newest version is picked. Returns their file names.
+        static List<string> TurnedOffNeeds(List<string> files)
+        {
+            var jars = new DirectoryInfo(modsDir).GetFiles().Where(f => JarName.IsMatch(f.Name)).ToList();
+            var metas = jars.ToDictionary(f => f.Name, f => GetJarMeta(f), StringComparer.OrdinalIgnoreCase);
+            Func<string, bool> isOff = n => n.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase);
+            Func<JarMeta, IEnumerable<ModInfo>> ids = m => m.Mods.Concat(m.Nested);
+            var turningOn = new HashSet<string>(files.Where(metas.ContainsKey), StringComparer.OrdinalIgnoreCase);
+            var provided = new HashSet<string>(jars.Where(f => !isOff(f.Name) || turningOn.Contains(f.Name)).SelectMany(f => ids(metas[f.Name])).Select(m => m.Id),
+                StringComparer.OrdinalIgnoreCase);
+            // A server's own mods folder doesn't need client-side dependencies, and a game's doesn't need server-side ones.
+            bool serverFolder = serverDir != null && SamePath(Path.Combine(serverDir, "mods"), modsDir);
+            var added = new List<string>();
+            var queue = new Queue<string>(turningOn);
+            while (queue.Count > 0)
+            {
+                JarMeta meta = metas[queue.Dequeue()];
+                foreach (DepInfo dep in meta.Deps)
+                {
+                    if (dep.Type != "required" || dep.Id == null || provided.Contains(dep.Id)) continue;
+                    if (dep.Side == (serverFolder ? "CLIENT" : "SERVER")) continue;
+                    string id = dep.Id;
+                    FileInfo pick = jars.Where(f => isOff(f.Name) && !turningOn.Contains(f.Name) && ids(metas[f.Name]).Any(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase)))
+                        .OrderByDescending(f => ids(metas[f.Name]).First(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase)).Version ?? "",
+                            Comparer<string>.Create(CompareVersions))
+                        .FirstOrDefault();
+                    if (pick == null) continue; // not in the folder at all: the pre-launch check reports it
+                    turningOn.Add(pick.Name);
+                    added.Add(pick.Name);
+                    foreach (ModInfo m in ids(metas[pick.Name])) provided.Add(m.Id);
+                    queue.Enqueue(pick.Name);
+                }
+            }
+            return added;
+        }
+
         static Dictionary<string, HashSet<string>> RequiredJars(string dir, IEnumerable<FileInfo> enabledJars, string side)
         {
             List<FileInfo> jars = enabledJars.ToList();

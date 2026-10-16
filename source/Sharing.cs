@@ -215,8 +215,10 @@ namespace MinecraftModManager
                                 changes.Add(java);
                             }
                         }
+                        // A pack folder that's already a link somewhere else was set up on purpose (or by another copy
+                        // of this app with its own data folder): only the person's own switch re-points it.
                         foreach (string kind in SharedFolders)
-                            if (!SharesFolder(info, kind)) changes.Add(ApplyFolderSharing(info, kind, true));
+                            if (!SharesFolder(info, kind) && !IsLink(Path.Combine(GameDirOf(info), kind))) changes.Add(ApplyFolderSharing(info, kind, true));
                         string options = ShareGameSettings(info, true);
                         if (options != null) changes.Add(options);
                     }

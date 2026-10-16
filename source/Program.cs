@@ -511,10 +511,25 @@ namespace MinecraftModManager
                     {
                         bool enable = Bool(body, "enabled");
                         var results = new List<object>();
-                        foreach (string file in StrList(body, "files"))
+                        List<string> files = StrList(body, "files");
+                        // Turning mods on also turns on the turned-off libraries they need (Settings > Mod list).
+                        List<string> needs = new List<string>();
+                        if (enable && PrefFlag("autoLibraries", true))
+                            try { needs = TurnedOffNeeds(files); } catch (Exception) { }
+                        foreach (string file in files)
                         {
                             try { results.Add(Obj("file", file, "newFile", SetEnabled(file, enable))); }
                             catch (UserError ex) { results.Add(Obj("file", file, "error", ex.Message)); }
+                        }
+                        foreach (string file in needs)
+                        {
+                            try
+                            {
+                                string now = SetEnabled(file, true);
+                                Log("On        " + now + " (needed by a mod just turned on)");
+                                results.Add(Obj("file", file, "newFile", now, "auto", true));
+                            }
+                            catch (UserError ex) { results.Add(Obj("file", file, "error", ex.Message, "auto", true)); }
                         }
                         SendJson(ctx, 200, Obj("ok", true, "results", results));
                         return;
