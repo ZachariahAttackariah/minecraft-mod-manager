@@ -437,7 +437,8 @@ Files
   source\lib\                             The WebView2 DLLs used for building (from Microsoft's NuGet package).
   source\names.json                       Optional display names and Modrinth links for known jars (kept local).
   source\build.ps1                        Rebuilds the exe (and syntax-checks the page). Close the app first.
-  source\make-icon.ps1, app.ico           The icon (a chiseled bookshelf, from icon-source.png).
+  source\make-icon.ps1, app.ico           The icon, built from icon-source.png: Minecraft's chiseled bookshelf,
+                                          which belongs to Mojang (see Credits and icon-source-NOTICE.txt).
   source\fonts\                           The pixel font for the title, PLAY and headings: "Minecraft" by
                                           Idrees Hassan (github.com/IdreesInc/Minecraft-Font), SIL Open Font
                                           License 1.1 (Minecraft-OFL.txt). Built into the app; works offline.
@@ -445,3 +446,18 @@ Files
 Command line (optional): MinecraftModManager.exe --mods "D:\some\mods" --server "D:\server" --port 8737 --no-window
   (--restart-minutes N makes scheduled server restarts and backups come every N minutes, for testing.)
 A mod-manager.html placed next to the exe replaces the built-in page, for quick edits without rebuilding.
+
+Credits
+  App icon .......... Minecraft's chiseled bookshelf block. It isn't this project's work: the block, its
+                      textures and the Minecraft name belong to Mojang AB and Microsoft. It's used as Mojang's
+                      Minecraft Usage Guidelines allow for free, non-commercial fan projects
+                      (source\icon-source-NOTICE.txt).
+  Pixel font ........ "Minecraft" by Idrees Hassan (github.com/IdreesInc/Minecraft-Font), SIL Open Font
+                      License 1.1.
+  Ad blocking ....... uBlock Origin Lite by Raymond Hill (github.com/uBlockOrigin/uBOL-home), GPLv3, downloaded
+                      from its own releases, not included here.
+  Browser engine .... Microsoft Edge WebView2, under its own license (source\lib\WebView2-LICENSE.txt).
+
+  NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Minecraft is a
+  trademark of Mojang AB. Mod information comes from Modrinth and CurseForge, which aren't affiliated with
+  this project either.

@@ -1,0 +1,11 @@
+icon-source.png and the app icon built from it (app.ico)
+=========================================================
+
+The picture is Minecraft's chiseled bookshelf block. It is not the work of this project's author: the
+block, its textures and the Minecraft name belong to Mojang AB and Microsoft. It is used here as Mojang's
+Minecraft Usage Guidelines allow for free, non-commercial fan projects, and no ownership of it is claimed.
+
+NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
+
+Minecraft Mod Manager is free and makes no money: no ads, sales or donations. If Mojang or Microsoft would
+like the picture removed, it will be replaced.

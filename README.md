@@ -154,5 +154,14 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/Cleanup.cs` | Disk cleanup |
 | `source/mod-manager.template.html` | The page shown in the window |
 | `source/build.ps1` | Build script |
-| `source/make-icon.ps1`, `source/icon-source.png` | Builds the icon (`app.ico`), a chiseled bookshelf, from the source picture |
+| `source/make-icon.ps1`, `source/icon-source.png` | Builds the icon (`app.ico`) from the source picture: Minecraft's chiseled bookshelf, which belongs to Mojang (see Credits and `icon-source-NOTICE.txt`) |
 | `source/fonts/` | The pixel font for the title, PLAY and headings: [Minecraft](https://github.com/IdreesInc/Minecraft-Font) by Idrees Hassan, SIL Open Font License 1.1 (`Minecraft-OFL.txt`). Built into the page, so it works offline |
+
+## Credits
+
+- **App icon:** Minecraft's chiseled bookshelf block. It isn't this project's work: the block, its textures and the Minecraft name belong to Mojang AB and Microsoft. It's used as Mojang's Minecraft Usage Guidelines allow for free, non-commercial fan projects (see `source/icon-source-NOTICE.txt`).
+- **Pixel font:** [Minecraft](https://github.com/IdreesInc/Minecraft-Font) by Idrees Hassan, SIL Open Font License 1.1.
+- **Ad blocking in the tabs:** [uBlock Origin Lite](https://github.com/uBlockOrigin/uBOL-home) by Raymond Hill, GPLv3, downloaded from its own releases, not included here.
+- **Browser engine:** Microsoft Edge WebView2, under its own license (`source/lib/WebView2-LICENSE.txt`).
+
+NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT. Minecraft is a trademark of Mojang AB. Mod information comes from Modrinth and CurseForge, which aren't affiliated with this project either.
