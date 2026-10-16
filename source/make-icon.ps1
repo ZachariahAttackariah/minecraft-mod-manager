@@ -1,34 +1,31 @@
-# Draws the app icon, a grass block at Minecraft's in-game angle in 16x16 pixel art, at several sizes and
-# writes app.ico. Small sizes are 32-bit BMP entries, 256 is PNG. Pixels are scaled by whole numbers so they
-# stay square and sharp; a size that isn't a multiple of 16 gets the biggest whole scale that fits, centred,
-# unless that would leave too wide a margin, in which case the pixels stretch to fill it.
+# Draws the app icon, a yin-yang in black and white as 16x16 pixel art in Minecraft's style (two close shades
+# per colour scattered like a block texture, and a grey rim so it reads on dark and light taskbars alike), at
+# several sizes and writes app.ico. Small sizes are 32-bit BMP entries, 256 is PNG. Pixels are scaled by whole
+# numbers so they stay square and sharp; a size that isn't a multiple of 16 gets the biggest whole scale that
+# fits, centred, unless that would leave too wide a margin, in which case the pixels stretch to fill it.
 Add-Type -AssemblyName System.Drawing
 $out = Join-Path $PSScriptRoot "app.ico"
 
-# One letter per colour; "." is transparent. Top face lit, left side a little darker, right side darker still.
-$palette = @{
-    A = "#86c75f"; B = "#6aab48"; C = "#7cbd56"; D = "#5f9f3f"; E = "#4e8234"; F = "#578c3b"; G = "#527d39"; H = "#3f692a"; I = "#467130"
-    J = "#724c30"; K = "#64422b"; L = "#669b47"; M = "#513522"; N = "#7b5739"; O = "#63462e"; P = "#49311f"; Q = "#5a3d27"; R = "#5c3d27"
-}
+# One letter per colour; "." is transparent.
+$palette = @{ W = "#f2f2f2"; V = "#dadada"; B = "#1b1b1b"; C = "#2f2f2f"; O = "#7a7a7a" }
 $art = @(
-    "......ABAC......",
-    "....DACCCCBC....",
-    "..CCBCCDCCDCDA..",
-    "BCCCCCDDCCCDCBCD",
-    "EFDBCABAAABCDBGH",
-    "EEFFAAABACDBIGHH",
-    "JKELFFDCBDGHHHIM",
-    "NJNFLFFEGHIHGHOP",
-    "NQKJKNLLHGHMMOPP",
-    "JJKJJNJKHPPRORPM",
-    "KNJQKKNKOPMPROOR",
-    "NQNJQKKQPRPMRRRP",
-    "QNJKQKJJROOMORPR",
-    "..QJKJNKORRRRM..",
-    "....JQKJRMMO....",
-    "......QNOR......"
+    ".....OOOOOO.....",
+    "...OOWWBCCBOO...",
+    "..OWVWBBBBBCBO..",
+    ".OVWWBBBBBBBBCO.",
+    ".OWWVBCWWBBBBCO.",
+    "OWVWWBCWWCBBBBBO",
+    "OWWVWBBBCBCBBBBO",
+    "OWWWWWBCBBCBBBCO",
+    "OVWWWWWWVWBBCBBO",
+    "OWWVVWWWWWWCBBCO",
+    "OWWWWVWBBWWBBBBO",
+    ".OWWWWVCBWWBBCO.",
+    ".OVWWWWWWVWBBBO.",
+    "..OVWWWWWWCCBO..",
+    "...OOWWVWBBOO...",
+    ".....OOOOOO....."
 )
-
 function New-IconBitmap([int]$s) {
     $bmp = New-Object System.Drawing.Bitmap $s, $s, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
