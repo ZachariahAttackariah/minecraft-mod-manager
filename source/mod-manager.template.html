@@ -5714,7 +5714,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       .replace(/&#(\d+);/g, function (m, n) { return String.fromCharCode(Number(n)); }).replace(/&amp;/g, "&")
       .replace(/\n{3,}/g, "\n\n");
   }
-  var INLINE = /(`[^`]+`)|(!\[([^\]]*)\]\(([^)\s]+)[^)]*\))|(\[((?:[^\[\]]|\[[^\]]*\])*)\]\(([^)\s]+)[^)]*\))|(\*\*[^*]+\*\*)|(\*[^*\s][^*]*\*)|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/;
+  // Link and image addresses may contain brackets of their own, as in badges like .../short_297680_(Neo-)Forge.svg.
+  var INLINE = /(`[^`]+`)|(!\[([^\]]*)\]\(((?:[^()\s]|\([^()\s]*\))+)[^)]*\))|(\[((?:[^\[\]]|\[[^\]]*\])*)\]\(((?:[^()\s]|\([^()\s]*\))+)[^)]*\))|(\*\*[^*]+\*\*)|(\*[^*\s][^*]*\*)|(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/;
+  // GitHub's image proxy (camo) only serves GitHub's own pages, so its links fail anywhere else (403). The
+  // original address is in the link itself, hex-encoded as its last part.
+  function imageUrl(u) {
+    var m = /^https:\/\/camo\.githubusercontent\.com\/[0-9a-f]+\/([0-9a-f]+)$/i.exec(u || "");
+    if (!m || m[1].length % 2) return u;
+    var s = "";
+    for (var i = 0; i < m[1].length; i += 2) s += String.fromCharCode(parseInt(m[1].substr(i, 2), 16));
+    return safeUrl(s) || u;
+  }
   function inline(el, text) {
     var rest = text, guard = 0;
     while (rest && guard++ < 400) {
@@ -5724,7 +5734,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (m[1]) el.append(h("code", null, m[1].slice(1, -1)));
       else if (m[2]) {
         var src = safeUrl(m[4]);
-        if (src) el.append(h("img", { src: src, alt: m[3], loading: "lazy" })); else el.append(m[3]);
+        if (src) el.append(h("img", { src: imageUrl(src), alt: m[3], loading: "lazy" })); else el.append(m[3]);
       } else if (m[5]) {
         var href = safeUrl(m[7]);
         var a = href ? h("a", { href: href, target: "_blank", rel: "noopener" }) : h("span");
