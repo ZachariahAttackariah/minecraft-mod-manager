@@ -1716,6 +1716,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   var mr = { data: null, loading: false, error: null, again: null, waiters: [] }; // Modrinth scan
   var lastFilesSig = "";
   var state = { q: "", sides: [], status: "all", tags: [], excluded: [], match: "all", untagged: false, sort: "name", sortDir: 1 };
+  // Mods and Libraries keep separate search and filters: see switchListArea.
+  var FILTER_KEYS = ["sides", "status", "tags", "excluded", "match", "untagged"];
+  var listArea = "mods", otherFilters = null;
   var selected = {};
   var anchorKey = null;
 
@@ -4266,6 +4269,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     // Libraries is the Mods page showing only mods tagged library.
     var section = name === "libraries" ? "mods" : name;
     ["mods", "packs", "server", "snapshots", "cleanup", "settings"].forEach(function (v) { $("view-" + v).hidden = v !== section; });
+    if (section === "mods") switchListArea(name);
     if (section === "mods" && was !== name && model) {
       Object.keys(selected).forEach(function (k) { delete selected[k]; });
       anchorKey = null;
@@ -7971,27 +7975,58 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   });
   $("sort-pick").addEventListener("change", function () { state.sort = $("sort-pick").value; state.sortDir = 1; render(); });
 
+  // Mods and Libraries each keep their own search and filters (the sort is shared). `state` holds the
+  // filters of the page shown (listArea); the other page's wait in otherFilters.
+  function blankFilters() { return { q: "", sides: [], status: "all", tags: [], excluded: [], match: "all", untagged: false }; }
+  function takeFilters() {
+    var f = { q: $("q").value };
+    FILTER_KEYS.forEach(function (k) { f[k] = state[k]; });
+    return f;
+  }
+  function putFilters(f) {
+    FILTER_KEYS.forEach(function (k) { state[k] = f[k]; });
+    $("q").value = f.q || "";
+    state.q = (f.q || "").trim().toLowerCase();
+  }
+  function switchListArea(area) {
+    if (area === listArea) return;
+    var mine = takeFilters();
+    putFilters(otherFilters || blankFilters());
+    otherFilters = mine;
+    listArea = area;
+  }
+
   // Filters, search and sort are remembered per mods folder in this window.
   var restoredFor = null;
   function viewKey() { return "mmm.view." + (server && server.modsDir || "").toLowerCase(); }
   function saveView() {
     if (!server || restoredFor !== server.modsDir) return;
+    var mine = takeFilters(), other = otherFilters || blankFilters();
     try {
-      localStorage.setItem(viewKey(), JSON.stringify({ q: $("q").value, sides: state.sides, status: state.status, tags: state.tags, excluded: state.excluded,
-        match: state.match, untagged: state.untagged, sort: state.sort, sortDir: state.sortDir }));
+      localStorage.setItem(viewKey(), JSON.stringify({ mods: listArea === "mods" ? mine : other, libraries: listArea === "libraries" ? mine : other,
+        sort: state.sort, sortDir: state.sortDir }));
     } catch (e) {}
   }
   function restoreView() {
     restoredFor = server.modsDir;
     var v = null;
     try { v = JSON.parse(localStorage.getItem(viewKey()) || "null"); } catch (e) {}
-    if (!v) return;
-    ["sides", "tags", "excluded"].forEach(function (k) { if (Array.isArray(v[k])) state[k] = v[k]; });
-    if (typeof v.status === "string") state.status = v.status;
-    if (v.match === "any" || v.match === "all") state.match = v.match;
-    state.untagged = !!v.untagged;
+    if (!v) { otherFilters = null; return; }
+    var clean = function (o) {
+      var f = blankFilters();
+      if (!o) return f;
+      ["sides", "tags", "excluded"].forEach(function (k) { if (Array.isArray(o[k])) f[k] = o[k]; });
+      if (typeof o.status === "string") f.status = o.status;
+      if (o.match === "any" || o.match === "all") f.match = o.match;
+      f.untagged = !!o.untagged;
+      if (typeof o.q === "string") f.q = o.q;
+      return f;
+    };
+    // Saved before the two pages had their own: those filters were the Mods page's.
+    var mods = clean(v.mods || v), libs = clean(v.libraries);
+    putFilters(listArea === "libraries" ? libs : mods);
+    otherFilters = listArea === "libraries" ? mods : libs;
     if (/^(name|side|added|size)$/.test(v.sort)) { state.sort = v.sort; state.sortDir = v.sortDir === -1 ? -1 : 1; }
-    if (typeof v.q === "string") { $("q").value = v.q; state.q = v.q.trim().toLowerCase(); }
   }
 
   // Play launches straight away, or (Settings > Play) after the pre-launch check, which only interrupts
