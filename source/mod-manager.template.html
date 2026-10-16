@@ -796,10 +796,112 @@ html[data-blocky="on"] .set-card h2 { font-family: var(--font-blocky); font-weig
 .kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 5px 14px; margin: 0; font-size: 13.5px; }
 .kv dt { color: var(--muted); }
 .kv dd { margin: 0; overflow-wrap: anywhere; }
-.status-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 12px; }
-.status-head .big { display: inline-flex; align-items: center; gap: 10px; font: 700 20px/1.2 var(--font-display); }
-.status-head .dot { width: 12px; height: 12px; }
 .status-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; }
+
+/* Server page: compact header bar, tabs, and the tab panels */
+.srv-head { padding: 12px 16px; }
+.srv-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.srv-pick { display: inline-flex; align-items: center; gap: 6px; }
+.srv-pick select { max-width: 260px; padding: 6px 8px; font: 600 13.5px/1.2 var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; }
+.srv-state { display: inline-flex; align-items: center; gap: 9px; font: 700 18px/1.2 var(--font-display); white-space: nowrap; }
+.srv-state .dot { width: 11px; height: 11px; }
+.srv-facts { display: flex; flex-wrap: wrap; gap: 3px 14px; font-size: 13px; color: var(--muted); }
+.srv-facts b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.srv-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.srv-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.srv-sub .btn { padding: 5px 9px; font-size: 12.5px; }
+.srv-head .warnbox { margin: 10px 0 0; }
+.sync-pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px; font: 600 12.5px/1.2 var(--font-body); color: var(--ink); background: color-mix(in srgb, var(--c-server) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c-server) 50%, var(--line)); border-radius: 14px; cursor: pointer; }
+.sync-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c-server); }
+.sync-pill.ok { background: none; border-color: var(--line); color: var(--muted); cursor: pointer; }
+.sync-pill.ok::before { background: var(--c-worldgen); }
+.sync-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.srv-tabs { display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
+.srv-tabs button { display: inline-flex; align-items: center; margin-bottom: -1px; padding: 9px 13px; font: 600 13.5px/1.2 var(--font-body); color: var(--muted); background: none; border: 0; border-bottom: 2px solid transparent; cursor: pointer; }
+.srv-tabs button:hover { color: var(--ink); }
+.srv-tabs button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.srv-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tab-badge, .tab-count { margin-left: 7px; padding: 1px 6px; font: 700 11px/1.4 var(--font-body); border-radius: 9px; font-variant-numeric: tabular-nums; }
+.tab-badge { color: #fff; background: var(--c-server); }
+.tab-count { color: var(--ink); background: color-mix(in srgb, var(--c-worldgen) 28%, transparent); }
+.copy-addr { margin-left: 6px; padding: 1px 6px; font: 600 11px/1.4 var(--font-body); color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 3px; cursor: pointer; }
+.copy-addr:hover { color: var(--ink); border-color: var(--muted); }
+.okbox { margin: 0 0 12px; padding: 10px 12px; font-size: 13.5px; background: color-mix(in srgb, var(--c-worldgen) 9%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c-worldgen) 45%, var(--line)); border-radius: 6px; }
+.okbox.bad { background: color-mix(in srgb, var(--danger) 9%, var(--surface)); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.okbox p { margin: 0 0 6px; }
+.okbox ul { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--muted); }
+
+/* Mods & configs: summary chips, groups of one-line rows */
+.k-add, .k-enable { --c: var(--c-worldgen); }
+.k-replace, .k-config { --c: var(--c-client); }
+.k-disable { --c: var(--danger); }
+.k-to-game { --c: var(--c-enchanting); }
+.k-call { --c: var(--c-server); }
+.k-untagged { --c: var(--c-x3); }
+.sync-sum { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 10px; }
+.sum-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; font: 600 13px/1.2 var(--font-body); color: var(--ink); background: color-mix(in srgb, var(--c, var(--muted)) 9%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c, var(--muted)) 38%, var(--line)); border-radius: 5px; cursor: pointer; }
+.sum-chip b { font: 700 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.sum-chip[aria-pressed="true"] { background: color-mix(in srgb, var(--c, var(--muted)) 26%, var(--surface)); border-color: var(--c, var(--muted)); }
+.sum-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sync-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.sync-tools input[type=search] { flex: 1 1 200px; max-width: 360px; padding: 6px 9px; font: 400 13px/1.2 var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
+.sg { margin-top: 12px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.sg-head { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; padding: 9px 10px; background: color-mix(in srgb, var(--c, var(--muted)) 8%, var(--surface)); border-left: 3px solid var(--c, var(--muted)); }
+.sg-title { font: 600 14px/1.3 var(--font-display); }
+.sg-title .n { margin-left: 6px; font: 600 12.5px/1 var(--font-mono); color: var(--muted); }
+.sg-desc { font-size: 12.5px; color: var(--muted); }
+.sr { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 26px; align-items: center; gap: 2px 12px; padding: 5px 10px; border-top: 1px solid var(--line); }
+.sr:hover { background: color-mix(in srgb, var(--ink) 3%, transparent); }
+.sr .t { min-width: 0; overflow: hidden; font-size: 13.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.sr .v { font: 400 12px/1.3 var(--font-mono); color: var(--muted); white-space: nowrap; }
+.sr .v .to { color: var(--ink); }
+.sr .x { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; color: var(--muted); background: none; border: 0; border-radius: 4px; cursor: pointer; transition: transform 0.15s; }
+.sr .x:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.sr .x[aria-expanded="true"] { transform: rotate(180deg); }
+.sr .detail { grid-column: 2 / -1; padding: 2px 0 4px; font-size: 12.5px; color: var(--muted); }
+.sr .detail .files { margin-top: 2px; font: 400 12px/1.4 var(--font-mono); overflow-wrap: anywhere; }
+.sr.cfg { grid-template-columns: minmax(0, 1fr) auto 26px; }
+.sr.cfg .t { font: 600 13px/1.3 var(--font-mono); }
+.sr.cfg .detail { grid-column: 1 / -1; }
+.pop { position: fixed; z-index: 80; min-width: 200px; padding: 4px; background: var(--raised, var(--surface)); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35); }
+.pop button { display: block; width: 100%; padding: 7px 10px; font: 500 13.5px/1.2 var(--font-body); text-align: left; color: var(--ink); background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.pop button:hover, .pop button:focus-visible { background: color-mix(in srgb, var(--ink) 8%, transparent); outline: none; }
+.pop button:disabled { opacity: 0.45; cursor: default; background: none; }
+.pop hr { margin: 4px 2px; border: 0; border-top: 1px solid var(--line); }
+.sg-more { padding: 7px 10px; border-top: 1px solid var(--line); }
+.sg-more .btn { padding: 4px 9px; font-size: 12.5px; }
+.cfg-diff { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); gap: 2px 12px; margin-top: 4px; font: 400 12px/1.45 var(--font-mono); }
+.cfg-diff > span { overflow-wrap: anywhere; }
+.cfg-diff .h { font: 600 11px/1.6 var(--font-body); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.cfg-diff .g { color: var(--c-client); }
+.cfg-diff .s { color: var(--c-server); }
+
+/* Players */
+.pl-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pl-add input { flex: 0 1 220px; min-width: 0; padding: 7px 9px; font: 500 13.5px/1.2 var(--font-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
+.pl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-top: 14px; }
+.pl-list { border: 1px solid var(--line); border-radius: 6px; min-width: 0; }
+.pl-list > h3 { display: flex; align-items: center; gap: 8px; margin: 0; padding: 9px 12px; font: 600 14px/1.3 var(--font-display); }
+.pl-list > h3 .n { font: 600 12.5px/1 var(--font-mono); color: var(--muted); }
+.pl-list > h3 .btn { margin-left: auto; padding: 3px 8px; font-size: 12px; }
+.pl-row { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-top: 1px solid var(--line); font-size: 13.5px; }
+.pl-row .face { flex: none; display: grid; place-items: center; width: 22px; height: 22px; font: 700 12px/1 var(--font-mono); color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 70%, var(--surface)); border-radius: 3px; }
+.pl-row .who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.pl-row .why { font-size: 12px; color: var(--muted); }
+.pl-row .btn { padding: 3px 8px; font-size: 12px; }
+.pl-empty { padding: 8px 12px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+
+/* Server settings: sections */
+#server-settings-panel { display: grid; gap: 14px; }
+.prop-check { display: flex; align-items: flex-start; gap: 9px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
+.prop-check input { flex: none; width: 16px; height: 16px; margin: 1px 0 0; accent-color: var(--accent); }
+.prop-check b { display: block; margin-bottom: 2px; font-weight: 600; color: var(--ink); font-size: 13.5px; }
+.prop-check.changed b { color: var(--accent); }
+.set-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 16px; padding: 10px 0; border-top: 1px solid var(--line); }
+.set-line:first-of-type { border-top: 0; }
+.set-line .l { font-weight: 600; font-size: 13.5px; }
+.set-line .d { font-size: 12.5px; color: var(--muted); }
+#server-settings-panel .sticky-foot { padding: 10px 16px; background: color-mix(in srgb, var(--surface) 94%, transparent); border: 1px solid var(--line); border-radius: 4px; }
 @media (max-width: 860px) { .status-grid { grid-template-columns: minmax(0, 1fr); } }
 .warnbox { margin: 0 0 12px; padding: 10px 12px; font-size: 13.5px; background: color-mix(in srgb, var(--c-server) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c-server) 45%, var(--line)); border-radius: 6px; }
 .warnbox.bad { background: color-mix(in srgb, var(--danger) 9%, var(--surface)); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
@@ -848,7 +950,7 @@ html[data-blocky="on"] .set-card h2 { font-family: var(--font-blocky); font-weig
 .dir-pick button { padding: 6px 9px; font-size: 12px; }
 
 .props-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px 16px; }
-.prop { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.prop { display: grid; align-content: start; gap: 4px; font-size: 12.5px; color: var(--muted); }
 .prop b { font-weight: 600; color: var(--ink); font-size: 13.5px; }
 .prop input[type=text], .prop input[type=number], .prop select, .all-props input { padding: 7px 9px; font: 400 13.5px/1.3 var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
 .prop input.changed, .prop select.changed, .all-props input.changed { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
@@ -1241,13 +1343,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   <section class="view" id="view-server" aria-label="Server" hidden>
     <div class="cards">
-      <div class="card" id="server-card"></div>
-      <div>
-        <div class="seg-control subnav" id="server-subnav" role="tablist" aria-label="Server tools">
-          <button type="button" data-sub="console" aria-pressed="true">Console</button>
-          <button type="button" data-sub="sync" aria-pressed="false">Sync from the game</button>
-          <button type="button" data-sub="settings" aria-pressed="false">Settings</button>
+      <div class="card srv-head" id="server-card"></div>
+      <div id="server-body">
+        <div class="srv-tabs" id="server-subnav" role="tablist" aria-label="Server tools">
+          <button type="button" role="tab" data-sub="overview" aria-pressed="false">Overview</button>
+          <button type="button" role="tab" data-sub="console" aria-pressed="true">Console</button>
+          <button type="button" role="tab" data-sub="sync" aria-pressed="false">Mods &amp; configs<span class="tab-badge" id="sync-badge" hidden></span></button>
+          <button type="button" role="tab" data-sub="players" aria-pressed="false">Players<span class="tab-count" id="players-badge" hidden></span></button>
+          <button type="button" role="tab" data-sub="settings" aria-pressed="false">Settings</button>
+          <button type="button" role="tab" data-sub="backups" aria-pressed="false">Backups</button>
         </div>
+        <div class="card" id="server-overview-panel" hidden></div>
         <div id="server-console-panel">
           <div class="console" id="console">
             <div class="console-tools">
@@ -1270,13 +1376,15 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           <div class="console-quick" id="console-quick">
             <button class="btn" type="button" data-cmd="list">Who's online (list)</button>
             <button class="btn" type="button" data-cmd="save-all">Save the world (save-all)</button>
-            <button class="btn" type="button" data-fill="whitelist add ">Add to whitelist…</button>
-            <button class="btn" type="button" data-fill="op ">Make operator…</button>
             <button class="btn" type="button" data-fill="say ">Say…</button>
+            <button class="btn" type="button" data-cmd="time set day">Make it day</button>
+            <button class="btn" type="button" data-cmd="weather clear">Clear weather</button>
           </div>
         </div>
         <div class="card" id="server-sync-panel" hidden></div>
-        <div class="card" id="server-settings-panel" hidden></div>
+        <div class="card" id="server-players-panel" hidden></div>
+        <div id="server-settings-panel" hidden></div>
+        <div class="card" id="server-backups-panel" hidden></div>
       </div>
     </div>
   </section>
@@ -4008,7 +4116,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       endSwitching();
       if (currentView === "snapshots") loadSnapshots();
       if (currentView === "cleanup") loadCleanup();
-      if (currentView === "server" && srv.sub === "sync") loadSync();
+      // Another game folder: the old comparison no longer applies.
+      srv.sync = null;
+      srv.syncResult = null;
+      renderSyncBadge();
+      if (currentView === "server") loadSync();
     }, function (e) { endSwitching(); throw e; });
   }
 
@@ -4163,7 +4275,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (name === "settings") renderPrefs();
     try { localStorage.setItem("mmm.lastView", name); } catch (e) {}
     if (!hasToken) return;
-    if (name === "server") { refreshServer(); startConsole(); }
+    if (name === "server") { refreshServer(); startConsole(); setSub(srv.sub); ensureSync(); }
     if (name === "packs") loadPacks(false);
     if (name === "snapshots") { loadSnapshots(); loadWorlds(); loadHistory(); }
     if (name === "cleanup") loadCleanup();
@@ -4519,38 +4631,41 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     api("GET", "/api/worlds").then(function (res) {
       list.replaceChildren();
       if (!res.worlds.length) { list.append(h("p", { class: "search-empty" }, "No worlds yet in this game" + (server && server.server && server.server.configured ? " or on the server." : "."))); return; }
-      res.worlds.sort(function (a, b) { return b.lastPlayed.localeCompare(a.lastPlayed); }).forEach(function (w) {
-        var backups = h("div", { class: "wb-list" });
-        w.backups.forEach(function (b) {
-          backups.append(h("div", { class: "wb" },
-            h("span", null, dateText(b.time) + " " + clock(new Date(b.time))), h("span", { class: "hint" }, formatBytes(b.size) + (b.reason ? " · " + b.reason : "")),
-            h("span", { class: "row-actions" },
-              btn("Restore", function () {
-                confirmDialog({ title: "Restore " + w.name + " from " + dateText(b.time) + " " + clock(new Date(b.time)) + "?", items: [],
-                  body: "The world as it is now goes to the Recycle Bin, and this backup takes its place. Everything played since the backup is lost (unless you get it back from the Recycle Bin).",
-                  ok: "Restore", onOk: function () {
-                    track("Restoring " + w.name, api("POST", "/api/worlds/restore", { side: w.side, name: w.name, file: b.file }))
-                      .then(function () { toast("Restored " + w.name + ". The previous copy is in the Recycle Bin."); loadWorlds(); }, function (e) { toast(e.message); });
-                  } });
-              }, "", { disabled: w.inUse, title: w.inUse ? "Close the world first" : null }),
-              btn("Delete", function () {
-                api("POST", "/api/worlds/delete", { side: w.side, name: w.name, file: b.file }).then(function () { toast("Moved that backup to the Recycle Bin"); loadWorlds(); }, function (e) { toast(e.message); });
-              }, "danger-outline"))));
-        });
-        if (!w.backups.length) backups.append(h("p", { class: "hint", style: "margin:4px 0 0" }, "No backups yet."));
-        list.append(h("div", { class: "world" },
-          h("div", { class: "w-head" }, h("span", { class: "w-name" }, w.name), h("span", { class: "chip", style: "--c:" + (w.side === "server" ? "var(--c-server)" : "var(--c-client)") }, w.side === "server" ? "server" : "game"),
-            h("span", { class: "hint" }, "played " + ago(w.lastPlayed) + (w.inUse ? " · open right now" : "")),
-            btn("Back up now", function (e) {
-              var b = e.currentTarget; b.disabled = true;
-              trackStoppable("Backing up " + w.name, function (job) { return api("POST", "/api/worlds/backup", { side: w.side, name: w.name, reason: "by hand" }, job); }).then(function (res) {
-                toast("Backed up " + w.name + " (" + formatBytes(res.size) + ")" + (res.skipped ? ". " + count(res.skipped, "file was", "files were") + " in use and left out." : "."));
-                loadWorlds();
-              }, function (err) { toast(err.message); b.disabled = false; });
-            }, "primary")),
-          backups));
-      });
+      res.worlds.sort(function (a, b) { return b.lastPlayed.localeCompare(a.lastPlayed); }).forEach(function (w) { list.append(worldBlock(w, loadWorlds)); });
     }, function (e) { list.replaceChildren(h("p", { class: "search-empty" }, e.message)); });
+  }
+  // One world with its backups (Snapshots page, and the server's Backups tab); reload() redraws afterwards.
+  function worldBlock(w, reload) {
+    var serverLive = w.side === "server" && srv.info && srv.info.state === "running";
+    var backups = h("div", { class: "wb-list" });
+    w.backups.forEach(function (b) {
+      backups.append(h("div", { class: "wb" },
+        h("span", null, dateText(b.time) + " " + clock(new Date(b.time))), h("span", { class: "hint" }, formatBytes(b.size) + (b.reason ? " · " + b.reason : "")),
+        h("span", { class: "row-actions" },
+          btn("Restore", function () {
+            confirmDialog({ title: "Restore " + w.name + " from " + dateText(b.time) + " " + clock(new Date(b.time)) + "?", items: [],
+              body: "The world as it is now goes to the Recycle Bin, and this backup takes its place. Everything played since the backup is lost (unless you get it back from the Recycle Bin).",
+              ok: "Restore", onOk: function () {
+                track("Restoring " + w.name, api("POST", "/api/worlds/restore", { side: w.side, name: w.name, file: b.file }))
+                  .then(function () { toast("Restored " + w.name + ". The previous copy is in the Recycle Bin."); reload(); }, function (e) { toast(e.message); });
+              } });
+          }, "", { disabled: w.inUse || serverLive, title: serverLive ? "Stop the server first" : w.inUse ? "Close the world first" : null }),
+          btn("Delete", function () {
+            api("POST", "/api/worlds/delete", { side: w.side, name: w.name, file: b.file }).then(function () { toast("Moved that backup to the Recycle Bin"); reload(); }, function (e) { toast(e.message); });
+          }, "danger-outline"))));
+    });
+    if (!w.backups.length) backups.append(h("p", { class: "hint", style: "margin:4px 0 0" }, "No backups yet."));
+    return h("div", { class: "world" },
+      h("div", { class: "w-head" }, h("span", { class: "w-name" }, w.name), h("span", { class: "chip", style: "--c:" + (w.side === "server" ? "var(--c-server)" : "var(--c-client)") }, w.side === "server" ? "server" : "game"),
+        h("span", { class: "hint" }, "played " + ago(w.lastPlayed) + (w.inUse ? " · open right now" : "")),
+        btn("Back up now", function (e) {
+          var b = e.currentTarget; b.disabled = true;
+          trackStoppable("Backing up " + w.name, function (job) { return api("POST", "/api/worlds/backup", { side: w.side, name: w.name, reason: "by hand" }, job); }).then(function (res) {
+            toast("Backed up " + w.name + " (" + formatBytes(res.size) + ")" + (res.skipped ? ". " + count(res.skipped, "file was", "files were") + " in use and left out." : "."));
+            reload();
+          }, function (err) { toast(err.message); b.disabled = false; });
+        }, "primary", { title: serverLive ? "Saving pauses for a few seconds while it copies" : null })),
+      backups);
   }
   $("worlds-folder").addEventListener("click", function () { api("POST", "/api/worlds/open-folder").then(null, function (e) { toast(e.message); }); });
 
@@ -5055,11 +5170,6 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     { title: "Sources", items: [
       { key: "searchSources", label: "Search", desc: "Where Add mods looks. Mods on both sites show once, and download from Modrinth.", choices: [["both", "Both"], ["modrinth", "Modrinth"], ["curseforge", "CurseForge"]] },
       { key: "curseforgeKey", label: "CurseForge API key", desc: "", custom: curseforgeKeyControl }
-    ] },
-    { title: "Server", items: [
-      { key: "serverRestart", label: "Restart on a schedule", desc: "While the server runs from here: warns players 5 and 1 minutes ahead, then stops and starts it again.",
-        choices: [["off", "Off"], ["6", "6 h"], ["12", "12 h"], ["24", "24 h"]] },
-      { key: "serverBackups", label: "Back up the server world", desc: "At each scheduled restart, or once a day while it runs (saving paused meanwhile). Backups are on the Snapshots page." }
     ] },
     { title: "Worlds", items: [
       { key: "worldBackups", label: "Back up before risky changes", desc: "Zips your most recently played world before updates and before turning off or deleting worldgen mods. Backups are on the Snapshots page." }
@@ -6218,7 +6328,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // ---------- Server ----------
 
   var srv = { info: null, error: null, sub: "console", lines: [], seq: 0, polling: false, filter: "all", find: "", history: [], histPos: -1,
-    sync: null, syncLoading: false, picks: {}, cfg: {}, settingsBuilt: false, propsOriginal: {}, propsEdits: {} };
+    sync: null, syncLoading: false, syncAt: 0, picks: {}, cfg: {}, syncOpen: {}, syncExpanded: {}, syncFilter: null, syncFind: "", syncResult: null, syncApplying: false,
+    players: null, settingsBuilt: false, propsOriginal: {}, propsEdits: {} };
 
   function propsMap(list) {
     var map = {};
@@ -6231,13 +6342,21 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function refreshServer() {
     if (!hasToken) return Promise.resolve();
     return api("GET", "/api/server").then(function (s) {
-      var wasRunning = serverRunning();
+      var wasRunning = serverRunning(), before = srv.info;
       srv.info = s;
       srv.error = null;
       if (wasRunning !== serverRunning() && srv.settingsBuilt) renderSettings(false);
+      // Players joined or left, or the server started or stopped: the Players tab follows.
+      var who = function (x) { return x ? x.state + ":" + (x.players || []).join(",") : ""; };
+      if (currentView === "server" && srv.sub === "players" && who(before) !== who(s)) loadPlayers();
     }, function (e) { srv.error = e.message; }).then(function () {
       renderServerChip();
-      if (currentView === "server") { renderServerCard(); renderConsoleInput(); }
+      if (currentView === "server") {
+        renderServerCard();
+        renderConsoleInput();
+        if (srv.sub === "overview") renderOverview();
+        if (srv.sub === "sync") updateSyncFoot();
+      }
     });
   }
 
@@ -6258,47 +6377,59 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     return hh ? hh + " h " + mm + " min" : mm ? mm + " min" : s + " s";
   }
 
+  // The header bar: which server, its state and numbers, the sync pill, and Start / Restart / Stop.
   function renderServerCard() {
     var card = $("server-card");
     card.replaceChildren();
     var i = srv.info;
+    var setup = !i || !i.configured || !i.exists;
+    $("server-body").hidden = setup;
+    card.classList.toggle("srv-head", !setup);
+    renderPlayersBadge();
     if (!i) { card.append(h("p", { class: "hint" }, srv.error || "Loading…")); return; }
-    if (!i.configured || !i.exists) {
+    if (setup) {
       // A server that has gone missing still gets the picker, to switch to another one.
-      if (i.configured && (i.servers || []).length > 1) card.append(serverPicker(i));
+      if (i.configured && (i.servers || []).length > 1) card.append(h("div", { class: "row-actions", style: "margin-bottom:14px" }, serverPicker(i)));
       card.append(h("h2", null, "Host a server for your friends"),
         h("p", { class: "lead" }, i.configured ? "The server folder " + i.folder + " isn't there any more." : "Create a new server from one of your instances, or use a server you already have. The app starts it, shows its console, and keeps its mods in step with your game."),
         h("div", { class: "row-actions" }, btn("Create server…", createServerDialog, "primary", { disabled: !connected }),
           btn("Use an existing server folder…", chooseServerFolder, "", { disabled: !connected })));
       return;
     }
-    if (i.creating) {
-      card.append(serverPicker(i), h("div", { class: "status-head" },
-        h("span", { class: "big" }, h("span", { class: "dot starting" }), "Creating the server…"),
-        h("span", { class: "hint" }, "The installer's progress shows in the console below.")),
-        h("div", { class: "row-actions" }, btn("Open server folder", function () { api("POST", "/api/server/open-folder", {}).catch(function (e) { toast(e.message); }); })));
-      return;
-    }
     var state = i.state, bad = crashed(i);
-    var label = { running: "Running", starting: "Starting…", stopping: "Stopping…", stopped: bad ? "Crashed" : "Stopped" }[state];
-    var detail = state === "running" || state === "starting" ? "for " + uptime(i.startedAt) + (i.memory ? " · using " + formatBytes(i.memory) + " of memory" : "")
-      : state === "stopped" && i.stoppedAt ? (i.exitNote || "Stopped") + " at " + clock(new Date(i.stoppedAt)) : "";
-    card.append(serverPicker(i), h("div", { class: "status-head" },
-      h("span", { class: "big" }, h("span", { class: "dot " + (bad ? "crashed" : state) }), "Server " + label.toLowerCase()),
-      h("span", { class: "hint" }, detail)));
-
-    var actions = h("div", { class: "row-actions", style: "margin-bottom:12px" });
-    if (state === "stopped") {
-      actions.append(btn("Start server", function () { startServerChecked(false); }, "primary", { disabled: !connected || !i.eula || i.externalRunning || !!i.launchProblem }));
+    var props = propsMap(i.properties);
+    var label = i.creating ? "Creating…" : { running: "Running", starting: "Starting…", stopping: "Stopping…", stopped: bad ? "Crashed" : "Stopped" }[state];
+    var facts = h("div", { class: "srv-facts" });
+    var fact = function (strong, rest) { facts.append(h("span", null, h("b", null, String(strong)), rest ? " " + rest : "")); };
+    if (i.creating) facts.append(h("span", null, "The installer's progress shows in the console."));
+    else if (state === "running" || state === "starting") {
+      fact(uptime(i.startedAt), "up");
+      fact((i.players || []).length + " / " + (props["max-players"] || "20"), "players");
+      if (i.memory) fact(formatBytes(i.memory), i.maxMemory ? "of " + i.maxMemory + " memory" : "memory");
+      if (i.nextRestart) fact(untilText(i.nextRestart), "to the next restart");
     } else {
-      actions.append(btn(state === "stopping" ? "Stopping…" : "Stop server", stopServer, "", { disabled: state === "stopping" || !connected }));
-      if (state === "stopping") actions.append(btn("Force stop…", askKill, "danger-outline"));
+      if (i.stoppedAt) facts.append(h("span", null, (i.exitNote || "Stopped") + " at " + clock(new Date(i.stoppedAt))));
+      fact(i.modsCount, "mods on");
+      if (i.maxMemory) fact(i.maxMemory, "memory");
     }
-    actions.append(btn("Open server folder", function () { api("POST", "/api/server/open-folder", {}).catch(function (e) { toast(e.message); }); }));
-    actions.append(btn("Check server mods", function () {
-      api("GET", "/api/check?side=server").then(function (res) { problemsDialog(res, {}); }, function (e) { toast(e.message); });
-    }));
-    card.append(actions);
+    var actions = h("div", { class: "srv-actions" });
+    if (!i.creating) {
+      var pill = syncPill();
+      if (pill) actions.append(pill);
+      if (state === "stopped") {
+        actions.append(btn("Start server", startServerChecked, "primary", { disabled: !connected || !i.eula || i.externalRunning || !!i.launchProblem }));
+      } else {
+        if (state === "running") actions.append(btn("Restart", askRestart, "", { disabled: !connected }));
+        actions.append(btn(state === "stopping" ? "Stopping…" : "Stop", stopServer, "", { disabled: state === "stopping" || !connected }));
+        if (state === "stopping") actions.append(btn("Force stop…", askKill, "danger-outline"));
+      }
+    }
+    var more = h("button", { type: "button", class: "btn", "aria-label": "More server actions", title: "More", "aria-haspopup": "menu" }, icon("dots"));
+    more.addEventListener("click", function () { if (popEl) closePop(); else serverMoreMenu(more, i); });
+    actions.append(more);
+    card.append(h("div", { class: "srv-bar" }, serverPicker(i),
+      h("span", { class: "srv-state" }, h("span", { class: "dot " + (i.creating ? "starting" : bad ? "crashed" : state) }), label), facts, actions));
+    if (i.creating) return;
 
     if (!i.eula) {
       card.append(h("div", { class: "warnbox" },
@@ -6316,55 +6447,94 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           i.crashReport ? btn("Show crash report", function () { api("POST", "/api/server/open-folder", { sub: "crash" }); }) : null,
           btn("Open the console", function () { setSub("console"); }))));
     }
-
-    var props = propsMap(i.properties);
     if (props["online-mode"] === "false") card.append(h("p", { class: "warnbox" }, "Online mode is off, so the server doesn't check accounts: anyone can join under any name, including yours. Turn it on in Settings unless you know you need it off."));
-    var port = props["server-port"] || "25565";
-    var suffix = port === "25565" ? "" : ":" + port;
-    var join = h("div", null, h("h2", { style: "font-size:15px" }, "How friends join"),
-      h("dl", { class: "kv" },
-        h("dt", null, "On this PC"), h("dd", null, h("code", null, "localhost" + suffix)),
-        h("dt", null, "Same home network"), h("dd", null, i.lanAddresses.length ? i.lanAddresses.map(function (a) { return a + suffix; }).join(", ") : "No network address found"),
-        h("dt", null, "From elsewhere"), h("dd", null, "Forward TCP port " + port + " on your router to " + (i.lanAddresses[0] || "this PC") + ", then give friends your public IP address. A tunnel such as playit.gg works without touching the router.")),
-      h("p", { class: "hint", style: "margin-top:8px" }, props["white-list"] === "true"
-        ? "The whitelist is on: add each friend with \"Add to whitelist\" below the console while the server runs."
-        : "The whitelist is off, so anyone who knows the address can join. You can turn it on in Settings."));
-    var kv = h("dl", { class: "kv" });
-    var add = function (k, v) { if (v !== null && v !== undefined && v !== "") kv.append(h("dt", null, k), h("dd", null, v)); };
-    add("Folder", i.folder);
-    add("World", props["level-name"]);
-    add("NeoForge", i.neoforge);
-    add("Mods", i.modsCount + " jars on");
-    add("Memory", i.maxMemory ? "up to " + i.maxMemory + " (user_jvm_args.txt)" : null);
-    add("Max players", props["max-players"]);
-    add("Online now", state === "running" ? (i.players.length ? i.players.join(", ") : "nobody") : null);
-    add("Java", i.java);
-    card.append(h("div", { class: "status-grid" }, join, h("div", null, h("h2", { style: "font-size:15px" }, "Details"), kv)));
   }
 
-  // The row at the top of the server card: which server, plus Create / Add existing.
+  function untilText(iso) {
+    var s = Math.max(0, Math.floor((new Date(iso).getTime() - Date.now()) / 1000));
+    var hh = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60);
+    return hh ? hh + " h " + mm + " min" : mm ? mm + " min" : "under a minute";
+  }
+
+  // Mod differences that keep players out (or the game from starting): the header pill and the tab badge.
+  var SYNC_BLOCKING = ["add", "replace", "enable", "disable", "to-game"];
+  function syncCount() {
+    var s = srv.sync;
+    if (!s || s.error || !s.mods) return 0;
+    return s.mods.filter(function (m) { return SYNC_BLOCKING.indexOf(m.kind) >= 0; }).length;
+  }
+  function syncPill() {
+    var s = srv.sync;
+    if (!s && srv.syncLoading) return h("span", { class: "hint" }, "Comparing with your game…");
+    if (!s || s.error) return null;
+    var n = syncCount();
+    return h("button", { type: "button", class: "sync-pill" + (n ? "" : " ok"),
+      title: n ? "Mods that differ between your game and the server. Players can't join while some of these differ." : "The server's mods match your game.",
+      onclick: function () { setSub("sync"); } }, n ? "Out of sync · " + n : "Mods in sync");
+  }
+  function renderSyncBadge() {
+    var n = syncCount(), b = $("sync-badge");
+    b.hidden = !n;
+    b.textContent = n;
+  }
+
+  function serverMoreMenu(anchor, i) {
+    var locked = !connected || i.creating || (i.state && i.state !== "stopped");
+    popMenu(anchor, [
+      ["Open server folder", function () { api("POST", "/api/server/open-folder", {}).catch(function (e) { toast(e.message); }); }],
+      ["Open logs folder", function () { api("POST", "/api/server/open-folder", { sub: "logs" }).catch(function (e) { toast(e.message); }); }],
+      ["Check server mods", function () { api("GET", "/api/check?side=server").then(function (res) { problemsDialog(res, {}); }, function (e) { toast(e.message); }); }],
+      null,
+      ["Create server…", createServerDialog, !connected || i.creating],
+      ["Add existing folder…", chooseServerFolder, locked]
+    ]);
+  }
+
+  // A small drop-down under a button: [label, fn, disabled] items, null for a divider.
+  var popEl = null;
+  function closePop() { if (popEl) { popEl.remove(); popEl = null; } }
+  function popMenu(anchor, items) {
+    closePop();
+    var el = h("div", { class: "pop", role: "menu" });
+    items.forEach(function (it) {
+      if (!it) { el.append(h("hr")); return; }
+      el.append(h("button", { type: "button", role: "menuitem", disabled: !!it[2], onclick: function () { closePop(); it[1](); } }, it[0]));
+    });
+    document.body.append(el);
+    var r = anchor.getBoundingClientRect(), w = el.offsetWidth;
+    el.style.top = Math.max(8, Math.min(r.bottom + 4, window.innerHeight - el.offsetHeight - 8)) + "px";
+    el.style.left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)) + "px";
+    popEl = el;
+    var first = el.querySelector("button:not([disabled])");
+    if (first) first.focus();
+  }
+  document.addEventListener("mousedown", function (e) {
+    if (popEl && !popEl.contains(e.target) && !(e.target.closest && e.target.closest("[aria-haspopup=menu]"))) closePop();
+  }, true);
+  document.addEventListener("keydown", function (e) { if (popEl && e.key === "Escape") closePop(); });
+
+  // The server list in the header bar.
   function serverPicker(i) {
     var servers = i.servers || [];
+    if (!servers.length) return h("span");
     var locked = !connected || i.creating || (i.state && i.state !== "stopped");
-    var row = h("div", { class: "row-actions", style: "margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line)" });
-    if (servers.length) {
-      var select = h("select", { "aria-label": "Server", disabled: locked, title: locked ? "Stop the server to switch to another one" : "Switch server",
-        style: "min-width:220px;padding:8px 10px;font:600 14px/1.2 var(--font-body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:3px" });
-      servers.forEach(function (s) {
-        select.append(h("option", { value: s.path }, s.name + (s.neoforge ? "  (NeoForge " + s.neoforge + ")" : "") + (s.exists ? "" : "  (missing)")));
-        if (s.current) select.value = s.path;
-      });
-      select.addEventListener("change", function () { switchServer(select.value); });
-      row.append(h("span", { class: "get-label" }, "Server"), select);
-    }
-    row.append(btn("Create server…", createServerDialog, "", { disabled: !connected || i.creating }),
-      btn("Add existing folder…", chooseServerFolder, "", { disabled: locked }));
-    return row;
+    var select = h("select", { "aria-label": "Server", disabled: locked, title: locked ? "Stop the server to switch to another one" : "Switch server" });
+    servers.forEach(function (s) {
+      select.append(h("option", { value: s.path }, s.name + (s.neoforge ? "  (NeoForge " + s.neoforge + ")" : "") + (s.exists ? "" : "  (missing)")));
+      if (s.current) select.value = s.path;
+    });
+    select.addEventListener("change", function () { switchServer(select.value); });
+    return h("span", { class: "srv-pick" }, select);
   }
 
   function serverPageReset() {
     srv.sync = null;
+    srv.syncResult = null;
+    srv.syncFilter = null;
+    srv.syncOpen = {};
+    srv.players = null;
     srv.settingsBuilt = false;
+    renderSyncBadge();
     srv.lines = [];
     srv.seq = 0;
     $("console-out").replaceChildren();
@@ -6476,8 +6646,22 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }, function (e) { toast(e.message); });
   }
 
-  // Starts straight away; "Check server mods" on the card runs the check when wanted.
-  function startServerChecked() { doStartServer(); }
+  // Start: when the server's mods differ from the game's, say so first (players whose mods differ can't join).
+  function startServerChecked() {
+    var ready = srv.sync && !srv.sync.error ? Promise.resolve() : loadSync();
+    ready.then(function () {
+      if (!syncCount()) { doStartServer(); return; }
+      confirmDialog({
+        title: "The server's mods don't match your game",
+        items: syncSummaryLines(false),
+        body: "Players whose mods differ from the server's can't join. Review the differences first, or start the server as it is.",
+        ok: "Start anyway",
+        okClass: "primary",
+        extra: { label: "Review differences", fn: function () { setSub("sync"); } },
+        onOk: doStartServer
+      });
+    });
+  }
   function doStartServer() {
     api("POST", "/api/server/start", {}).then(function (s) {
       srv.info = s;
@@ -6500,6 +6684,21 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       renderServerChip();
     }, function (e) { toast(e.message); });
   }
+  function askRestart() {
+    var players = (srv.info && srv.info.players) || [];
+    var go = function () {
+      api("POST", "/api/server/restart", {}).then(function (s) {
+        srv.info = s;
+        toast("Restarting: the server saves and stops, then starts again.");
+        setSub("console");
+        renderServerCard();
+        renderServerChip();
+      }, function (e) { toast(e.message); });
+    };
+    if (!players.length) { go(); return; }
+    confirmDialog({ title: "Restart the server?", items: players.map(function (p) { return p + " is online"; }),
+      body: "Everyone online is disconnected while it restarts, usually for a minute or two.", ok: "Restart", okClass: "primary", onOk: go });
+  }
   function askKill() {
     confirmDialog({
       title: "Force the server to stop?",
@@ -6510,16 +6709,23 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
   }
 
+  var SUBS = ["overview", "console", "sync", "players", "settings", "backups"];
+  try { var savedSub = localStorage.getItem("mmm.serverTab"); if (SUBS.indexOf(savedSub) >= 0) srv.sub = savedSub; } catch (e) {}
   function setSub(sub) {
+    if (SUBS.indexOf(sub) < 0) sub = "console";
     srv.sub = sub;
+    try { localStorage.setItem("mmm.serverTab", sub); } catch (e) {}
     Array.prototype.forEach.call(document.querySelectorAll("#server-subnav button"), function (b) {
-      b.setAttribute("aria-pressed", String(b.getAttribute("data-sub") === sub));
+      var on = b.getAttribute("data-sub") === sub;
+      b.setAttribute("aria-pressed", String(on));
+      b.setAttribute("aria-selected", String(on));
     });
-    $("server-console-panel").hidden = sub !== "console";
-    $("server-sync-panel").hidden = sub !== "sync";
-    $("server-settings-panel").hidden = sub !== "settings";
+    SUBS.forEach(function (s) { $("server-" + s + "-panel").hidden = s !== sub; });
+    if (sub === "overview") renderOverview();
     if (sub === "sync") { if (!srv.sync && !srv.syncLoading) loadSync(); else renderSync(); }
+    if (sub === "players") loadPlayers();
     if (sub === "settings") renderSettings(!srv.settingsBuilt);
+    if (sub === "backups") loadServerBackups();
     if (sub === "console") { var out = $("console-out"); out.scrollTop = out.scrollHeight; }
   }
   Array.prototype.forEach.call(document.querySelectorAll("#server-subnav button"), function (b) {
@@ -6647,47 +6853,196 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   });
   $("console-logs").addEventListener("click", function () { api("POST", "/api/server/open-folder", { sub: "logs" }).catch(function (e) { toast(e.message); }); });
 
-  // ---- Sync from the game ----
+  // ---- Mods & configs (Sync.cs) ----
 
-  var SYNC_KIND = { add: "add", replace: "update", enable: "turn on", disable: "turn off", "client-only": "client-only", "server-only": "server only", "to-game": "copy to game", untagged: "no side tag" };
+  // The groups the comparison falls into, in the order they show. Only the first five keep players out.
+  var SYNC_GROUPS = [
+    { key: "add", kinds: ["add"], label: "Add to the server", chip: "Add", desc: "On in your game and tagged for the server, but the server doesn't have them yet." },
+    { key: "replace", kinds: ["replace"], label: "Update on the server", chip: "Update", desc: "The server has a different version from your game." },
+    { key: "enable", kinds: ["enable"], label: "Turn on on the server", chip: "Turn on", desc: "On in your game, but turned off on the server." },
+    { key: "disable", kinds: ["disable"], label: "Turn off on the server", chip: "Turn off", desc: "Turned off in your game but still on in the server. For mods needed on both sides, players can't join while the two differ." },
+    { key: "to-game", kinds: ["to-game"], label: "Copy into your game", chip: "Copy to game", desc: "A mod in your game needs these and only the server has them. Your game won't start without them." },
+    { key: "call", kinds: ["client-only", "server-only"], label: "Your call", chip: "Your call", desc: "Client-only mods that are on the server, and mods only the server has. Usually fine as they are: tick one only to turn it off on the server." },
+    { key: "untagged", kinds: ["untagged"], label: "No client/server tag", chip: "No tag", desc: "Not synced until they're tagged. Tag them in the mod list.", noPick: true }
+  ];
+  var GROUP_LIMIT = 12;
+
+  function groupMods(key) {
+    var s = srv.sync, g = SYNC_GROUPS.filter(function (x) { return x.key === key; })[0];
+    if (!s || !s.mods || !g) return [];
+    return s.mods.filter(function (m) { return g.kinds.indexOf(m.kind) >= 0; });
+  }
+
   function loadSync() {
     srv.syncLoading = true;
-    renderSync();
-    api("GET", "/api/sync/preview").then(function (res) {
+    if (currentView === "server") { renderServerCard(); if (srv.sub === "sync") renderSync(); }
+    return api("GET", "/api/sync/preview").then(function (res) {
       srv.sync = res;
+      srv.syncAt = Date.now();
       srv.picks = {};
       srv.cfg = {};
-      res.mods.forEach(function (m) { if (m.default) srv.picks[m.id] = true; });
+      srv.syncExpanded = {};
+      // A game mid-test (lots of mods turned off) shouldn't be mirrored onto the server without a look.
+      var offs = res.mods.filter(function (m) { return m.kind === "disable"; }).length;
+      srv.syncCaution = offs >= 20 && offs >= (res.serverOn || 0) * 0.25;
+      res.mods.forEach(function (m) { if (m.default && !(srv.syncCaution && m.kind === "disable")) srv.picks[m.id] = true; });
     }, function (e) { srv.sync = { error: e.message }; }).then(function () {
       srv.syncLoading = false;
-      renderSync();
+      renderSyncBadge();
+      if (currentView === "server") { renderServerCard(); if (srv.sub === "sync") renderSync(); }
     });
   }
-  function syncItem(m, pickable) {
+  // Compares again when the page is opened and the last comparison is a minute old.
+  function ensureSync() {
+    if (!srv.syncLoading && (!srv.sync || Date.now() - (srv.syncAt || 0) > 60000)) loadSync();
+  }
+
+  function sumChip(key, label, n) {
+    var on = srv.syncFilter === key;
+    return h("button", { type: "button", class: "sum-chip k-" + key, "aria-pressed": String(on), title: on ? "Show everything" : "Show only these",
+      onclick: function () { srv.syncFilter = on ? null : key; renderSync(); } }, label, h("b", null, String(n)));
+  }
+
+  function renderSync() {
+    var p = $("server-sync-panel");
+    p.replaceChildren();
+    var s = srv.sync;
+    p.append(h("div", { class: "sync-tools", style: "justify-content:space-between;align-items:flex-start" },
+      h("div", { style: "flex:1 1 360px;min-width:0" }, h("h2", null, "Mods & configs"),
+        h("p", { class: "lead", style: "margin:0" }, "Your game's mods folder decides what the server runs. Nothing changes until you apply: replaced jars go to the Recycle Bin and overwritten configs are backed up.")),
+      h("div", { class: "row-actions" }, s && s.comparedAt ? h("span", { class: "hint" }, "Compared at " + clock(new Date(s.comparedAt))) : null,
+        btn(srv.syncLoading ? "Comparing…" : "Compare again", loadSync, "", { disabled: srv.syncLoading }))));
+    if (srv.syncResult) p.append(syncResultBox());
+    if (!s) { if (srv.syncLoading) p.append(h("p", { class: "search-empty" }, "Comparing your game and the server…")); return; }
+    if (s.error) { p.append(h("p", { class: "search-empty" }, s.error)); return; }
+    var total = 0;
+    var sum = h("div", { class: "sync-sum", role: "group", "aria-label": "Show only" });
+    SYNC_GROUPS.forEach(function (g) {
+      var n = groupMods(g.key).length;
+      if (n) { total += n; sum.append(sumChip(g.key, g.chip, n)); }
+    });
+    if (s.configs.length) sum.append(sumChip("config", "Configs", s.configs.length));
+    if (!total && !s.configs.length) {
+      p.append(h("div", { class: "okbox", style: "margin-top:12px" }, h("p", { style: "margin:0" },
+        "The server matches your game: " + count(s.modsInSync, "mod", "mods") + " and " + count(s.configsSame, "config file", "config files") + " are the same.")));
+      return;
+    }
+    if (srv.syncCaution) {
+      p.append(h("div", { class: "warnbox", style: "margin-top:12px" },
+        h("p", null, "Your game has " + s.gameOff + " of its " + (s.gameOn + s.gameOff) + " mods turned off right now. Testing something? Turning all of those off on the server too isn't ticked for you."),
+        h("div", { class: "row-actions" }, btn("Tick them anyway", function () {
+          srv.syncCaution = false;
+          groupMods("disable").forEach(function (m) { srv.picks[m.id] = true; });
+          renderSync();
+        }))));
+    }
+    p.append(sum);
+    var find = h("input", { type: "search", placeholder: "Find a mod or config file", "aria-label": "Find a mod or config file", autocomplete: "off", spellcheck: "false" });
+    find.value = srv.syncFind || "";
+    find.addEventListener("input", function () {
+      clearTimeout(srv.findTimer);
+      srv.findTimer = setTimeout(function () { srv.syncFind = find.value.trim().toLowerCase(); drawSyncGroups(); }, 150);
+    });
+    p.append(h("div", { class: "sync-tools" }, find, h("span", { class: "hint" },
+      count(s.modsInSync, "mod", "mods") + " and " + count(s.configsSame, "config file", "config files") + " already match. " + s.configsIgnored + " configs aren't compared (client-only mods', backups and caches).")));
+    p.append(h("div", { id: "sync-groups" }));
+    drawSyncGroups();
+    p.append(h("div", { class: "sticky-foot" }, h("span", { class: "grow", id: "sync-summary" }), h("span", { class: "row-actions", id: "sync-buttons" })));
+    updateSyncFoot();
+  }
+
+  function drawSyncGroups() {
+    var box = $("sync-groups");
+    if (!box || !srv.sync || srv.sync.error) return;
+    box.replaceChildren();
+    var q = srv.syncFind || "";
+    var match = function (text) { return !q || String(text || "").toLowerCase().indexOf(q) >= 0; };
+    SYNC_GROUPS.forEach(function (g) {
+      if (srv.syncFilter && srv.syncFilter !== g.key) return;
+      var list = groupMods(g.key).filter(function (m) { return match(m.title) || match(m.gameFile) || match(m.serverFile); });
+      if (list.length) box.append(syncGroup(g, list));
+    });
+    if (!srv.syncFilter || srv.syncFilter === "config") {
+      var cfgs = srv.sync.configs.filter(function (c) { return match(c.path); });
+      if (cfgs.length) box.append(configGroup(cfgs));
+    }
+    if (!box.childNodes.length) box.append(h("p", { class: "search-empty" }, "Nothing matches."));
+  }
+
+  function syncGroup(g, list) {
+    var pickable = !g.noPick;
+    var head = h("button", { type: "button", class: "check", role: "checkbox", "aria-label": "Tick all: " + g.label });
+    var tickedNote = h("span", { class: "hint" });
+    var refreshHead = function () {
+      var n = list.filter(function (m) { return srv.picks[m.id]; }).length;
+      head.setAttribute("aria-checked", n === 0 ? "false" : n === list.length ? "true" : "mixed");
+      tickedNote.textContent = n + " of " + list.length + " ticked";
+    };
+    head.addEventListener("click", function () {
+      var on = list.some(function (m) { return !srv.picks[m.id]; });
+      list.forEach(function (m) { if (on) srv.picks[m.id] = true; else delete srv.picks[m.id]; });
+      drawSyncGroups();
+      updateSyncFoot();
+    });
+    var el = h("section", { class: "sg k-" + g.key },
+      h("div", { class: "sg-head" }, pickable ? head : h("span"),
+        h("div", null, h("div", { class: "sg-title" }, g.label, h("span", { class: "n" }, String(list.length))), h("div", { class: "sg-desc" }, g.desc)),
+        pickable ? tickedNote : h("span")));
+    if (pickable) refreshHead();
+    var showAll = srv.syncOpen[g.key] || list.length <= GROUP_LIMIT || srv.syncFind;
+    (showAll ? list : list.slice(0, GROUP_LIMIT - 2)).forEach(function (m) { el.append(syncRow(m, pickable, refreshHead)); });
+    if (!showAll) el.append(h("div", { class: "sg-more" }, btn("Show all " + list.length, function () { srv.syncOpen[g.key] = true; drawSyncGroups(); })));
+    return el;
+  }
+
+  // A disclosure arrow for a row's details.
+  function expander(id, label, detail) {
+    var open = !!srv.syncExpanded[id];
+    detail.hidden = !open;
+    var x = h("button", { type: "button", class: "x", "aria-expanded": String(open), "aria-label": "Details: " + label, title: "Details" }, icon("chev"));
+    var toggle = function () {
+      var o = !srv.syncExpanded[id];
+      if (o) srv.syncExpanded[id] = true; else delete srv.syncExpanded[id];
+      detail.hidden = !o;
+      x.setAttribute("aria-expanded", String(o));
+    };
+    x.addEventListener("click", toggle);
+    return { button: x, toggle: toggle };
+  }
+
+  function syncRow(m, pickable, onTick) {
     var box = pickable ? h("button", { type: "button", class: "check", role: "checkbox", "aria-checked": String(!!srv.picks[m.id]), "aria-label": "Include " + m.title,
       onclick: function (e) {
         if (srv.picks[m.id]) delete srv.picks[m.id]; else srv.picks[m.id] = true;
         e.currentTarget.setAttribute("aria-checked", String(!!srv.picks[m.id]));
+        if (onTick) onTick();
         updateSyncFoot();
       } }) : h("span");
+    var v = m.kind === "replace" && m.serverVersion && m.gameVersion && m.serverVersion !== m.gameVersion
+      ? h("span", { class: "v" }, m.serverVersion + " → ", h("span", { class: "to" }, m.gameVersion))
+      : h("span", { class: "v" }, m.gameVersion || m.serverVersion || "");
     var files = m.gameFile && m.serverFile && m.gameFile !== m.serverFile ? "game: " + m.gameFile + " · server: " + m.serverFile : m.gameFile || m.serverFile;
-    var extra = m.kind === "untagged" ? btn("Find it in the mod list", function () {
+    var extra = m.kind === "untagged" ? h("div", { class: "row-actions", style: "margin-top:6px" }, btn("Find it in the mod list", function () {
       setView("mods");
       $("q").value = m.gameFile;
       state.q = m.gameFile.toLowerCase();
       render();
-    }) : null;
-    return h("div", { class: "sync-item" }, box,
-      h("div", null, h("div", { class: "title" }, m.title), h("div", { class: "note" }, m.note), h("div", { class: "files" }, files), extra),
-      h("span", { class: "kind k-" + m.kind }, SYNC_KIND[m.kind] || m.kind));
+    })) : null;
+    var detail = h("div", { class: "detail" }, m.note, h("div", { class: "files" }, files), extra);
+    var ex = expander(m.id, m.title, detail);
+    var title = h("span", { class: "t", title: m.title, style: "cursor:pointer" }, m.title);
+    title.addEventListener("click", ex.toggle);
+    return h("div", { class: "sr" }, box, title, v, ex.button, detail);
   }
-  function configItem(c) {
-    var changes = h("ul", { class: "changes" });
-    c.changes.forEach(function (ch) {
-      changes.append(h("li", null, h("span", { class: "k" }, ch.key + ": "), h("span", { class: "g" }, ch.game === null ? "(not set)" : ch.game), " in the game, ",
-        h("span", { class: "s" }, ch.server === null ? "(not set)" : ch.server), " on the server"));
-    });
-    if (c.moreChanges) changes.append(h("li", { class: "k" }, "and " + c.moreChanges + " more"));
+
+  function configGroup(cfgs) {
+    var el = h("section", { class: "sg k-config" }, h("div", { class: "sg-head" }, h("span"),
+      h("div", null, h("div", { class: "sg-title" }, "Config files that differ", h("span", { class: "n" }, String(cfgs.length))),
+        h("div", { class: "sg-desc" }, "Only copied when you pick a direction. The copy being replaced is backed up first.")), h("span")));
+    cfgs.forEach(function (c) { el.append(configRow(c)); });
+    return el;
+  }
+  function configRow(c) {
     var pick = h("div", { class: "seg-control dir-pick", role: "group", "aria-label": "What to do with " + c.path });
     var options = [["", "Leave"]];
     if (c.kind !== "server-only") options.push(["up", "Game → server"]);
@@ -6695,51 +7050,27 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     options.forEach(function (o) {
       pick.append(h("button", { type: "button", "aria-pressed": String((srv.cfg[c.id] || "") === o[0]), onclick: function () {
         if (o[0]) srv.cfg[c.id] = o[0]; else delete srv.cfg[c.id];
-        Array.prototype.forEach.call(pick.children, function (x, i) { x.setAttribute("aria-pressed", String(options[i][0] === (srv.cfg[c.id] || ""))); });
+        Array.prototype.forEach.call(pick.children, function (x, k) { x.setAttribute("aria-pressed", String(options[k][0] === (srv.cfg[c.id] || ""))); });
         updateSyncFoot();
       } }, o[1]));
     });
-    var when = c.kind === "differ" ? (c.newer === "game" ? "The game's copy is newer." : "The server's copy is newer.")
-      : c.kind === "game-only" ? "Only the game has this file." : "Only the server has this file.";
-    return h("div", { class: "sync-item", style: "grid-template-columns:minmax(0,1fr) auto" },
-      h("div", null, h("div", { class: "title", style: "font-family:var(--font-mono);font-size:13px" }, c.path), h("div", { class: "note" }, when), c.changes.length || c.moreChanges ? changes : null),
-      pick);
-  }
-  function renderSync() {
-    var p = $("server-sync-panel");
-    p.replaceChildren();
-    p.append(h("h2", null, "Sync from the game"),
-      h("p", { class: "lead" }, "Your game's mods folder decides what the server runs: every mod tagged \"server\" that's on in the game should be on the server, as the same version. Nothing changes until you press Apply. Replaced jars go to the Recycle Bin, and overwritten configs are backed up."),
-      h("div", { class: "row-actions" }, btn("Compare again", loadSync, "", { disabled: srv.syncLoading })));
-    if (srv.syncLoading) { p.append(h("p", { class: "search-empty" }, "Comparing the game and the server…")); return; }
-    var s = srv.sync;
-    if (!s) return;
-    if (s.error) { p.append(h("p", { class: "search-empty" }, s.error)); return; }
-    if (s.running) p.append(h("p", { class: "warnbox", style: "margin-top:12px" }, "The server is running. Stop it before applying changes."));
-    var main = s.mods.filter(function (m) { return m.default; });
-    var yours = s.mods.filter(function (m) { return !m.default && m.kind !== "untagged"; });
-    var untagged = s.mods.filter(function (m) { return m.kind === "untagged"; });
-    var g1 = h("div", { class: "sync-group" }, h("h3", null, main.length ? "Mods to sync (" + main.length + ")" : "Mods are in sync"));
-    main.forEach(function (m) { g1.append(syncItem(m, true)); });
-    g1.append(h("p", { class: "hint", style: "margin:6px 0 0" }, s.modsInSync + " mods already match."));
-    p.append(g1);
-    if (yours.length) {
-      var g2 = h("details", { class: "sync-group" }, h("summary", null, "Your call (" + yours.length + "): mods tagged client-only that are on the server, and server-only mods"));
-      yours.forEach(function (m) { g2.append(syncItem(m, true)); });
-      p.append(g2);
+    var when = c.kind === "differ" ? (c.newer === "game" ? "Your game's copy is newer." : "The server's copy is newer.")
+      : c.kind === "game-only" ? "Only your game has this file." : "Only the server has this file.";
+    var detail = h("div", { class: "detail" }, when);
+    if (c.changes.length) {
+      var t = h("div", { class: "cfg-diff" }, h("span", { class: "h" }, "Setting"), h("span", { class: "h" }, "Your game"), h("span", { class: "h" }, "Server"));
+      c.changes.forEach(function (ch) {
+        t.append(h("span", null, ch.key), h("span", { class: "g" }, ch.game === null ? "(not set)" : ch.game), h("span", { class: "s" }, ch.server === null ? "(not set)" : ch.server));
+      });
+      detail.append(t);
+      if (c.moreChanges) detail.append(h("div", null, "and " + c.moreChanges + " more"));
     }
-    if (untagged.length) {
-      var g3 = h("details", { class: "sync-group", open: true }, h("summary", null, "Not synced: no client/server tag (" + untagged.length + ")"));
-      untagged.forEach(function (m) { g3.append(syncItem(m, false)); });
-      p.append(g3);
-    }
-    var g4 = h("div", { class: "sync-group" }, h("h3", null, s.configs.length ? "Config files that differ (" + s.configs.length + ")" : "Config files match"));
-    s.configs.forEach(function (c) { g4.append(configItem(c)); });
-    g4.append(h("p", { class: "hint", style: "margin:6px 0 0" }, s.configsSame + " config files match. " + s.configsIgnored + " aren't compared (client-only mods' configs, backups and caches). Config files are only copied when you choose a direction."));
-    p.append(g4);
-    p.append(h("div", { class: "sticky-foot" }, h("span", { class: "grow", id: "sync-summary" }), btn("Apply", applySync, "primary", { id: "sync-apply" })));
-    updateSyncFoot();
+    var ex = expander(c.id, c.path, detail);
+    var title = h("span", { class: "t", title: c.path, style: "cursor:pointer" }, c.path);
+    title.addEventListener("click", ex.toggle);
+    return h("div", { class: "sr cfg" }, title, pick, ex.button, detail);
   }
+
   function syncChoices() {
     var s = srv.sync || { mods: [], configs: [] };
     var mods = (s.mods || []).filter(function (m) { return srv.picks[m.id]; });
@@ -6747,54 +7078,260 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     Object.keys(srv.cfg).forEach(function (id) { (srv.cfg[id] === "up" ? up : down).push(id); });
     return { mods: mods, up: up, down: down, total: mods.length + up.length + down.length };
   }
+  // One line per group: "Turn off: 181 mods", "Update: Create, JEI".
+  function syncSummaryLines(fromPicks) {
+    var lines = [];
+    SYNC_GROUPS.forEach(function (g) {
+      var list = groupMods(g.key).filter(function (m) { return fromPicks ? srv.picks[m.id] : SYNC_BLOCKING.indexOf(m.kind) >= 0; });
+      if (list.length) lines.push(g.chip + ": " + (list.length <= 3 ? list.map(function (m) { return m.title; }).join(", ") : count(list.length, "mod", "mods")));
+    });
+    return lines;
+  }
   function updateSyncFoot() {
-    var c = syncChoices();
     if (!$("sync-summary")) return;
-    $("sync-summary").textContent = c.total ? count(c.mods.length, "mod change", "mod changes") + (c.up.length + c.down.length ? " and " + count(c.up.length + c.down.length, "config file", "config files") : "") + " ticked." : "Nothing ticked.";
-    $("sync-apply").disabled = !c.total || !connected || !!(srv.sync && srv.sync.running) || serverRunning();
+    var c = syncChoices();
+    var i = srv.info || {};
+    var external = !!i.externalRunning;
+    var running = serverRunning() && !external;
+    var moving = i.state === "starting" || i.state === "stopping";
+    $("sync-summary").textContent = external ? "The server was started outside this app. Stop it there to apply changes."
+      : c.total ? count(c.mods.length, "mod change", "mod changes") + (c.up.length + c.down.length ? " and " + count(c.up.length + c.down.length, "config file", "config files") : "") + " ticked."
+      : "Nothing ticked.";
+    var b = $("sync-buttons");
+    b.replaceChildren(btn(srv.syncApplying ? "Applying…" : running ? "Stop, apply and start" : "Apply", applySync, "primary",
+      { id: "sync-apply", disabled: !c.total || !connected || external || moving || srv.syncApplying }));
   }
   function applySync() {
     var c = syncChoices();
     if (!c.total) return;
-    var items = c.mods.map(function (m) { return (SYNC_KIND[m.kind] || m.kind) + ": " + m.title; })
-      .concat(c.up.map(function (id) { return "config to the server: " + id.slice(4); }), c.down.map(function (id) { return "config to the game: " + id.slice(4); }));
+    var running = serverRunning() && !(srv.info && srv.info.externalRunning);
+    var names = function (ids) { return ids.length <= 3 ? ids.map(function (id) { return id.slice(4); }).join(", ") : count(ids.length, "file", "files"); };
+    var items = syncSummaryLines(true);
+    if (c.up.length) items.push("Configs to the server: " + names(c.up));
+    if (c.down.length) items.push("Configs to your game: " + names(c.down));
+    var players = running ? (srv.info.players || []) : [];
     confirmDialog({
-      title: "Apply " + count(c.total, "change", "changes") + "?",
+      title: (running ? "Stop the server and apply " : "Apply ") + count(c.total, "change", "changes") + "?",
       items: items,
-      body: "Jars the server no longer needs are turned off (renamed to .disabled), replaced jars go to the Recycle Bin, and overwritten config files are backed up first. Restart the server afterwards to use them.",
-      ok: "Apply",
+      body: (running ? "The server saves and stops" + (players.length ? " (" + count(players.length, "player is", "players are") + " online)" : "") + ", the changes are made, and it starts again. " : "") +
+        "Mods the server no longer needs are turned off (renamed to .disabled), replaced jars go to the Recycle Bin, and overwritten config files are backed up first.",
+      ok: running ? "Stop, apply and start" : "Apply",
       okClass: "primary",
-      onOk: function () {
-        api("POST", "/api/sync/apply", { mods: c.mods.map(function (m) { return m.id; }), configsToServer: c.up, configsToGame: c.down }).then(function (res) {
-          var body = h("div");
-          res.done.forEach(function (t) { body.append(h("div", { class: "issue", style: "grid-template-columns:auto minmax(0,1fr)" }, h("span", { class: "lvl", style: "background:var(--c-worldgen)" }, "done"), h("div", null, t))); });
-          res.failed.forEach(function (t) { body.append(h("div", { class: "issue", style: "grid-template-columns:auto minmax(0,1fr)" }, h("span", { class: "lvl" }, "failed"), h("div", null, t))); });
-          openBig(res.failed.length ? "Synced, with " + count(res.failed.length, "problem", "problems") : "Synced", "Start (or restart) the server to use the changes.", body, [btn("Close", closeBig, "primary")]);
-          srv.picks = {};
-          srv.cfg = {};
-          return refresh(true).then(loadSync).then(refreshServer);
-        }, function (e) { toast(e.message); });
-      }
+      onOk: function () { runSyncApply(c, running); }
     });
   }
+  function runSyncApply(c, restart) {
+    srv.syncApplying = true;
+    updateSyncFoot();
+    var stopFirst = restart ? api("POST", "/api/server/stop", {}).then(waitForStopped) : Promise.resolve();
+    track(restart ? "Stopping the server and syncing" : "Syncing the server", stopFirst.then(function () {
+      return api("POST", "/api/sync/apply", { mods: c.mods.map(function (m) { return m.id; }), configsToServer: c.up, configsToGame: c.down });
+    }).then(function (res) {
+      srv.syncResult = { done: res.done, failed: res.failed, at: Date.now(), wasRunning: restart };
+      if (!restart) return;
+      return api("POST", "/api/server/start", {}).then(function () { srv.syncResult.restarted = true; startConsole(); },
+        function (e) { srv.syncResult.startError = e.message; });
+    })).then(function () {
+      srv.picks = {};
+      srv.cfg = {};
+      return refresh(true).then(loadSync).then(refreshServer);
+    }, function (e) { toast(e.message); }).then(function () {
+      srv.syncApplying = false;
+      if (srv.sub === "sync") renderSync();
+    });
+  }
+  // Resolves once the server has saved and exited (up to 5 minutes).
+  function waitForStopped() {
+    var since = Date.now();
+    return new Promise(function (resolve, reject) {
+      (function poll() {
+        api("GET", "/api/server").then(function (s) {
+          srv.info = s;
+          renderServerCard();
+          renderServerChip();
+          if (s.state === "stopped") resolve();
+          else if (Date.now() - since > 300000) reject(new Error("The server didn't stop within 5 minutes, so nothing was changed."));
+          else setTimeout(poll, 1000);
+        }, function () { setTimeout(poll, 2000); });
+      })();
+    });
+  }
+  function syncResultBox() {
+    var r = srv.syncResult;
+    var problems = r.failed.length + (r.startError ? 1 : 0);
+    var list = h("ul");
+    list.hidden = !r.failed.length;
+    r.failed.forEach(function (t) { list.append(h("li", { style: "color:var(--danger-fg)" }, t)); });
+    r.done.forEach(function (t) { list.append(h("li", null, t)); });
+    var next = r.restarted ? " The server is starting again." : r.startError ? " The server didn't start again: " + r.startError : r.wasRunning ? "" : " Start the server to use them.";
+    var showBtn = btn(list.hidden ? "Show what changed" : "Hide the list", function () { list.hidden = !list.hidden; showBtn.textContent = list.hidden ? "Show what changed" : "Hide the list"; });
+    return h("div", { class: "okbox" + (problems ? " bad" : ""), style: "margin-top:12px" },
+      h("p", null, (problems ? "Synced at " + clock(new Date(r.at)) + ", with " + count(problems, "problem", "problems") + "." : "Synced " + count(r.done.length, "change", "changes") + " at " + clock(new Date(r.at)) + ".") + next),
+      h("div", { class: "row-actions" },
+        !r.wasRunning && srv.info && srv.info.state === "stopped" ? btn("Start server", startServerChecked, "primary", { disabled: !connected }) : null,
+        showBtn, btn("Dismiss", function () { srv.syncResult = null; renderSync(); })),
+      list);
+  }
 
-  // ---- Settings (server.properties) ----
+  // ---- Overview ----
 
+  function renderOverview() {
+    var p = $("server-overview-panel");
+    var i = srv.info;
+    p.replaceChildren();
+    if (!i || !i.exists) return;
+    var props = propsMap(i.properties);
+    var port = props["server-port"] || "25565";
+    var suffix = port === "25565" ? "" : ":" + port;
+    var addr = function (text) {
+      return h("span", { style: "display:inline-flex;align-items:center;margin-right:10px" }, h("code", null, text),
+        h("button", { type: "button", class: "copy-addr", onclick: function () { copyText(text, "Copied " + text); } }, "Copy"));
+    };
+    var lan = h("dd");
+    if (i.lanAddresses.length) i.lanAddresses.forEach(function (a) { lan.append(addr(a + suffix)); }); else lan.textContent = "No network address found";
+    var join = h("div", null, h("h2", { style: "font-size:15px" }, "How friends join"),
+      h("dl", { class: "kv" },
+        h("dt", null, "On this PC"), h("dd", null, addr("localhost" + suffix)),
+        h("dt", null, "Same home network"), lan,
+        h("dt", null, "From elsewhere"), h("dd", null, "Forward TCP port " + port + " on your router to " + (i.lanAddresses[0] || "this PC") + ", then give friends your public IP address. A tunnel such as playit.gg works without touching the router.")),
+      h("div", { class: "row-actions", style: "margin-top:10px" },
+        h("span", { class: "hint", style: "flex:1 1 220px" }, props["white-list"] === "true" ? "The whitelist is on: only players on it can join." : "The whitelist is off, so anyone who knows the address can join."),
+        btn("Manage players", function () { setSub("players"); })));
+    var kv = h("dl", { class: "kv" });
+    var add = function (k, v) { if (v !== null && v !== undefined && v !== "") kv.append(h("dt", null, k), h("dd", null, v)); };
+    var every = pref("serverRestart");
+    add("Folder", i.folder);
+    add("World", props["level-name"]);
+    add("NeoForge", i.neoforge);
+    add("Mods", i.modsCount + " jars on");
+    add("Memory", i.maxMemory ? "up to " + i.maxMemory : "not set (Java's default)");
+    add("Max players", props["max-players"]);
+    add("Online now", i.state === "running" ? (i.players.length ? i.players.join(", ") : "nobody") : null);
+    add("Restarts", every && every !== "off" ? "every " + every + " h" + (i.nextRestart ? ", next in " + untilText(i.nextRestart) : "") : "off");
+    add("Backups", pref("serverBackups") ? "on" : "off");
+    add("Java", i.java);
+    var details = h("div", null, h("h2", { style: "font-size:15px" }, "Details"), kv,
+      h("div", { class: "row-actions", style: "margin-top:10px" },
+        btn("Open server folder", function () { api("POST", "/api/server/open-folder", {}).catch(function (e) { toast(e.message); }); }),
+        btn("Check server mods", function () { api("GET", "/api/check?side=server").then(function (res) { problemsDialog(res, {}); }, function (e) { toast(e.message); }); }),
+        btn("Settings", function () { setSub("settings"); })));
+    p.append(h("div", { class: "status-grid" }, join, details));
+  }
+
+  // ---- Players (ServerPlayers.cs) ----
+
+  function loadPlayers() {
+    var p = $("server-players-panel");
+    if (!srv.players) p.replaceChildren(h("p", { class: "search-empty" }, "Loading players…"));
+    return api("GET", "/api/server/players").then(function (res) { srv.players = res; }, function (e) { srv.players = { error: e.message }; }).then(renderPlayers);
+  }
+  function renderPlayersBadge() {
+    var i = srv.info, n = i && i.state === "running" ? (i.players || []).length : 0;
+    $("players-badge").hidden = !n;
+    $("players-badge").textContent = n;
+  }
+  function sameName(n) { return function (e) { return (e.name || "").toLowerCase() === String(n || "").toLowerCase(); }; }
+  function playerAction(action, name, reason) {
+    return api("POST", "/api/server/players", { action: action, name: name, reason: reason || "" }).then(function (res) {
+      // A command takes effect in the server first; its files catch up a moment later.
+      setTimeout(loadPlayers, res.via === "command" ? 1200 : 0);
+      if (action === "whitelist-on" || action === "whitelist-off") setTimeout(refreshServer, 1200);
+      return true;
+    }, function (e) { toast(e.message); return false; });
+  }
+  function askKick(name) {
+    confirmDialog({ title: "Kick " + name + "?", items: [], body: "They're disconnected, but can join again straight away unless they're banned or not on the whitelist.",
+      ok: "Kick", onOk: function () { playerAction("kick", name, "Kicked by an operator."); } });
+  }
+  function askBan(name) {
+    confirmDialog({ title: "Ban " + name + "?", items: [], body: "They're disconnected if they're online, and can't join again until they're unbanned here.",
+      ok: "Ban", onOk: function () { playerAction("ban", name); } });
+  }
+  function plList(title, entries, empty, actions, showReason) {
+    var el = h("section", { class: "pl-list" }, h("h3", null, title, h("span", { class: "n" }, String(entries.length))));
+    if (!entries.length) el.append(h("div", { class: "pl-empty" }, empty));
+    entries.forEach(function (e) {
+      var row = h("div", { class: "pl-row" }, h("span", { class: "face", "aria-hidden": "true" }, (e.name || "?").charAt(0).toUpperCase()),
+        h("span", { class: "who", title: e.name || e.uuid }, e.name || e.uuid),
+        showReason && e.reason ? h("span", { class: "why", title: e.reason }, e.reason.length > 28 ? e.reason.slice(0, 28) + "…" : e.reason) : null);
+      actions(e).forEach(function (a) { if (a) row.append(a); });
+      el.append(row);
+    });
+    return el;
+  }
+  function renderPlayers() {
+    var p = $("server-players-panel");
+    var d = srv.players;
+    // A redraw (someone joined, a list changed) keeps a half-typed name and its focus.
+    var typing = document.activeElement && document.activeElement.id === "pl-name";
+    p.replaceChildren();
+    if (!d) return;
+    if (d.error) { p.append(h("p", { class: "search-empty" }, d.error)); return; }
+    var locked = !connected || d.external;
+    p.append(h("h2", null, "Players"), h("p", { class: "lead" }, d.running ? "The server is running, so changes go to it straight away as commands."
+      : d.external ? "The server was started outside this app, so these lists can't be changed from here until it stops."
+      : "The server is stopped, so changes are written to its whitelist, operator and ban files and apply when it starts."));
+    var name = h("input", { type: "text", id: "pl-name", placeholder: "Player name", "aria-label": "Player name", maxlength: "16", autocomplete: "off", spellcheck: "false", list: "pl-names" });
+    name.value = srv.plDraft || "";
+    name.addEventListener("input", function () { srv.plDraft = name.value; });
+    var names = h("datalist", { id: "pl-names" });
+    (d.recent || []).forEach(function (n) { names.append(h("option", { value: n })); });
+    var withName = function (fn) {
+      return function () {
+        var n = name.value.trim();
+        if (!n) { name.focus(); return; }
+        fn(n);
+      };
+    };
+    var addTo = function (action) { return withName(function (n) { playerAction(action, n).then(function (ok) { if (ok) { srv.plDraft = ""; name.value = ""; } }); }); };
+    name.addEventListener("keydown", function (e) { if (e.key === "Enter") addTo("whitelist-add")(); });
+    p.append(h("div", { class: "pl-add" }, name, names,
+      btn("Add to whitelist", addTo("whitelist-add"), "primary", { disabled: locked }),
+      btn("Make operator", addTo("op"), "", { disabled: locked }),
+      btn("Ban…", withName(askBan), "danger-outline", { disabled: locked })));
+    p.append(h("div", { class: d.whitelistOn ? "okbox" : "warnbox", style: "margin:14px 0 0" },
+      h("div", { class: "row-actions" }, h("span", { style: "flex:1 1 240px" }, d.whitelistOn ? "The whitelist is on: only players on it can join." : "The whitelist is off: anyone who knows the address can join."),
+        btn(d.whitelistOn ? "Turn it off" : "Turn it on", function () { playerAction(d.whitelistOn ? "whitelist-off" : "whitelist-on", ""); }, "", { disabled: locked }))));
+    var grid = h("div", { class: "pl-grid" });
+    grid.append(plList("Online now", d.online.map(function (n) { return { name: n }; }), d.running ? "Nobody is online." : "The server isn't running.", function (e) {
+      var isOp = d.ops.some(sameName(e.name)), listed = d.whitelist.some(sameName(e.name));
+      return [
+        d.whitelistOn && !listed ? btn("Whitelist", function () { playerAction("whitelist-add", e.name); }, "", { disabled: locked }) : null,
+        btn(isOp ? "Deop" : "Op", function () { playerAction(isOp ? "deop" : "op", e.name); }, "", { disabled: locked }),
+        btn("Kick", function () { askKick(e.name); }, "", { disabled: locked }),
+        btn("Ban", function () { askBan(e.name); }, "danger-outline", { disabled: locked })];
+    }));
+    grid.append(plList("Whitelist", d.whitelist, d.whitelistOn ? "Nobody yet, so nobody can join." : "Nobody yet.", function (e) {
+      return [btn("Remove", function () { playerAction("whitelist-remove", e.name); }, "", { disabled: locked })];
+    }));
+    grid.append(plList("Operators", d.ops, "Nobody yet.", function (e) {
+      return [e.level ? h("span", { class: "why" }, "level " + e.level) : null, btn("Remove", function () { playerAction("deop", e.name); }, "", { disabled: locked })];
+    }));
+    grid.append(plList("Banned", d.banned, "Nobody.", function (e) {
+      return [btn("Unban", function () { playerAction("pardon", e.name); }, "", { disabled: locked })];
+    }, true));
+    p.append(grid);
+    if (typing) { name.focus(); name.setSelectionRange(name.value.length, name.value.length); }
+  }
+
+  // ---- Settings (server.properties, memory, restarts and backups) ----
+
+  var PROP_GROUPS = [["access", "Joining & access"], ["play", "Gameplay"], ["perf", "Performance"]];
   var PROP_FIELDS = [
-    { key: "motd", def: "A Minecraft Server", label: "Server name", type: "text", hint: "Shown under the server in the multiplayer list." },
-    { key: "max-players", def: "20", label: "Max players", type: "number", min: 1, max: 500 },
-    { key: "difficulty", def: "easy", label: "Difficulty", type: "select", options: ["peaceful", "easy", "normal", "hard"] },
-    { key: "gamemode", def: "survival", label: "Game mode for new players", type: "select", options: ["survival", "creative", "adventure", "spectator"] },
-    { key: "view-distance", def: "10", label: "View distance (chunks)", type: "number", min: 3, max: 32, hint: "Further looks better but costs the server CPU and memory." },
-    { key: "simulation-distance", def: "10", label: "Simulation distance (chunks)", type: "number", min: 3, max: 32, hint: "How far away crops grow and mobs move." },
-    { key: "spawn-protection", def: "16", label: "Spawn protection (blocks)", type: "number", min: 0, max: 64, hint: "Only operators can build this close to spawn. 0 turns it off." },
-    { key: "server-port", def: "25565", label: "Port", type: "number", min: 1024, max: 65535, hint: "Friends outside your network need this port forwarded." },
-    { key: "white-list", def: "false", label: "Whitelist", type: "bool", hint: "Only players on the whitelist can join." },
-    { key: "enforce-whitelist", def: "false", label: "Kick players who aren't on the whitelist", type: "bool" },
-    { key: "pvp", def: "true", label: "Players can hurt each other (PvP)", type: "bool" },
-    { key: "allow-flight", def: "false", label: "Allow flying", type: "bool", hint: "Keep on for modpacks: jetpacks and gliders otherwise get players kicked." },
-    { key: "hardcore", def: "false", label: "Hardcore", type: "bool" },
-    { key: "online-mode", def: "true", label: "Check accounts with Microsoft (online mode)", type: "bool", hint: "Keep on. Off lets anyone join under any name." }
+    { key: "motd", group: "access", def: "A Minecraft Server", label: "Server name", type: "text", hint: "Shown under the server in the multiplayer list." },
+    { key: "max-players", group: "access", def: "20", label: "Max players", type: "number", min: 1, max: 500 },
+    { key: "server-port", group: "access", def: "25565", label: "Port", type: "number", min: 1024, max: 65535, hint: "Friends outside your network need this port forwarded." },
+    { key: "white-list", group: "access", def: "false", label: "Whitelist", type: "bool", hint: "Only players on the whitelist can join." },
+    { key: "enforce-whitelist", group: "access", def: "false", label: "Kick players who aren't on the whitelist", type: "bool", hint: "When the whitelist changes while they're online." },
+    { key: "online-mode", group: "access", def: "true", label: "Check accounts with Microsoft (online mode)", type: "bool", hint: "Keep on. Off lets anyone join under any name." },
+    { key: "difficulty", group: "play", def: "easy", label: "Difficulty", type: "select", options: ["peaceful", "easy", "normal", "hard"] },
+    { key: "gamemode", group: "play", def: "survival", label: "Game mode for new players", type: "select", options: ["survival", "creative", "adventure", "spectator"] },
+    { key: "spawn-protection", group: "play", def: "16", label: "Spawn protection (blocks)", type: "number", min: 0, max: 64, hint: "Only operators can build this close to spawn. 0 turns it off." },
+    { key: "pvp", group: "play", def: "true", label: "Players can hurt each other (PvP)", type: "bool" },
+    { key: "allow-flight", group: "play", def: "false", label: "Allow flying", type: "bool", hint: "Keep on for modpacks: jetpacks and gliders otherwise get players kicked." },
+    { key: "hardcore", group: "play", def: "false", label: "Hardcore", type: "bool", hint: "One life: players who die become spectators." },
+    { key: "view-distance", group: "perf", def: "10", label: "View distance (chunks)", type: "number", min: 3, max: 32, hint: "Further looks better but costs the server CPU and memory." },
+    { key: "simulation-distance", group: "perf", def: "10", label: "Simulation distance (chunks)", type: "number", min: 3, max: 32, hint: "How far away crops grow and mobs move." }
   ];
   function markEdit(key, value, el) {
     var orig = srv.propsOriginal[key];
@@ -6805,37 +7342,87 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function updatePropsFoot() {
     var n = Object.keys(srv.propsEdits).length;
     if (!$("props-status")) return;
-    $("props-status").textContent = n ? count(n, "change", "changes") + " not saved yet." : "No changes.";
+    $("props-status").textContent = serverRunning() ? "Stop the server to change these: it rewrites server.properties while it runs."
+      : n ? count(n, "change", "changes") + " not saved yet." : "No changes.";
     $("props-save").disabled = !n || serverRunning() || !connected;
     $("props-undo").disabled = !n;
   }
   function propControl(f, value, locked) {
     if (f.type === "bool") {
-      var cb = h("input", { type: "checkbox", checked: value === "true", disabled: locked });
-      cb.addEventListener("change", function () { markEdit(f.key, cb.checked ? "true" : "false", cb.parentNode); });
-      return h("div", { class: "prop" }, h("label", { class: "toggle" }, cb, h("b", null, f.label)), f.hint ? h("span", null, f.hint) : null);
+      var cb = h("input", { type: "checkbox", class: "prop-in", checked: value === "true", disabled: locked });
+      var lab = h("label", { class: "prop-check" }, cb, h("span", null, h("b", null, f.label), f.hint || ""));
+      cb.addEventListener("change", function () { markEdit(f.key, cb.checked ? "true" : "false", lab); });
+      return lab;
     }
     var input;
     if (f.type === "select") {
-      input = h("select", { disabled: locked });
+      input = h("select", { class: "prop-in", disabled: locked });
       var opts = f.options.slice();
       if (value && opts.indexOf(value) < 0) opts.push(value);
       opts.forEach(function (o) { input.append(h("option", { value: o }, o.charAt(0).toUpperCase() + o.slice(1))); });
       input.value = value || f.options[0];
       input.addEventListener("change", function () { markEdit(f.key, input.value, input); });
     } else {
-      input = h("input", { type: f.type, min: f.min, max: f.max, maxlength: f.type === "text" ? 120 : null, disabled: locked, autocomplete: "off" });
+      input = h("input", { type: f.type, class: "prop-in", min: f.min, max: f.max, maxlength: f.type === "text" ? 120 : null, disabled: locked, autocomplete: "off" });
       input.value = value === undefined ? "" : value;
       input.addEventListener("input", function () { markEdit(f.key, input.value, input); });
     }
     return h("label", { class: "prop" }, h("b", null, f.label), input, f.hint ? h("span", null, f.hint) : null);
+  }
+  // Memory lives in user_jvm_args.txt, not server.properties: saved straight away, used from the next start.
+  function memoryControl() {
+    var i = srv.info;
+    var max = i.ramMb ? Math.max(2, Math.floor((i.ramMb - 2048) / 1024)) : 16;
+    var cur = null;
+    if (i.maxMemory) cur = /G$/.test(i.maxMemory) ? parseInt(i.maxMemory, 10) : Math.max(1, Math.round(parseInt(i.maxMemory, 10) / 1024));
+    var sel = h("select", { "aria-label": "Memory", disabled: !connected });
+    if (!cur) sel.append(h("option", { value: "" }, "Not set"));
+    [2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 20, 24, 32].forEach(function (gb) { if (gb <= max || gb === cur) sel.append(h("option", { value: String(gb) }, gb + " GB")); });
+    if (cur && !sel.querySelector('option[value="' + cur + '"]')) sel.append(h("option", { value: String(cur) }, cur + " GB"));
+    sel.value = cur ? String(cur) : "";
+    sel.addEventListener("change", function () {
+      if (!sel.value) return;
+      api("POST", "/api/server/memory", { gb: Number(sel.value) }).then(function (res) {
+        toast("The server can use up to " + res.maxMemory + " of memory from its next start.");
+        refreshServer();
+      }, function (e) { toast(e.message); sel.value = cur ? String(cur) : ""; });
+    });
+    return h("label", { class: "prop" }, h("b", null, "Memory"), sel,
+      h("span", null, "The most the server may use" + (i.ramMb ? " (this PC has " + Math.round(i.ramMb / 1024) + " GB)" : "") + ". Saved straight away, used from its next start."));
+  }
+  function setLine(label, desc, control) {
+    return h("div", { class: "set-line" }, h("div", null, h("div", { class: "l" }, label), h("div", { class: "d" }, desc)), control);
+  }
+  function scheduleCard() {
+    var every = pref("serverRestart") || "off";
+    var seg = h("div", { class: "seg-control", role: "group", "aria-label": "Restart on a schedule" });
+    var choices = [["off", "Off"], ["6", "6 h"], ["12", "12 h"], ["24", "24 h"]];
+    choices.forEach(function (c, k) {
+      seg.append(h("button", { type: "button", "aria-pressed": String(every === c[0]), onclick: function () {
+        Array.prototype.forEach.call(seg.children, function (b, n) { b.setAttribute("aria-pressed", String(n === k)); });
+        savePref("serverRestart", c[0], true).then(refreshServer);
+      } }, c[1]));
+    });
+    var on = !!pref("serverBackups");
+    var sw = h("button", { type: "button", class: "toggle sw-btn" + (on ? " on" : ""), role: "switch", "aria-checked": String(on), "aria-label": "Back up the server world" },
+      h("span", { class: "sw", "aria-hidden": "true" }));
+    sw.addEventListener("click", function () {
+      on = !on;
+      sw.classList.toggle("on", on);
+      sw.setAttribute("aria-checked", String(on));
+      savePref("serverBackups", on, true);
+    });
+    return h("section", { class: "card" }, h("h2", null, "Restarts & backups"),
+      h("p", { class: "lead" }, "Done by this app while the server runs from here. These save straight away."),
+      setLine("Restart on a schedule", "Warns players 5 and 1 minutes ahead, then stops the server and starts it again.", seg),
+      setLine("Back up the world", "At each scheduled restart, or once a day while it runs (saving is paused meanwhile). Backups are in the Backups tab.", sw));
   }
   function renderSettings(force) {
     var p = $("server-settings-panel");
     var i = srv.info;
     var locked = serverRunning() || !connected;
     if (srv.settingsBuilt && !force) {
-      Array.prototype.forEach.call(p.querySelectorAll("input, select"), function (el) { el.disabled = locked; });
+      Array.prototype.forEach.call(p.querySelectorAll(".prop-in"), function (el) { el.disabled = locked; });
       if ($("props-note")) $("props-note").hidden = !serverRunning();
       updatePropsFoot();
       return;
@@ -6850,25 +7437,29 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var props = propsMap(i.properties);
     PROP_FIELDS.forEach(function (f) { if (!(f.key in props)) props[f.key] = f.def; });
     srv.propsOriginal = props;
-    p.append(h("h2", null, "Server settings"),
-      h("p", { class: "lead" }, "These are the settings in server.properties. They apply the next time the server starts, and the previous file is kept as server.properties.bak."));
-    var note = h("p", { class: "warnbox", id: "props-note" }, "Stop the server to change settings: it rewrites server.properties while it runs.");
+    var note = h("p", { class: "warnbox", id: "props-note", style: "margin:0" }, "The server is running. Stop it to change the settings in server.properties: it rewrites that file while it runs. Memory, restarts and backups can change any time.");
     note.hidden = !serverRunning();
     p.append(note);
-    var grid = h("div", { class: "props-grid" });
-    PROP_FIELDS.forEach(function (f) { grid.append(propControl(f, props[f.key], locked)); });
-    p.append(grid);
+    PROP_GROUPS.forEach(function (g) {
+      var grid = h("div", { class: "props-grid" });
+      PROP_FIELDS.forEach(function (f) { if (f.group === g[0]) grid.append(propControl(f, props[f.key], locked)); });
+      if (g[0] === "perf") grid.append(memoryControl());
+      p.append(h("section", { class: "card" }, h("h2", null, g[1]),
+        g[0] === "access" ? h("p", { class: "lead" }, "From server.properties. Changes apply the next time the server starts, and the previous file is kept as server.properties.bak.") : null,
+        grid));
+    });
+    p.append(scheduleCard());
     var known = PROP_FIELDS.map(function (f) { return f.key; });
     var rest = i.properties.filter(function (kv) { return known.indexOf(kv[0]) < 0; });
     var table = h("div", { class: "all-props" });
     rest.forEach(function (kv) {
-      var input = h("input", { type: /password|secret/i.test(kv[0]) ? "password" : "text", "aria-label": kv[0], disabled: locked, autocomplete: "off", spellcheck: "false" });
+      var input = h("input", { type: /password|secret/i.test(kv[0]) ? "password" : "text", class: "prop-in", "aria-label": kv[0], disabled: locked, autocomplete: "off", spellcheck: "false" });
       input.value = kv[1];
       input.addEventListener("input", function () { markEdit(kv[0], input.value, input); });
       table.append(h("label", null, kv[0]), input);
     });
-    p.append(h("details", { class: "more" }, h("summary", null, "All other settings (" + rest.length + ")"),
-      h("p", { class: "hint" }, "Every other line of server.properties, as plain text. Change these only if you know what they do."), table));
+    p.append(h("section", { class: "card" }, h("details", { class: "more", style: "margin:0" }, h("summary", { style: "margin:0" }, "All other settings (" + rest.length + ")"),
+      h("p", { class: "hint" }, "Every other line of server.properties, as plain text. Change these only if you know what they do."), table)));
     p.append(h("div", { class: "sticky-foot" }, h("span", { class: "grow", id: "props-status" }, "No changes."),
       btn("Undo changes", function () { renderSettings(true); }, "", { id: "props-undo", disabled: true }),
       btn("Save settings", saveProps, "primary", { id: "props-save", disabled: true })));
@@ -6886,6 +7477,27 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       toast(e.message);
       updatePropsFoot();
     });
+  }
+
+  // ---- Backups (the server's world; Worlds.cs) ----
+
+  function loadServerBackups() {
+    var p = $("server-backups-panel");
+    if (!p.childNodes.length) p.append(h("p", { class: "search-empty" }, "Loading backups…"));
+    api("GET", "/api/worlds").then(function (res) {
+      p.replaceChildren(h("h2", null, "World backups"),
+        h("p", { class: "lead" }, "Zipped copies of the server's world in the app's data folder; the newest 5 are kept. Restoring moves the current world to the Recycle Bin first."));
+      var every = pref("serverRestart");
+      var auto = pref("serverBackups") ? (every && every !== "off" ? "The world is backed up by itself at each scheduled restart (every " + every + " h)." : "The world is backed up by itself once a day while the server runs.")
+        : "Automatic backups are off.";
+      p.append(h("div", { class: "row-actions", style: "margin-bottom:4px" }, h("span", { class: "hint", style: "flex:1 1 260px" }, auto),
+        btn("Restart & backup settings", function () { setSub("settings"); }),
+        btn("Open backups folder", function () { api("POST", "/api/worlds/open-folder").then(null, function (e) { toast(e.message); }); })));
+      var worlds = res.worlds.filter(function (w) { return w.side === "server"; });
+      if (!worlds.length) p.append(h("p", { class: "search-empty" }, "The server has no world yet. It makes one the first time it starts."));
+      worlds.forEach(function (w) { p.append(worldBlock(w, loadServerBackups)); });
+      p.append(h("p", { class: "hint", style: "margin-top:10px" }, "Your game's own worlds are backed up on the Snapshots page."));
+    }, function (e) { p.replaceChildren(h("p", { class: "search-empty" }, e.message)); });
   }
 
   // Closing the window while the server runs: stop it properly (it saves the world) and then quit.

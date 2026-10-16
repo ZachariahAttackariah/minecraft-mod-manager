@@ -408,6 +408,9 @@ namespace MinecraftModManager
                         case "/api/sync/preview":
                             result = SyncPreview();
                             break;
+                        case "/api/server/players":
+                            result = ServerPlayers();
+                            break;
                         case "/api/check":
                             result = CheckMods(req.QueryString["side"] == "server" ? "server" : "client");
                             break;
@@ -642,7 +645,10 @@ namespace MinecraftModManager
                         SendJson(ctx, 200, ExportModpack(body));
                         return;
                     case "/api/worlds/backup":
-                        SendJson(ctx, 200, BackupWorld(Str(body, "side"), Str(body, "name"), Str(body, "reason")));
+                        // The running server's own world: pause its saving first so the copy is consistent.
+                        SendJson(ctx, 200, Str(body, "side") == "server" && ServerBusy()
+                            ? BackupRunningServerWorld(Str(body, "name"), Str(body, "reason"))
+                            : BackupWorld(Str(body, "side"), Str(body, "name"), Str(body, "reason")));
                         return;
                     case "/api/worlds/backup-latest":
                     {
@@ -801,6 +807,15 @@ namespace MinecraftModManager
                         return;
                     case "/api/server/kill":
                         SendJson(ctx, 200, KillServer());
+                        return;
+                    case "/api/server/restart":
+                        SendJson(ctx, 200, RestartServer());
+                        return;
+                    case "/api/server/players":
+                        SendJson(ctx, 200, ServerPlayerAction(body));
+                        return;
+                    case "/api/server/memory":
+                        SendJson(ctx, 200, SetServerMemory(body));
                         return;
                     case "/api/server/command":
                         SendJson(ctx, 200, ServerCommand(Str(body, "command")));

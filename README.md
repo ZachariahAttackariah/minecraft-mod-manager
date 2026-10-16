@@ -53,14 +53,15 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - What a mod needs and what needs it, including mods bundled inside jars, as a list or a full dependency tree.
   - Its config files, and whether the server's copies match.
 - **Server**
-  - Starts and stops a NeoForge dedicated server the way its `run.bat` would.
-  - Live console with filters, command input and history.
-  - Online players and connection info.
-  - A `server.properties` editor.
+  - A compact header: status, uptime, players, memory, time to the next scheduled restart, an "out of sync" badge, and Start / Restart / Stop.
+  - Starts and stops a NeoForge dedicated server the way its `run.bat` would. Start warns first when the server's mods don't match the game.
+  - Tabs: Overview (how friends join, details), Console (filters, command input and history), Mods & configs, Players, Settings and Backups.
+  - **Players:** who's online (op, kick, ban), the whitelist, operators and bans. Changes go in as commands while the server runs, or straight into its JSON files while it's stopped (UUIDs from its user cache or Mojang).
+  - **Settings:** `server.properties` in sections (joining & access, gameplay, performance), the server's memory (`user_jvm_args.txt`, keeping a fixed `-Xms` in step), plus scheduled restarts (6 / 12 / 24 h, with warnings in chat) and world backups.
+  - **Backups:** the server world's backups with Back up now (saving paused while it runs) and Restore.
   - Asks before closing the window while the server runs, then stops it so the world saves.
-  - Optional scheduled restarts (6 / 12 / 24 h, with warnings in chat) and world backups.
 - **Create server:** makes a new NeoForge, Forge or Fabric server from an instance. It runs the loader's official installer (NeoForge and Forge installers are checked against their published SHA-1), then copies the instance's server-side mods and configs and sets memory, port and name. The EULA is only accepted if the user ticks it. A dropdown switches between known servers.
-- **Sync from the game:** compares the game's mods (using their client/server tags) with the server's, and compares config files setting by setting. Nothing changes until you press Apply, and never while the server is running.
+- **Mods & configs (sync from the game):** compares the game's mods (using their client/server tags) with the server's, and config files setting by setting. A summary of counts by kind filters the list; each group can be ticked as a whole, and rows open for versions, files and notes. A game with lots of mods turned off (mid-test) isn't mirrored without a warning. Nothing changes until you apply; while the server runs, "Stop, apply and start" does it in one go.
 - **Snapshots**
   - Remembers every jar in the folder and whether it's on or off.
   - Keeps one copy of each jar, so a restore can bring back deleted or updated mods.

@@ -278,7 +278,11 @@ namespace MinecraftModManager
             List<SyncItem> mods = ComputeModSync(modsDir, serverMods, out inSync);
             List<ConfigItem> configs = ComputeConfigSync(Path.Combine(GameDir(), "config"), Path.Combine(server, "config"), out ignored, out same);
             var modList = mods.Select(m => (object)Obj("id", m.Id, "kind", m.Kind, "title", m.Title, "note", m.Note, "default", m.Default,
-                "gameFile", m.Game == null ? null : m.Game.File.Name, "serverFile", m.Server == null ? null : m.Server.File.Name)).ToList();
+                "gameFile", m.Game == null ? null : m.Game.File.Name, "serverFile", m.Server == null ? null : m.Server.File.Name,
+                "gameVersion", m.Game == null ? null : m.Game.Version, "serverVersion", m.Server == null ? null : m.Server.Version)).ToList();
+            // How much of the game is switched off: a game mid-test (most mods off) shouldn't be mirrored blindly.
+            List<SideJar> gameJars = ListSideJars(modsDir, null);
+            int serverOn = Directory.Exists(serverMods) ? new DirectoryInfo(serverMods).GetFiles("*.jar").Length : 0;
             var configList = new List<object>();
             foreach (ConfigItem c in configs)
             {
@@ -291,7 +295,9 @@ namespace MinecraftModManager
                     "changes", changes, "moreChanges", more));
             }
             return Obj("ok", true, "serverFolder", server, "gameFolder", GameDir(), "running", ServerBusy() || ExternalServerRunning(server, null),
-                "mods", modList, "modsInSync", inSync, "configs", configList, "configsSame", same, "configsIgnored", ignored);
+                "mods", modList, "modsInSync", inSync, "configs", configList, "configsSame", same, "configsIgnored", ignored,
+                "gameOn", gameJars.Count(j => j.Enabled), "gameOff", gameJars.Count(j => !j.Enabled), "serverOn", serverOn,
+                "comparedAt", DateTime.UtcNow.ToString("o"));
         }
 
         static Dictionary<string, object> SyncApply(List<string> modIds, List<string> toServer, List<string> toGame)

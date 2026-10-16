@@ -1,4 +1,4 @@
-// Scheduled server restarts and backups (Settings > Server, both off by default). While the server
+// Scheduled server restarts and backups (the Server page > Settings, both off by default). While the server
 // runs (started from here), every 6, 12 or 24 hours it warns players in chat 5 minutes and 1 minute
 // ahead, stops, backs up the world if backups are on, and starts again. With backups on and restarts
 // off, the world is backed up once a day while saving is paused (save-off / save-all flush / save-on).
@@ -58,7 +58,13 @@ namespace MinecraftModManager
         static void ScheduledRestart(bool backups)
         {
             Log("Server    scheduled restart");
-            AddConsole("Scheduled restart: stopping the server.", "app");
+            RestartNow("Scheduled restart", backups);
+        }
+
+        // Stops the server, waits for it to save and exit, optionally backs up its world, and starts it again.
+        static void RestartNow(string what, bool backups)
+        {
+            AddConsole(what + ": stopping the server.", "app");
             try { StopServer(); } catch (UserError) { return; }
             // Wait for it to finish saving and exit (up to 5 minutes).
             for (int i = 0; i < 300; i++)
@@ -66,12 +72,53 @@ namespace MinecraftModManager
                 lock (ServerLock) if (serverProcess == null) break;
                 Thread.Sleep(1000);
             }
-            lock (ServerLock) if (serverProcess != null) { AddConsole("Scheduled restart: the server didn't stop in time, so it was left as it is.", "app"); return; }
-            if (backups) BackupServerWorld("scheduled restart");
+            lock (ServerLock) if (serverProcess != null) { AddConsole(what + ": the server didn't stop in time, so it was left as it is.", "app"); return; }
+            if (backups) BackupServerWorld(what.ToLowerInvariant());
             scheduleRunningSince = null;
-            try { StartServer(); AddConsole("Scheduled restart: starting again.", "app"); }
-            catch (UserError ex) { AddConsole("Scheduled restart: couldn't start again (" + ex.Message + ").", "app"); }
+            try { StartServer(); AddConsole(what + ": starting again.", "app"); }
+            catch (UserError ex) { AddConsole(what + ": couldn't start again (" + ex.Message + ").", "app"); }
             NotifyPage("server");
+        }
+
+        // The Restart button: the same as a scheduled restart, minus the warnings, in the background.
+        static Dictionary<string, object> RestartServer()
+        {
+            lock (ServerLock)
+                if (serverProcess == null || serverState != "running") throw new UserError("The server isn't running.");
+            Log("Server    restart requested");
+            new Thread(() => { try { RestartNow("Restart", false); } catch { } }) { IsBackground = true }.Start();
+            Thread.Sleep(300);
+            return ServerStatus();
+        }
+
+        // When the next scheduled restart is due (null: none, or the server isn't running).
+        static DateTime? NextScheduledRestart()
+        {
+            int hours;
+            if (!int.TryParse(PrefChoice("serverRestart", "off"), out hours) || hours <= 0) return null;
+            DateTime since;
+            lock (ServerLock)
+            {
+                if (serverProcess == null || serverState != "running") return null;
+                since = scheduleRunningSince ?? serverStartedAt.ToUniversalTime();
+            }
+            return restartMinutesOverride > 0 ? since.AddMinutes(restartMinutesOverride) : since.AddHours(hours);
+        }
+
+        // "Back up now" for the server's world while it runs: saving paused so the files are consistent.
+        static Dictionary<string, object> BackupRunningServerWorld(string name, string reason)
+        {
+            try
+            {
+                ServerCommand("save-off");
+                ServerCommand("save-all flush");
+                Thread.Sleep(5000);
+                return BackupWorld("server", name, reason);
+            }
+            finally
+            {
+                try { ServerCommand("save-on"); } catch (UserError) { }
+            }
         }
 
         // Backs up the running server's world with saving paused, so the files are consistent.

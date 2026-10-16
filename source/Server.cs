@@ -105,6 +105,9 @@ namespace MinecraftModManager
             status["launchProblem"] = launchProblem;
             status["maxMemory"] = JvmMaxMemory(dir);
             status["lanAddresses"] = LanAddresses();
+            status["ramMb"] = TotalRamMb();
+            DateTime? next = NextScheduledRestart();
+            status["nextRestart"] = next.HasValue ? next.Value.ToString("o") : null;
             return status;
         }
 

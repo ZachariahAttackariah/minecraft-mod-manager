@@ -38,10 +38,6 @@ Settings (the gear at the right end of the section tabs)
                       something would keep the game from starting ("Play anyway" is there too).
   Updates ........... where updates come from (see Updates).
   Detect sides ...... whether client mods that add features on the server are marked both sides.
-  Server ............ restart on a schedule (off, 6, 12 or 24 hours; players are warned in chat 5 and 1
-                      minutes ahead) and back up the server world (at each scheduled restart, or once a
-                      day while it runs, with saving paused). Both are off by default and only apply to
-                      a server started from this app.
   Worlds ............ back up the latest world before risky changes (see World backups).
 
 Top right (like the Minecraft Launcher)
@@ -312,21 +308,40 @@ Server (for hosting friends on this PC)
                       checksums), runs it with the progress in the console, then copies the instance's
                       mods tagged "server" and its configs (not client-only ones). eula.txt is only written
                       if you tick "I accept Minecraft's EULA".
-  Status ............ running / stopped, memory, uptime, who's online, and how friends connect.
-  Start / Stop ...... Stop sends "stop", so
-                      the world saves. Force stop only appears while it's stopping, for when it's stuck.
-                      Nothing ever starts the server except the Start button.
+  Header ............ running / stopped, uptime, players, memory, time to the next scheduled restart, and
+                      "Out of sync" when the server's mods differ from the game's (click it for the list).
+                      The ... button opens the server folder or logs, checks the server's mods, creates a
+                      server or adds an existing folder.
+  Start / Restart / Stop
+                      Start warns first when the server's mods don't match the game (players whose mods
+                      differ can't join). Restart stops it (the world saves) and starts it again. Stop sends
+                      "stop"; Force stop only appears while it's stopping, for when it's stuck. The server
+                      only starts from these buttons, "Stop, apply and start", or a scheduled restart.
+  Overview .......... how friends join (with Copy buttons), the folder, world, mods, memory, restarts,
+                      backups and Java.
   Console ........... everything the server prints, live. Filter to warnings & errors or players & chat,
-                      type commands (Up/Down for history), quick buttons for list, save-all, whitelist, op, say.
-  Sync from the game  compares the game's mods (and their client/server tags) with the server's:
-                      mods to add, update, turn on or off, and the ones that are your call (client-only mods
-                      on the server, server-only mods). Config files that differ are listed setting by
-                      setting; choose "Game -> server" or "Server -> game" for each. Nothing changes until
-                      Apply, and never while the server runs. Replaced jars go to the Recycle Bin; overwritten
-                      configs are backed up in %LOCALAPPDATA%\MinecraftModManager\sync-backups.
-  Settings .......... server.properties: name, max players, difficulty, whitelist, view distance and the
-                      rest, plus every other line as text. Saved settings apply at the next start; the
-                      previous file is kept as server.properties.bak.
+                      type commands (Up/Down for history), quick buttons for list, save-all, say, day, weather.
+  Mods & configs .... compares the game's mods (and their client/server tags) with the server's. The counts
+                      at the top (Add, Update, Turn on, Turn off, Copy to game, Your call, No tag, Configs)
+                      filter the list; each group ticks as a whole; a row opens for versions, files and the
+                      reason. When the game has lots of mods turned off (testing?), turning them off on the
+                      server isn't ticked for you. Config files that differ show setting by setting; choose
+                      "Game -> server" or "Server -> game" for each. Nothing changes until you apply; while
+                      the server runs the button is "Stop, apply and start". Replaced jars go to the Recycle
+                      Bin; overwritten configs are backed up in %LOCALAPPDATA%\MinecraftModManager\sync-backups.
+  Players ........... who's online (Op, Kick, Ban), the whitelist (and turning it on or off), operators and
+                      bans. While the server runs, changes go in as commands; while it's stopped they're
+                      written to whitelist.json, ops.json and banned-players.json (a new name's UUID comes
+                      from the server's usercache.json, or from Mojang).
+  Settings .......... server.properties in sections (joining & access, gameplay, performance), with every
+                      other line as text; saved settings apply at the next start and the previous file is
+                      kept as server.properties.bak. Memory (user_jvm_args.txt; a starting heap fixed to the
+                      maximum moves with it) saves straight away. Restart on a schedule (off, 6, 12 or 24
+                      hours; players are warned in chat 5 and 1 minutes ahead) and back up the world (at each
+                      scheduled restart, or once a day while it runs, with saving paused); both are off by
+                      default and only apply to a server started from this app.
+  Backups ........... the server world's backups: Back up now (saving pauses for a few seconds while it
+                      runs), Restore (with the server stopped) and Delete.
   Closing the window while the server runs asks first, then stops the server properly and quits.
 
 Snapshots
