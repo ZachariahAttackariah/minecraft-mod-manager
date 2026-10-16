@@ -1,54 +1,21 @@
-# Draws the app icon, a yin-yang in black and white as 16x16 pixel art in Minecraft's style (two close shades
-# per colour scattered like a block texture, and a grey rim so it reads on dark and light taskbars alike), at
-# several sizes and writes app.ico. Small sizes are 32-bit BMP entries, 256 is PNG. Pixels are scaled by whole
-# numbers so they stay square and sharp; a size that isn't a multiple of 16 gets the biggest whole scale that
-# fits, centred, unless that would leave too wide a margin, in which case the pixels stretch to fill it.
+# Builds app.ico from icon-source.png (a chiseled bookshelf filled with books: Minecraft's own block, used as
+# a non-commercial fan tool may under Mojang's usage guidelines), scaled down to each icon size with
+# high-quality filtering. Small sizes are 32-bit BMP entries, 256 is PNG.
 Add-Type -AssemblyName System.Drawing
 $out = Join-Path $PSScriptRoot "app.ico"
+$source = [System.Drawing.Image]::FromFile((Join-Path $PSScriptRoot "icon-source.png"))
 
-# One letter per colour; "." is transparent.
-$palette = @{ W = "#f2f2f2"; V = "#dadada"; B = "#1b1b1b"; C = "#2f2f2f"; O = "#7a7a7a" }
-$art = @(
-    ".....OOOOOO.....",
-    "...OOWWBCCBOO...",
-    "..OWVWBBBBBCBO..",
-    ".OVWWBBBBBBBBCO.",
-    ".OWWVBCWWBBBBCO.",
-    "OWVWWBCWWCBBBBBO",
-    "OWWVWBBBCBCBBBBO",
-    "OWWWWWBCBBCBBBCO",
-    "OVWWWWWWVWBBCBBO",
-    "OWWVVWWWWWWCBBCO",
-    "OWWWWVWBBWWBBBBO",
-    ".OWWWWVCBWWBBCO.",
-    ".OVWWWWWWVWBBBO.",
-    "..OVWWWWWWCCBO..",
-    "...OOWWVWBBOO...",
-    ".....OOOOOO....."
-)
 function New-IconBitmap([int]$s) {
     $bmp = New-Object System.Drawing.Bitmap $s, $s, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.Clear([System.Drawing.Color]::Transparent)
-    $whole = [Math]::Max(1, [Math]::Floor($s / 16))
-    $stretch = ($s - 16 * $whole) -gt $s * 0.2
-    $offset = if ($stretch) { 0 } else { [Math]::Floor(($s - 16 * $whole) / 2) }
-    for ($y = 0; $y -lt 16; $y++) {
-        for ($x = 0; $x -lt 16; $x++) {
-            $ch = [string]$art[$y][$x]
-            if ($ch -eq ".") { continue }
-            $brush = New-Object System.Drawing.SolidBrush ([System.Drawing.ColorTranslator]::FromHtml($palette[$ch]))
-            if ($stretch) {
-                # Edges by rounding, so neighbouring pixels meet without gaps or overlaps.
-                $x0 = [Math]::Round($x * $s / 16); $x1 = [Math]::Round(($x + 1) * $s / 16)
-                $y0 = [Math]::Round($y * $s / 16); $y1 = [Math]::Round(($y + 1) * $s / 16)
-                $g.FillRectangle($brush, $x0, $y0, $x1 - $x0, $y1 - $y0)
-            } else {
-                $g.FillRectangle($brush, $offset + $x * $whole, $offset + $y * $whole, $whole, $whole)
-            }
-            $brush.Dispose()
-        }
-    }
+    $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+    $g.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
+    # Clamp at the edges, so the transparent border doesn't bleed a dark fringe into the scaled picture.
+    $attrs = New-Object System.Drawing.Imaging.ImageAttributes
+    $attrs.SetWrapMode([System.Drawing.Drawing2D.WrapMode]::TileFlipXY)
+    $g.DrawImage($source, (New-Object System.Drawing.Rectangle 0, 0, $s, $s), 0, 0, $source.Width, $source.Height, [System.Drawing.GraphicsUnit]::Pixel, $attrs)
     $g.Dispose()
     return $bmp
 }
