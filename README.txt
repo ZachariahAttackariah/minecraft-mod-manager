@@ -437,7 +437,7 @@ Files
   source\lib\                             The WebView2 DLLs used for building (from Microsoft's NuGet package).
   source\names.json                       Optional display names and Modrinth links for known jars (kept local).
   source\build.ps1                        Rebuilds the exe (and syntax-checks the page). Close the app first.
-  source\make-icon.ps1, app.ico           The icon (a pixel-art yin-yang).
+  source\make-icon.ps1, app.ico           The icon (a chiseled bookshelf, from icon-source.png).
   source\fonts\                           The pixel font for the title, PLAY and headings: "Minecraft" by
                                           Idrees Hassan (github.com/IdreesInc/Minecraft-Font), SIL Open Font
                                           License 1.1 (Minecraft-OFL.txt). Built into the app; works offline.
