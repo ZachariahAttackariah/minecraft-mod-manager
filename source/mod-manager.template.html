@@ -525,6 +525,11 @@ kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink)
 .dlg-files { margin: 0; padding: 8px 10px 8px 28px; max-height: 190px; overflow: auto; font: 400 12.5px/1.55 var(--font-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; overflow-wrap: anywhere; }
 .dlg-files .more { list-style: none; margin-left: -16px; font-family: var(--font-body); color: var(--muted); }
 .dialog .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+/* The confirm dialog never outgrows the window: its list and text scroll, the buttons stay in view. */
+#scrim .dialog { display: flex; flex-direction: column; max-height: calc(100vh - 32px); }
+#scrim .dialog > * { flex: none; }
+#scrim .dialog .dlg-files { flex: 0 1 auto; min-height: 48px; }
+#scrim .dialog #dlg-body { flex: 0 1 auto; min-height: 2.6em; overflow-y: auto; overflow-wrap: anywhere; }
 #dlg-extra, #check-again-dlg { margin-right: auto; } /* a third choice sits apart, on the left; Cancel and the action stay together on the right */
 
 .copy-fallback { position: fixed; inset: auto var(--gutter) calc(var(--bar-h) + 16px); z-index: 25; display: grid; gap: 8px; max-width: 560px; margin: 0 auto; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; box-shadow: var(--shadow-lg); }
@@ -3565,7 +3570,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     // unless other mods need what's being deleted.
     if (!pref("confirmDelete") && !deps.length) { deleteMods(rows); return; }
     var single = rows.length === 1;
-    var warn = deps.length ? " Careful: " + neededLines(deps).join("; ") + "." : "";
+    // A long list of what's still needed is cut short; the rest is a count.
+    var lines = neededLines(deps);
+    var warn = deps.length ? " Careful: " + lines.slice(0, 4).join("; ") +
+      (lines.length > 4 ? "; and " + count(lines.length - 4, "more mod", "more mods") + " that others need" : "") + "." : "";
     confirmDialog({
       title: single ? "Delete " + rows[0].name + "?" : "Delete " + rows.length + " mods?",
       items: rows.map(function (r) { return r.file; }),
