@@ -163,6 +163,25 @@ Packs
                       packs into this game, data packs into the default data pack folder. Other .zip files
                       go to Downloads.
 
+Configs
+  File list ......... every config file in the game's config folder and the server's, grouped by the mod it
+                      belongs to. "server differs" and "server only" show where the two copies part ways.
+  Search ............ the box finds files and, from two letters on, settings in every config at once;
+                      clicking a setting opens its file at that setting.
+  Settings page ..... TOML configs (what NeoForge mods write) show each setting with its description:
+                      switches for true/false, number boxes with the allowed range, dropdowns where only
+                      certain values are allowed, lists one per line. "changed from default" and Reset come
+                      from the default the mod notes. JSON configs show their values the same way.
+  Edit as text ...... the whole file in a text editor (the only view for other formats). JSON is checked
+                      before it's saved.
+  Game's / server's . when both have the file, switch between the copies. Your game's copy is the one that
+                      reaches the server by itself (Server > Mods & configs).
+  Saving ............ only the changed lines are rewritten (comments and layout stay); the old file is kept
+                      under %LOCALAPPDATA%\MinecraftModManager\sync-backups\<time>\editor-game (or
+                      editor-server). A file the game saved meanwhile isn't overwritten: open it again. Close
+                      the game first (the server, for its files): they rewrite configs as they close.
+  From a mod ........ its details > Config files > Edit opens that file here.
+
 Sharing between instances
   Shared settings... in the instance list shows what's shared. Each instance ticks what it shares in its
   own Settings. "New instances share everything" (on by default) applies to instances made here and to ones

@@ -976,6 +976,45 @@ details.more > summary { cursor: pointer; font: 600 13.5px/1.3 var(--font-displa
 .snap-new input { flex: 1 1 220px; min-width: 0; padding: 7px 9px; font-size: 13.5px; background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
 .history { margin: 8px 0 0; padding-left: 20px; font-size: 13px; color: var(--muted); }
 
+/* Configs page: files on the left, the open one as a settings page on the right. */
+.cfg-wrap { display: grid; grid-template-columns: minmax(240px, 320px) minmax(0, 1fr); gap: 12px; align-items: start; }
+.cfg-side { position: sticky; top: 8px; display: grid; gap: 8px; max-height: calc(100vh - 150px); grid-template-rows: auto auto minmax(0, 1fr); }
+.cfg-side input[type=search], .cfg-main input[type=search] { width: 100%; padding: 8px 10px; font: inherit; font-size: 13.5px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
+.cfg-files { overflow-y: auto; min-height: 0; margin: 0 -6px; padding: 0 6px; }
+.cfg-group { margin: 10px 0 2px; font: 700 11.5px/1.3 var(--font-body); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.cfg-file { display: flex; align-items: center; gap: 6px; width: 100%; padding: 6px 8px; text-align: left; font: 400 12.5px/1.3 var(--font-mono); color: var(--ink); background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.cfg-file:hover { background: var(--sunken); }
+.cfg-file[aria-current="true"] { background: color-mix(in srgb, var(--accent) 18%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+.cfg-file .p { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cfg-file .b, .cfg-head .b { flex: none; font: 600 10.5px/1 var(--font-body); padding: 3px 5px; border-radius: 3px; background: var(--sunken); color: var(--muted); }
+.cfg-file .b.diff, .cfg-head .b.diff { background: color-mix(in srgb, var(--warn, #d9a400) 25%, transparent); color: var(--ink); }
+.cfg-hit { display: grid; gap: 1px; width: 100%; padding: 6px 8px; text-align: left; background: none; border: 0; border-radius: 4px; cursor: pointer; color: var(--ink); }
+.cfg-hit:hover { background: var(--sunken); }
+.cfg-hit .k { font: 600 13px/1.3 var(--font-body); }
+.cfg-hit .f { font: 400 11.5px/1.3 var(--font-mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cfg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 10px; }
+.cfg-head h2 { margin: 0; font: 700 17px/1.3 var(--font-mono); overflow-wrap: anywhere; }
+.cfg-sec { margin: 18px 0 2px; padding-bottom: 4px; border-bottom: 1px solid var(--line); font: 700 15px/1.3 var(--font-display); }
+.cfg-sec-d { margin: 2px 0 4px; font-size: 12.5px; color: var(--muted); white-space: pre-line; }
+.cfg-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, auto); gap: 3px 16px; align-items: start; padding: 10px 2px; border-top: 1px solid var(--line); }
+.cfg-sec + .cfg-sec-d + .cfg-row, .cfg-sec + .cfg-row { border-top: 0; }
+.cfg-row .l { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+.cfg-row .l .key { margin-left: 6px; font: 400 11.5px/1 var(--font-mono); color: var(--muted); }
+.cfg-row .d { grid-column: 1; font-size: 12.5px; color: var(--muted); white-space: pre-line; overflow-wrap: anywhere; }
+.cfg-row .m { grid-column: 1; font: 400 11.5px/1.4 var(--font-mono); color: var(--muted); }
+.cfg-row .c { grid-column: 2; grid-row: 1 / span 3; justify-self: end; display: flex; align-items: center; gap: 6px; max-width: 420px; }
+.cfg-row .c input[type=text], .cfg-row .c input[type=number], .cfg-row .c select, .cfg-row .c textarea { padding: 6px 8px; font: 400 13px/1.35 var(--font-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
+.cfg-row .c input[type=number] { width: 130px; }
+.cfg-row .c input[type=text] { width: 260px; max-width: 100%; }
+.cfg-row .c textarea { width: 300px; max-width: 100%; min-height: 64px; resize: vertical; }
+.cfg-row.changed .l { color: var(--accent); }
+.cfg-row.changed .c input, .cfg-row.changed .c select, .cfg-row.changed .c textarea { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.cfg-row .tag-nd { font: 600 10.5px/1 var(--font-body); padding: 3px 5px; border-radius: 3px; background: var(--sunken); color: var(--muted); margin-left: 6px; vertical-align: 1px; }
+.cfg-row.flash { animation: cfg-flash 1.6s ease-out; }
+@keyframes cfg-flash { from { background: color-mix(in srgb, var(--accent) 30%, transparent); } to { background: transparent; } }
+.cfg-text { width: 100%; min-height: 60vh; padding: 10px 12px; font: 400 12.5px/1.5 var(--font-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; resize: vertical; tab-size: 4; white-space: pre; }
+@media (max-width: 820px) { .cfg-wrap { grid-template-columns: minmax(0, 1fr); } .cfg-side { position: static; max-height: 45vh; } }
+@media (max-width: 560px) { .cfg-row { grid-template-columns: minmax(0, 1fr); } .cfg-row .c { grid-column: 1; grid-row: auto; justify-self: start; } }
 .clean-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 10px 4px; border-bottom: 1px solid var(--line); }
 .clean-row .size { font: 600 14px/1.3 var(--font-mono); text-align: right; white-space: nowrap; }
 .clean-row .desc { font-size: 13px; color: var(--muted); }
@@ -1171,6 +1210,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <button type="button" data-view="mods" aria-current="page">Mods</button>
       <button type="button" data-view="libraries" title="Mods tagged library: the ones other mods need. They're kept out of the Mods list.">Libraries<span class="nav-n" id="lib-count"></span></button>
       <button type="button" data-view="packs">Packs</button>
+      <button type="button" data-view="configs" title="Every mod's settings, from the game's and the server's config folders">Configs</button>
       <button type="button" data-view="server">Server</button>
       <button type="button" data-view="snapshots">Snapshots</button>
       <button type="button" data-view="cleanup">Cleanup</button>
@@ -1431,6 +1471,18 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <div class="row-actions"><button class="btn" type="button" id="clean-rescan">Check sizes again</button><span class="hint" id="clean-status"></span></div>
       <div id="clean-list"></div>
       <div class="sticky-foot"><span class="grow" id="clean-total"></span><button class="btn danger" type="button" id="clean-run" disabled>Move to Recycle Bin</button></div>
+    </div>
+  </section>
+
+  <!-- Configs: the config folders as settings pages (ConfigEditor.cs). -->
+  <section class="view" id="view-configs" aria-label="Configs" hidden>
+    <div class="cfg-wrap">
+      <aside class="card cfg-side">
+        <input id="cfg-find" type="search" placeholder="Find a mod, file or setting" aria-label="Find a mod, file or setting" autocomplete="off" spellcheck="false">
+        <div class="hint" id="cfg-count"></div>
+        <div id="cfg-files" class="cfg-files"></div>
+      </aside>
+      <div class="card cfg-main" id="cfg-main"></div>
     </div>
   </section>
 
@@ -4346,7 +4398,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   // ---------- Sections (Mods / Server / Snapshots / Cleanup) ----------
 
-  var VIEWS = ["mods", "libraries", "packs", "server", "snapshots", "cleanup", "settings"];
+  var VIEWS = ["mods", "libraries", "packs", "configs", "server", "snapshots", "cleanup", "settings"];
   var currentView = "mods";
   function setView(name, initial) {
     if (VIEWS.indexOf(name) < 0) name = "mods";
@@ -4354,7 +4406,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     currentView = name;
     // Libraries is the Mods page showing only mods tagged library.
     var section = name === "libraries" ? "mods" : name;
-    ["mods", "packs", "server", "snapshots", "cleanup", "settings"].forEach(function (v) { $("view-" + v).hidden = v !== section; });
+    ["mods", "packs", "configs", "server", "snapshots", "cleanup", "settings"].forEach(function (v) { $("view-" + v).hidden = v !== section; });
     if (section === "mods") switchListArea(name);
     if (section === "mods" && was !== name && model) {
       Object.keys(selected).forEach(function (k) { delete selected[k]; });
@@ -4375,6 +4427,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (name === "packs") loadPacks(false);
     if (name === "snapshots") { loadSnapshots(); loadWorlds(); loadHistory(); }
     if (name === "cleanup") loadCleanup();
+    if (name === "configs") loadConfigList();
   }
   Array.prototype.forEach.call(document.querySelectorAll("#view-nav button[data-view]"), function (b) {
     b.addEventListener("click", function () { setView(b.getAttribute("data-view")); });
@@ -5246,7 +5299,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "userCss", label: "Your own styles (user.css)", desc: "", custom: userCssControl, fine: true }
     ] },
     { title: "Mod list", items: [
-      { key: "startPage", label: "Open on", desc: "The page the app shows when it starts.", select: [["last", "Where I left off"], ["mods", "Mods"], ["libraries", "Libraries"], ["packs", "Packs"], ["server", "Server"], ["snapshots", "Snapshots"]] },
+      { key: "startPage", label: "Open on", desc: "The page the app shows when it starts.", select: [["last", "Where I left off"], ["mods", "Mods"], ["libraries", "Libraries"], ["packs", "Packs"], ["configs", "Configs"], ["server", "Server"], ["snapshots", "Snapshots"]] },
       { key: "fileNames", label: "Show file names", desc: "The jar's file name under each mod's name." },
       { key: "colVersion", label: "Version column", desc: "Each mod's installed version, from Modrinth or CurseForge when known, else from the jar." },
       { key: "colSide", label: "Side column", desc: "The C and S marks for client and server." },
@@ -6352,7 +6405,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   function renderConfigs(body, d) {
-    body.append(h("p", { class: "hint", style: "margin:0 0 8px" }, "Files in the game's config folder named after this mod. \"Server\" shows whether the server's copy matches."));
+    body.append(h("p", { class: "hint", style: "margin:0 0 8px" }, "Files in the game's config folder named after this mod. Edit opens one in Configs as a settings page; \"Server\" shows whether the server's copy matches."));
     if (!d.configs.length) body.append(h("p", { class: "search-empty" }, "No config files found for it (some mods keep settings in the world, or make them on first launch)."));
     d.configs.forEach(function (c) {
       var server = c.server === null ? null : h("span", { class: "st " + c.server }, c.server === "same" ? "same on server" : c.server === "different" ? "different on server" : "not on server");
@@ -6361,7 +6414,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       };
       body.append(h("div", { class: "dep" },
         h("div", null, h("div", { style: "font-family:var(--font-mono);font-size:13px" }, c.path), h("div", { class: "sub" }, formatBytes(c.size) + " · changed " + dateTimeText(c.modified))),
-        h("div", { class: "row-actions" }, server, btn("Open", open("game", false)), btn("Show in folder", open("game", true)),
+        h("div", { class: "row-actions" }, server, btn("Edit", function () { closeDetails(); openConfig("game", c.path); }, "primary"), btn("Open in Notepad", open("game", false)), btn("Show in folder", open("game", true)),
           c.server === "same" || c.server === "different" ? btn("Open server's", open("server", false)) : null)));
     });
   }
@@ -6371,6 +6424,366 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   });
   $("details-close").addEventListener("click", closeDetails);
   $("details-scrim").addEventListener("mousedown", function (e) { if (e.target === $("details-scrim")) closeDetails(); });
+
+  // ---------- Configs: every mod's settings as a page (ConfigEditor.cs) ----------
+  // TOML files show setting by setting (switches, numbers, dropdowns, lists) from what NeoForge writes
+  // above each one; JSON files show their values; anything else, or "Edit as text", is a text editor.
+
+  var cfg = { files: null, error: null, open: null, doc: null, docError: null, json: undefined, edits: {}, mode: "settings",
+    text: "", textDirty: false, filter: "", within: "", hits: null, hitsFor: "", timer: 0, seq: 0, focus: null, saving: false };
+
+  function cfgKey(section, key) { return section + "\u0000" + key; }
+  function cfgDirty() { return cfg.mode === "text" ? cfg.textDirty : Object.keys(cfg.edits).length > 0; }
+  function cfgFileInfo(path) {
+    return cfg.files ? cfg.files.files.filter(function (f) { return f.path === path; })[0] || null : null;
+  }
+  function humanKey(k) {
+    var s = String(k).replace(/[_]+/g, " ").replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/\s+/g, " ").trim();
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  function cfgShort(v) { v = String(v); return v.length > 32 ? v.slice(0, 32) + "…" : v; }
+
+  // Asks before dropping unsaved changes.
+  function cfgLeave(then) {
+    if (!cfg.open || !cfgDirty()) { then(); return; }
+    confirmDialog({ title: "Leave " + cfg.open.path + "?", items: [], body: "Your changes to it aren't saved yet and will be lost.",
+      ok: "Leave without saving", okClass: "danger", onOk: then });
+  }
+
+  function loadConfigList() {
+    if (!connected) return Promise.resolve();
+    renderConfigSide();
+    if (!cfg.open) renderConfigMain();
+    return api("GET", "/api/configs").then(function (res) { cfg.files = res; cfg.error = null; }, function (e) { cfg.error = e.message; })
+      .then(function () { renderConfigSide(); if (!cfg.open) renderConfigMain(); else updateCfgFoot(); });
+  }
+
+  function renderConfigSide() {
+    var box = $("cfg-files");
+    box.replaceChildren();
+    if (cfg.error) { box.append(h("p", { class: "search-empty" }, cfg.error)); return; }
+    if (!cfg.files) { box.append(h("p", { class: "search-empty" }, "Reading the config folders…")); return; }
+    var q = cfg.filter.toLowerCase();
+    var list = cfg.files.files.filter(function (f) { return !q || (f.path + " " + (f.ownerName || "") + " " + (f.owner || "")).toLowerCase().indexOf(q) >= 0; });
+    $("cfg-count").textContent = count(list.length, "file", "files") + (q ? " match" : "") + (cfg.files.hasServer ? ", from the game and the server" : "");
+    // Settings in any config that match, when there's something to look for.
+    if (q.length >= 2) {
+      box.append(h("div", { class: "cfg-group" }, "Settings"));
+      if (cfg.hitsFor !== q || !cfg.hits) box.append(h("p", { class: "hint" }, "Looking through every config…"));
+      else if (!cfg.hits.length) box.append(h("p", { class: "hint" }, "No setting matches."));
+      else cfg.hits.forEach(function (x) {
+        box.append(h("button", { type: "button", class: "cfg-hit", title: x.desc || "", onclick: function () { openConfig(x.side, x.path, cfgKey(x.section, x.key)); } },
+          h("span", { class: "k" }, humanKey(x.key) + " = " + cfgShort(x.type === "string" ? x.value : x.raw)),
+          h("span", { class: "f" }, x.path + (x.section ? " › " + x.section : ""))));
+      });
+    }
+    // Files, grouped by the mod they belong to; files no mod claims come last.
+    var groups = {}, order = [];
+    list.forEach(function (f) { var g = f.ownerName || "Other files"; if (!groups[g]) { groups[g] = []; order.push(g); } groups[g].push(f); });
+    order.sort(function (a, b) { return a === "Other files" ? 1 : b === "Other files" ? -1 : a.toLowerCase() < b.toLowerCase() ? -1 : 1; });
+    order.forEach(function (g) {
+      box.append(h("div", { class: "cfg-group" }, g));
+      groups[g].forEach(function (f) {
+        var side = f.game ? "game" : "server";
+        var badge = !f.game ? h("span", { class: "b" }, "server only") : f.match === "different" ? h("span", { class: "b diff", title: "The server's copy has different settings" }, "server differs") : null;
+        box.append(h("button", { type: "button", class: "cfg-file", "aria-current": String(!!cfg.open && cfg.open.path === f.path), title: f.path,
+          onclick: function () { openConfig(side, f.path); } }, h("span", { class: "p" }, f.path), badge));
+      });
+    });
+    if (!cfg.files.files.length) box.append(h("p", { class: "search-empty" }, "No config files yet. Mods write theirs the first time the game starts."));
+  }
+
+  $("cfg-find").addEventListener("input", function () {
+    cfg.filter = $("cfg-find").value.trim();
+    renderConfigSide();
+    clearTimeout(cfg.timer);
+    var q = cfg.filter.toLowerCase();
+    if (q.length < 2) return;
+    cfg.timer = setTimeout(function () {
+      api("GET", "/api/configs/search?q=" + encodeURIComponent(q)).then(function (res) {
+        if (cfg.filter.toLowerCase() !== q) return;
+        cfg.hits = res.hits;
+        cfg.hitsFor = q;
+        renderConfigSide();
+      }, function () {});
+    }, 300);
+  });
+
+  function openConfig(side, path, focus) {
+    if (cfg.open && cfg.open.path === path && cfg.open.side === side && cfg.doc) {
+      if (focus) { cfg.focus = focus; cfg.within = ""; renderConfigMain(); }
+      if (currentView !== "configs") setView("configs");
+      return;
+    }
+    cfgLeave(function () {
+      cfg.open = { side: side, path: path };
+      cfg.edits = {};
+      cfg.textDirty = false;
+      cfg.within = "";
+      cfg.focus = focus || null;
+      if (currentView !== "configs") setView("configs");
+      readOpenConfig();
+    });
+  }
+
+  function readOpenConfig() {
+    var o = cfg.open, seq = ++cfg.seq;
+    cfg.doc = null;
+    cfg.docError = null;
+    cfg.mode = "settings";
+    renderConfigSide();
+    renderConfigMain();
+    return api("GET", "/api/configs/read?side=" + o.side + "&path=" + encodeURIComponent(o.path)).then(function (d) {
+      if (seq !== cfg.seq) return;
+      cfg.doc = d;
+      cfg.text = d.text;
+      cfg.json = undefined;
+      if (d.format === "json") { try { cfg.json = JSON.parse(d.text); } catch (e) {} }
+      if (d.format === "toml" ? !d.entries || !d.entries.length : d.format !== "json" || !jsonEntries().length) cfg.mode = "text";
+    }, function (e) { if (seq === cfg.seq) cfg.docError = e.message; }).then(function () { if (seq === cfg.seq) renderConfigMain(); });
+  }
+
+  // A JSON file's plain values (and lists of them) as settings, keyed by their path in the file.
+  function jsonEntries() {
+    var out = [];
+    (function walk(v, path) {
+      if (v && typeof v === "object" && !Array.isArray(v)) { Object.keys(v).forEach(function (k) { walk(v[k], path.concat([k])); }); return; }
+      if (!path.length) return;
+      var simple = function (x) { return x === null || typeof x !== "object"; };
+      if (Array.isArray(v) && !v.every(simple)) return;
+      var t = typeof v === "boolean" ? "bool" : typeof v === "number" ? (Math.floor(v) === v ? "int" : "float") : typeof v === "string" ? "string" : Array.isArray(v) ? "list" : null;
+      if (!t) return;
+      out.push({ section: path.slice(0, -1).join(" › "), key: path[path.length - 1], jsonPath: path, type: t,
+        value: v, raw: t === "bool" || t === "int" || t === "float" ? String(v) : t === "string" ? v : "", items: t === "list" ? v.map(String) : null,
+        numbers: t === "list" && v.length > 0 && v.every(function (x) { return typeof x === "number"; }), desc: "" });
+    })(cfg.json, []);
+    return out;
+  }
+  function cfgEntries() {
+    if (!cfg.doc) return [];
+    return cfg.doc.format === "json" ? jsonEntries() : cfg.doc.entries || [];
+  }
+
+  // A setting's current value as the page edits it: true/false, number text, a string, or a list of strings.
+  function cfgValue(e) {
+    if (e.type === "bool") return e.raw === "true";
+    if (e.type === "string") return e.value;
+    if (e.type === "list" && e.items) return e.items.slice();
+    return e.raw;
+  }
+  function cfgSame(a, b) { return Array.isArray(a) ? Array.isArray(b) && a.join("\n") === b.join("\n") : String(a) === String(b); }
+  // The default NeoForge noted, in the same form as cfgValue (null when there's none).
+  function cfgDefault(e) {
+    if (e.default == null || e.default === "") return null;
+    var d = String(e.default);
+    if (e.type === "bool") return d === "true" ? true : d === "false" ? false : null;
+    if (e.type === "list") {
+      var inner = d.replace(/^\[|\]$/g, "").trim();
+      return inner ? inner.split(/\s*,\s*/).map(function (x) { return x.replace(/^["']|["']$/g, ""); }) : [];
+    }
+    if (e.type === "string") return d.replace(/^["']|["']$/g, "");
+    return d;
+  }
+  function cfgNumber(v) { if (v == null || String(v).trim() === "") return null; var n = Number(v); return isFinite(n) && Math.abs(n) < 1e15 ? n : null; }
+
+  function cfgRow(e) {
+    var k = cfgKey(e.section, e.key);
+    var has = Object.prototype.hasOwnProperty.call(cfg.edits, k);
+    var cur = has ? cfg.edits[k] : cfgValue(e);
+    var def = cfgDefault(e);
+    var row = h("div", { class: "cfg-row" + (has ? " changed" : ""), "data-k": k });
+    var ndTag = h("span", { class: "tag-nd", title: "Not the mod's default" + (def !== null ? " (" + (Array.isArray(def) ? def.join(", ") : def) + ")" : "") }, "changed from default");
+    var reset = def === null ? null : btn("Reset", function () { set(def); renderConfigMain(); }, "", { title: "Back to the mod's default" });
+    var markDefault = function (v) {
+      var off = def !== null && !cfgSame(v, def);
+      ndTag.hidden = !off;
+      if (reset) reset.hidden = !off;
+    };
+    var set = function (v) {
+      if (cfgSame(v, cfgValue(e))) delete cfg.edits[k]; else cfg.edits[k] = v;
+      row.classList.toggle("changed", Object.prototype.hasOwnProperty.call(cfg.edits, k));
+      markDefault(v);
+      updateCfgFoot();
+    };
+    var control;
+    if (e.type === "bool") {
+      var on = !!cur;
+      control = h("button", { type: "button", class: "toggle sw-btn" + (on ? " on" : ""), role: "switch", "aria-checked": String(on), "aria-label": humanKey(e.key),
+        onclick: function () { on = !on; control.classList.toggle("on", on); control.setAttribute("aria-checked", String(on)); set(on); } },
+        h("span", { class: "sw", "aria-hidden": "true" }));
+    } else if (e.type === "int" || e.type === "float") {
+      var min = cfgNumber(e.min), max = cfgNumber(e.max);
+      control = h("input", { type: "number", step: e.type === "int" ? "1" : "any", min: min, max: max, "aria-label": humanKey(e.key) });
+      control.value = cur;
+      control.addEventListener("input", function () { set(control.value.trim()); });
+    } else if (e.type === "string" && e.allowed && e.allowed.length) {
+      control = h("select", { "aria-label": humanKey(e.key) });
+      var opts = e.allowed.slice();
+      if (opts.indexOf(cur) < 0) opts.unshift(cur);
+      opts.forEach(function (x) { control.append(h("option", { value: x }, x)); });
+      control.value = cur;
+      control.addEventListener("change", function () { set(control.value); });
+    } else if (e.type === "list" && e.items) {
+      control = h("textarea", { rows: String(Math.min(8, Math.max(2, cur.length + 1))), spellcheck: "false", "aria-label": humanKey(e.key) + ", one per line" });
+      control.value = cur.join("\n");
+      control.addEventListener("input", function () { set(control.value.split("\n").map(function (x) { return x.trim(); }).filter(Boolean)); });
+    } else {
+      control = h("input", { type: "text", spellcheck: "false", "aria-label": humanKey(e.key) });
+      control.value = cur;
+      control.addEventListener("input", function () { set(control.value); });
+    }
+    var meta = [];
+    if (e.min != null || e.max != null) {
+      var lo = cfgNumber(e.min), hi = cfgNumber(e.max);
+      meta.push(lo !== null && hi !== null ? "From " + e.min + " to " + e.max : lo !== null ? "At least " + e.min : hi !== null ? "At most " + e.max : null);
+    }
+    if (e.type === "list" && e.items) meta.push("One per line");
+    if (def !== null) meta.push("Default: " + (Array.isArray(def) ? (def.length ? def.join(", ") : "empty") : def));
+    var label = humanKey(e.key);
+    [
+      h("div", { class: "l" }, label, label === e.key ? null : h("span", { class: "key" }, e.key), ndTag),
+      // Mods wrap their descriptions by hand; a line that carries on the sentence is joined back up.
+      e.desc ? h("div", { class: "d" }, String(e.desc).replace(/\n(?=[a-z(\[])/g, " ")) : null,
+      meta.filter(Boolean).length ? h("div", { class: "m" }, meta.filter(Boolean).join(" · ")) : null,
+      h("div", { class: "c" }, reset, control)
+    ].filter(Boolean).forEach(function (x) { row.append(x); });
+    markDefault(cur);
+    return row;
+  }
+
+  function renderConfigMain() {
+    var main = $("cfg-main");
+    main.replaceChildren();
+    if (!cfg.open) {
+      main.append(h("h2", null, "Configs"), h("p", { class: "lead", style: "margin:0" },
+        "Every mod's settings, from your game's config folder" + (cfg.files && cfg.files.hasServer ? " and the server's" : "") + ". Pick a file, or type in the box to find a setting in any of them. " +
+        "The old file is kept as a backup each time you save, and configs you change in the game reach the server by themselves (Server › Mods & configs)."));
+      return;
+    }
+    var o = cfg.open, f = cfgFileInfo(o.path), d = cfg.doc;
+    var head = h("div", { class: "cfg-head" }, h("h2", { style: "flex:1 1 280px;min-width:0" }, o.path));
+    if (f && f.game && f.server) {
+      var seg = h("div", { class: "seg-control", role: "group", "aria-label": "Which copy" });
+      [["game", "Game's copy"], ["server", "Server's copy"]].forEach(function (s) {
+        seg.append(h("button", { type: "button", "aria-pressed": String(o.side === s[0]), onclick: function () { if (o.side !== s[0]) openConfig(s[0], o.path); } }, s[1]));
+      });
+      head.append(seg);
+    }
+    var canSettings = d && (d.format === "toml" ? d.entries && d.entries.length : d.format === "json" && jsonEntries().length);
+    if (canSettings) head.append(btn(cfg.mode === "text" ? "Show as settings" : "Edit as text", function () {
+      cfgLeave(function () { cfg.edits = {}; cfg.textDirty = false; cfg.text = d.text; cfg.mode = cfg.mode === "text" ? "settings" : "text"; renderConfigMain(); });
+    }));
+    head.append(btn("Open in Notepad", function () { api("POST", "/api/open-file", { side: o.side, path: o.path, reveal: false }).catch(function (e) { toast(e.message); }); }),
+      btn("Show in folder", function () { api("POST", "/api/open-file", { side: o.side, path: o.path, reveal: true }).catch(function (e) { toast(e.message); }); }));
+    main.append(head);
+    if (cfg.docError) { main.append(h("p", { class: "search-empty" }, cfg.docError)); return; }
+    if (!d) { main.append(h("p", { class: "search-empty" }, "Reading " + o.path + "…")); return; }
+
+    var running = cfg.files && (o.side === "server" ? cfg.files.serverRunning || serverRunning() : cfg.files.gameRunning);
+    if (running) main.append(h("p", { class: "warnbox", style: "margin:0 0 10px" }, o.side === "server"
+      ? "The server is running. Stop it before saving: it rewrites its configs while it runs and when it stops."
+      : "The game is running. Close it before saving: it rewrites its configs when it closes, which would undo your changes."));
+    if (f && f.server && f.game) main.append(h("p", { class: "hint", style: "margin:0 0 10px" }, o.side === "game"
+      ? (f.match === "different" ? "The server's copy has different settings. " : "") + (pref("serverConfigsAuto") !== false ? "Settings you change here reach the server by themselves the next time it's stopped or started from here." : "Copy changes to the server from Server › Mods & configs.")
+      : "This is the server's copy. Changes made here stay on the server; your game's copy is the one that's copied over when it changes."));
+    if (d.parseError) main.append(h("p", { class: "hint" }, "This file couldn't be read setting by setting (" + d.parseError + "), so it's shown as text."));
+
+    if (cfg.mode === "text") {
+      var area = h("textarea", { class: "cfg-text", spellcheck: "false", "aria-label": o.path });
+      area.value = cfg.text;
+      area.addEventListener("input", function () { cfg.text = area.value; cfg.textDirty = cfg.text !== d.text; updateCfgFoot(); });
+      main.append(area);
+    } else {
+      var within = h("input", { type: "search", placeholder: "Filter these settings", "aria-label": "Filter these settings", autocomplete: "off", spellcheck: "false", style: "margin-bottom:4px" });
+      within.value = cfg.within;
+      var list = h("div");
+      var draw = function () {
+        list.replaceChildren();
+        var words = cfg.within.toLowerCase().split(/\s+/).filter(Boolean);
+        var last = null, shown = 0, sections = d.sections || {};
+        cfgEntries().forEach(function (e) {
+          var hay = (e.section + " " + e.key + " " + humanKey(e.key) + " " + (e.desc || "")).toLowerCase();
+          if (!words.every(function (w) { return hay.indexOf(w) >= 0; })) return;
+          if (e.section !== last) {
+            last = e.section;
+            if (e.section) {
+              list.append(h("div", { class: "cfg-sec" }, e.section.split(/[.›]/).map(function (s) { return humanKey(s.trim()); }).join(" › ")));
+              if (sections[e.section]) list.append(h("div", { class: "cfg-sec-d" }, sections[e.section]));
+            }
+          }
+          list.append(cfgRow(e));
+          shown++;
+        });
+        if (!shown) list.append(h("p", { class: "search-empty" }, "No setting matches."));
+      };
+      within.addEventListener("input", function () { cfg.within = within.value.trim(); draw(); });
+      main.append(within, list);
+      draw();
+      if (cfg.focus) {
+        var want = cfg.focus;
+        var target = Array.prototype.filter.call(list.querySelectorAll(".cfg-row"), function (r) { return r.getAttribute("data-k") === want; })[0];
+        cfg.focus = null;
+        if (target) setTimeout(function () { target.scrollIntoView({ block: "center" }); target.classList.add("flash"); }, 30);
+      }
+    }
+    main.append(h("div", { class: "sticky-foot" }, h("span", { class: "grow", id: "cfg-status" }),
+      h("span", { class: "row-actions" }, btn("Discard changes", function () {
+        cfg.edits = {}; cfg.textDirty = false; cfg.text = d.text; renderConfigMain();
+      }, "", { id: "cfg-discard" }), btn("Save", saveConfig, "primary", { id: "cfg-save" }))));
+    updateCfgFoot();
+  }
+
+  function updateCfgFoot() {
+    if (!$("cfg-status") || !cfg.open) return;
+    var n = cfg.mode === "text" ? (cfg.textDirty ? 1 : 0) : Object.keys(cfg.edits).length;
+    var running = cfg.files && (cfg.open.side === "server" ? cfg.files.serverRunning || serverRunning() : cfg.files.gameRunning);
+    $("cfg-status").textContent = !n ? "No changes." : cfg.mode === "text" ? "The text has changed." : count(n, "setting", "settings") + " changed, not saved yet.";
+    $("cfg-save").disabled = !n || cfg.saving || !connected || running;
+    $("cfg-discard").disabled = !n || cfg.saving;
+  }
+
+  function saveConfig() {
+    var o = cfg.open, d = cfg.doc;
+    if (!o || !d || !cfgDirty()) return;
+    var req;
+    if (cfg.mode === "text") {
+      if (d.format === "json") { try { JSON.parse(cfg.text); } catch (e) { toast("That isn't valid JSON yet: " + e.message); return; } }
+      req = api("POST", "/api/configs/save-text", { side: o.side, path: o.path, stamp: d.stamp, text: cfg.text });
+    } else if (d.format === "json") {
+      // Changed values go into a copy of the file's data, written back with its own indentation.
+      var data = JSON.parse(d.text), bad = null;
+      jsonEntries().forEach(function (e) {
+        var k = cfgKey(e.section, e.key);
+        if (!Object.prototype.hasOwnProperty.call(cfg.edits, k) || bad) return;
+        var v = cfg.edits[k];
+        if (e.type === "int" || e.type === "float") { v = Number(v); if (String(cfg.edits[k]).trim() === "" || !isFinite(v)) { bad = humanKey(e.key) + " needs a number."; return; } }
+        if (e.type === "list" && e.numbers && !v.every(function (x) { return isFinite(Number(x)); })) { bad = humanKey(e.key) + " is a list of numbers."; return; }
+        if (e.type === "list" && e.numbers) v = v.map(Number);
+        var at = data;
+        e.jsonPath.slice(0, -1).forEach(function (p) { at = at[p]; });
+        at[e.jsonPath[e.jsonPath.length - 1]] = v;
+      });
+      if (bad) { toast(bad); return; }
+      var indent = (/\n([ \t]+)"/.exec(d.text) || [null, "  "])[1];
+      var text = JSON.stringify(data, null, indent) + (/\n$/.test(d.text) ? "\n" : "");
+      req = api("POST", "/api/configs/save-text", { side: o.side, path: o.path, stamp: d.stamp, text: d.text.indexOf("\r\n") >= 0 ? text.replace(/\n/g, "\r\n") : text });
+    } else {
+      var edits = cfgEntries().filter(function (e) { return Object.prototype.hasOwnProperty.call(cfg.edits, cfgKey(e.section, e.key)); })
+        .map(function (e) { return { section: e.section, key: e.key, type: e.type === "list" && !e.items ? "other" : e.type, value: cfg.edits[cfgKey(e.section, e.key)] }; });
+      req = api("POST", "/api/configs/save", { side: o.side, path: o.path, stamp: d.stamp, edits: edits });
+    }
+    cfg.saving = true;
+    updateCfgFoot();
+    var f = cfgFileInfo(o.path);
+    track("Saving " + o.path, req).then(function () {
+      cfg.edits = {};
+      cfg.textDirty = false;
+      var keepMode = cfg.mode;
+      toast("Saved " + o.path + "." + (o.side === "game" && cfg.files && cfg.files.hasServer && pref("serverConfigsAuto") !== false && (!f || f.server)
+        ? " The server gets it the next time it's stopped or started from here." : ""));
+      return readOpenConfig().then(function () { if (keepMode === "text") { cfg.mode = "text"; renderConfigMain(); } loadConfigList(); });
+    }, function (e) { toast(e.message); }).then(function () { cfg.saving = false; updateCfgFoot(); });
+  }
 
   // ---------- Changelogs before updating ----------
 

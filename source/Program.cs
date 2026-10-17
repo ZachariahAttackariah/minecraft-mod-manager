@@ -464,6 +464,15 @@ namespace MinecraftModManager
                         case "/api/mod/deptree":
                             result = DependencyTree(req.QueryString["file"]);
                             break;
+                        case "/api/configs":
+                            result = ListConfigFiles();
+                            break;
+                        case "/api/configs/read":
+                            result = ReadConfigFile(req.QueryString["side"] == "server" ? "server" : "game", req.QueryString["path"]);
+                            break;
+                        case "/api/configs/search":
+                            result = SearchConfigs(req.QueryString["q"]);
+                            break;
                         case "/api/tags/suggest":
                             result = TagSuggestionSources();
                             break;
@@ -807,6 +816,12 @@ namespace MinecraftModManager
                         return;
                     case "/api/check/copy-from-server":
                         SendJson(ctx, 200, CopyFromServer(Str(body, "file")));
+                        return;
+                    case "/api/configs/save":
+                        SendJson(ctx, 200, SaveConfigEdits(body));
+                        return;
+                    case "/api/configs/save-text":
+                        SendJson(ctx, 200, SaveConfigText(body));
                         return;
                     case "/api/open-file":
                         OpenConfigFile(Str(body, "side"), Str(body, "path"), Bool(body, "reveal"));
