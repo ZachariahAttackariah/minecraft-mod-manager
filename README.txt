@@ -372,7 +372,9 @@ Modrinth (built in, no account or key needed)
                       it needs, checks every download against Modrinth's checksum, and tags new jars
                       client/server from Modrinth's info. A second copy of a mod you already have is skipped.
                       Click a result's name for its preview (in the same window as an installed mod's details):
-                      description, gallery, links, what version Install would get, and Install itself. Results
+                      description, gallery, links, what version Install would get, and Install itself. Its
+                      Versions tab lists every version for your game version (newest first, with changelogs)
+                      and "Install this" installs that one instead of the newest. Results
                       you already have say Installed, checked against the mod list as it is right now (matched
                       by Modrinth project, CurseForge project, or the mod's own id or name).
   Status bar ........ how many jars Modrinth recognises and how many have updates (re-checked every 30 min).

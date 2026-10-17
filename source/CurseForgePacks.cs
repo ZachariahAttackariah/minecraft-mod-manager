@@ -53,6 +53,21 @@ namespace MinecraftModManager
                 ?? fits.OrderByDescending(x => CfId(Get(x, "fileId"))).FirstOrDefault();
         }
 
+        // Every zip of a pack for this Minecraft version (shader packs any), newest first (up to 200).
+        static List<Dictionary<string, object>> CfPackFiles(long id, string kind)
+        {
+            var files = new List<Dictionary<string, object>>();
+            for (int index = 0; index < 200; index += 50)
+            {
+                object[] page = CfList(CfHttp("GET", "/mods/" + id + "/files?" + (kind == "shaderpacks" ? "" : "gameVersion=" + Uri.EscapeDataString(gameVersion) + "&") +
+                    "index=" + index + "&pageSize=50", null));
+                files.AddRange(page.Select(D).Where(f => f != null));
+                if (page.Length < 50) break;
+            }
+            return files.Where(f => (!(Get(f, "isAvailable") is bool) || (bool)Get(f, "isAvailable")) && (S(f, "fileName") ?? "").EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(f => S(f, "fileDate") ?? "").ThenByDescending(f => CfId(Get(f, "id"))).ToList();
+        }
+
         static HashSet<long> CfInstalledPacks(string dir)
         {
             var ids = new HashSet<long>();
@@ -92,7 +107,7 @@ namespace MinecraftModManager
             return Obj("ok", true, "target", TargetObj(), "total", Math.Min(CfId(Get(page, "totalCount")), 10000), "offset", offset, "hits", hits);
         }
 
-        static Dictionary<string, object> CurseForgePackInstall(string kind, string placeId, string projectId)
+        static Dictionary<string, object> CurseForgePackInstall(string kind, string placeId, string projectId, string fileId = null)
         {
             long id = CfId((projectId ?? "").Replace("cf:", ""));
             if (id <= 0) throw new UserError("No pack was chosen.");
@@ -107,10 +122,17 @@ namespace MinecraftModManager
                 // The author's choice: no downloads through other apps. Their page opens instead.
                 if (!CfDownloadsAllowed(mod)) return Obj("ok", true, "manual", true, "url", CfUrl(mod), "title", title, "added", new List<object>(), "notes", notes);
                 if (CfInstalledPacks(place.Dir).Contains(id)) throw new UserError(title + " is already there.");
-                Dictionary<string, object> latest = CfPackLatestIndex(mod, kind);
-                if (latest == null)
-                    throw new UserError("CurseForge has no " + KindNoun(kind) + " download of " + title + (kind == "shaderpacks" ? "." : " for Minecraft " + gameVersion + "."));
-                Dictionary<string, object> file = CfData(CfHttp("GET", "/mods/" + id + "/files/" + CfId(Get(latest, "fileId")), null));
+                // A file picked in the preview's Versions tab, else the newest that fits.
+                long chosen = CfId((fileId ?? "").Replace("cf:", ""));
+                if (chosen <= 0)
+                {
+                    Dictionary<string, object> latest = CfPackLatestIndex(mod, kind);
+                    if (latest == null)
+                        throw new UserError("CurseForge has no " + KindNoun(kind) + " download of " + title + (kind == "shaderpacks" ? "." : " for Minecraft " + gameVersion + "."));
+                    chosen = CfId(Get(latest, "fileId"));
+                }
+                Dictionary<string, object> file = CfData(CfHttp("GET", "/mods/" + id + "/files/" + chosen, null));
+                if (file != null && CfId(Get(file, "modId")) != id) file = null;
                 if (file == null) throw new UserError("CurseForge has no such file of " + title + ".");
                 string address = S(file, "downloadUrl"), name = Path.GetFileName(S(file, "fileName") ?? "");
                 if (string.IsNullOrEmpty(address)) return Obj("ok", true, "manual", true, "url", CfUrl(mod), "title", title, "added", new List<object>(), "notes", notes);

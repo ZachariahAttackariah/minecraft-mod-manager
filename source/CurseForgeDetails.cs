@@ -99,13 +99,19 @@ namespace MinecraftModManager
         }
 
         // One file's changelog (HTML), fetched when its row is opened.
-        static Dictionary<string, object> CfFileChangelog(string name, string fileId)
+        // A file's changelog, by the installed jar or (in a search preview) by the project id.
+        static Dictionary<string, object> CfFileChangelog(string name, string fileId, string projectId = null)
         {
-            Dictionary<string, object> match = CfMatchFor(modsDir, name);
-            if (match == null) throw new UserError(name + " isn't on CurseForge.");
+            long pid = CfId((projectId ?? "").Replace("cf:", ""));
+            if (pid <= 0)
+            {
+                Dictionary<string, object> match = CfMatchFor(modsDir, name);
+                if (match == null) throw new UserError(name + " isn't on CurseForge.");
+                pid = CfId(Get(match, "id"));
+            }
             long fid = CfId((fileId ?? "").Replace("cf:", ""));
             if (fid <= 0) throw new UserError("No version was chosen.");
-            string html = Get(D(CfHttp("GET", "/mods/" + CfId(Get(match, "id")) + "/files/" + fid + "/changelog", null)), "data") as string;
+            string html = Get(D(CfHttp("GET", "/mods/" + pid + "/files/" + fid + "/changelog", null)), "data") as string;
             return Obj("ok", true, "html", html);
         }
 

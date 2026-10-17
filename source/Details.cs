@@ -192,6 +192,31 @@ namespace MinecraftModManager
                 "installVersion", S(best, "version_number"));
         }
 
+        // A search result's versions for its preview, newest first: what fits this Minecraft version and loader
+        // (for packs, this Minecraft version; shader packs any). Nothing is installed, so none is marked.
+        static Dictionary<string, object> PreviewVersions(string id, string kind)
+        {
+            if (string.IsNullOrWhiteSpace(id)) throw new UserError("No project was chosen.");
+            bool pack = PackKinds.Contains(kind ?? "");
+            if (id.StartsWith("cf:"))
+            {
+                if (!CfReady) throw new UserError("CurseForge versions need a CurseForge API key (Settings > Sources).");
+                long cf = CfId(id.Substring(3));
+                Dictionary<string, object> mod = CfMod(cf);
+                if (mod == null) throw new UserError("CurseForge doesn't have that project any more.");
+                List<Dictionary<string, object>> files = pack ? CfPackFiles(cf, kind) : CfFiles(cf);
+                return Obj("ok", true, "source", "curseforge", "projectId", "cf:" + cf, "url", CfUrl(mod), "downloadsAllowed", CfDownloadsAllowed(mod),
+                    "versions", files.Select(f => (object)CfVersionObj(f, 0, null)).ToList());
+            }
+            lock (ModrinthLock)
+            {
+                Dictionary<string, object> project = GetProject(id);
+                if (project == null) throw new UserError("Modrinth doesn't have that project any more.");
+                List<Dictionary<string, object>> versions = pack ? PackVersions(S(project, "id"), kind) : ProjectVersions(S(project, "id"));
+                return Obj("ok", true, "source", "modrinth", "projectId", S(project, "id"), "versions", versions.Select(v => (object)VersionObj(v, null, null)).ToList());
+            }
+        }
+
         // The project's gallery images in the author's order, featured first: a smaller "url" for the grid
         // and the full-size "raw" for viewing one.
         static List<object> Gallery(Dictionary<string, object> project)

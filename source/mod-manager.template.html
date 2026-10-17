@@ -2922,17 +2922,29 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   // A mod on both sites installs from Modrinth; if Modrinth has no fitting file, CurseForge's copy is tried.
-  function installMod(hit) {
+  // A version picked in a preview's Versions tab: CurseForge takes it as fileId, Modrinth as versionId.
+  function pickBody(src, body) {
+    if (src.versionId) body[src.source === "curseforge" ? "fileId" : "versionId"] = src.versionId;
+    return body;
+  }
+  function installPreviewVersion(v, ver) {
+    var p = det.preview;
+    if (!p) return;
+    var pick = { source: v.source, projectId: v.projectId, versionId: ver.id, number: ver.number };
+    if (p.kind === "mods") installMod(p.hit, pick); else installPack(p.hit, pick);
+  }
+
+  function installMod(hit, pick) {
     installing[hit.projectId] = true;
     renderSearch();
     renderPreviewOf(hit);
     function attempt(src) {
-      return api("POST", "/api/" + (src.source === "curseforge" ? "curseforge" : "modrinth") + "/install", { projectId: src.projectId });
+      return api("POST", "/api/" + (src.source === "curseforge" ? "curseforge" : "modrinth") + "/install", pickBody(src, { projectId: src.projectId }));
     }
     var fellBack = false;
-    track("Installing " + hit.title, attempt(hit).then(null, function (e) {
+    track("Installing " + hit.title + (pick ? " " + pick.number : ""), attempt(pick || hit).then(null, function (e) {
       var cf = hit.also;
-      if (!cf || cf.downloadsAllowed === false || /already in this mods folder/.test(e.message)) throw e;
+      if (pick || !cf || cf.downloadsAllowed === false || /already in this mods folder/.test(e.message)) throw e;
       fellBack = true;
       return attempt(cf);
     })).then(function (res) {
@@ -2946,7 +2958,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         search.hits.forEach(function (x) { if (x.projectId === a.projectId || (x.also && x.also.projectId === a.projectId)) x.installed = true; });
       });
       var msg = res.added.length
-        ? "Installed " + hit.title + (fellBack ? " from CurseForge (Modrinth has no file for " + targetText() + ")" : "") +
+        ? "Installed " + hit.title + (pick ? " " + pick.number : "") + (fellBack ? " from CurseForge (Modrinth has no file for " + targetText() + ")" : "") +
           (deps.length ? " and " + deps.map(function (d) { return d.title; }).join(", ") + ", which it needs" : "") + "."
         : "Nothing was installed.";
       if (res.notes && res.notes.length) msg += " " + res.notes.join(" ");
@@ -3156,17 +3168,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
   }
   // Like a mod: a pack on both sites installs from Modrinth, and from CurseForge if Modrinth has no fitting file.
-  function installPack(hit) {
+  function installPack(hit, pick) {
     installing[hit.projectId] = true;
     renderSearch();
     renderPreviewOf(hit);
     var kind = search.kind, fellBack = false;
     function attempt(src) {
-      return api("POST", src.source === "curseforge" ? "/api/curseforge/packs/install" : "/api/packs/install", { kind: kind, place: packs.places[kind] || "", projectId: src.projectId });
+      return api("POST", src.source === "curseforge" ? "/api/curseforge/packs/install" : "/api/packs/install", pickBody(src, { kind: kind, place: packs.places[kind] || "", projectId: src.projectId }));
     }
-    track("Installing " + hit.title, attempt(hit).then(null, function (e) {
+    track("Installing " + hit.title + (pick ? " " + pick.number : ""), attempt(pick || hit).then(null, function (e) {
       var cf = hit.also;
-      if (!cf || cf.downloadsAllowed === false || /already there/.test(e.message)) throw e;
+      if (pick || !cf || cf.downloadsAllowed === false || /already there/.test(e.message)) throw e;
       fellBack = true;
       return attempt(cf);
     })).then(function (res) {
@@ -3176,7 +3188,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         return;
       }
       hit.installed = true;
-      toast("Installed " + hit.title + (fellBack ? " from CurseForge (Modrinth has no file for it)" : "") + "." + (res.added.length ? " " + neededText(res.added) : "") + (res.notes.length ? " " + res.notes.join(" ") : ""));
+      toast("Installed " + hit.title + (pick ? " " + pick.number : "") + (fellBack ? " from CurseForge (Modrinth has no file for it)" : "") + "." + (res.added.length ? " " + neededText(res.added) : "") + (res.notes.length ? " " + res.notes.join(" ") : ""));
       if (res.added.length) refresh(true);
     }, function (e) {
       if (/already there/.test(e.message)) hit.installed = true;
@@ -5890,9 +5902,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   var KIND_NAMES = { neoforge: "NeoForge", forge: "Forge", fabric: "Fabric (through Connector)", quilt: "Quilt", none: "library (no mod metadata)" };
   var SIDE_WORDS = { required: "needed", optional: "optional", unsupported: "not used" };
 
-  // The jar-only tabs (versions to switch to, what it needs, its configs) don't apply to a search preview.
+  // The jar-only tabs (what it needs, its configs) don't apply to a search preview; Versions lists what can be installed.
   function detTabsForPreview(preview) {
-    ["versions", "deps", "configs"].forEach(function (t) { document.querySelector('#det-tabs [data-tab="' + t + '"]').hidden = preview; });
+    ["deps", "configs"].forEach(function (t) { document.querySelector('#det-tabs [data-tab="' + t + '"]').hidden = preview; });
   }
 
   // A search result (mod or pack) in the details window: the site's description, gallery and links, and
@@ -6009,7 +6021,22 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function loadVersions() {
     var seq = det.seq;
     det.versionsLoading = true;
-    api("GET", "/api/modrinth/versions?file=" + encodeURIComponent(det.row.file)).then(function (res) {
+    var p = det.preview, ask;
+    if (p) {
+      // The site the preview shows; a Modrinth result with nothing for this version falls back to its CurseForge copy.
+      var id = det.data && det.data.projectId || p.hit.projectId;
+      var get = function (pid) { return api("GET", "/api/project/versions?id=" + encodeURIComponent(pid) + "&kind=" + encodeURIComponent(p.kind)); };
+      ask = get(id).then(function (res) {
+        var cf = p.hit.also;
+        if (res.versions.length || res.source === "curseforge" || !cf || !cf.projectId) return res;
+        return get(cf.projectId).then(function (other) { return other.versions.length ? other : res; }, function () { return res; });
+      }, function (e) {
+        var cf = p.hit.also;
+        if (id.indexOf("cf:") === 0 || !cf || !cf.projectId) throw e;
+        return get(cf.projectId);
+      });
+    } else ask = api("GET", "/api/modrinth/versions?file=" + encodeURIComponent(det.row.file));
+    ask.then(function (res) {
       if (seq !== det.seq) return;
       det.versions = res;
     }, function (e) {
@@ -6032,7 +6059,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var shots = d.gallery || [];
       $("det-gallery-tab").hidden = !shots.length;
       $("det-gallery-tab").textContent = "Gallery" + (shots.length ? " " + shots.length : "");
-      if (det.tab === "gallery") renderGallery(body, shots); else renderPreviewOverview(body, d);
+      if (det.tab === "gallery") renderGallery(body, shots);
+      else if (det.tab === "versions") renderVersions(body, null);
+      else renderPreviewOverview(body, d);
       return;
     }
     if (!d) { body.append(h("p", { class: "search-empty" }, "Reading the jar…")); return; }
@@ -6190,17 +6219,24 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var site = v.source === "curseforge" ? "CurseForge" : "Modrinth";
     // A CurseForge author can allow downloads from their website only: then versions open its page.
     var pageOnly = v.source === "curseforge" && v.downloadsAllowed === false;
-    body.append(h("p", { class: "hint", style: "margin:0 0 8px" }, "Every " + site + " version for " + targetText() + ", newest first. Open one to read its changelog." +
-      (pageOnly ? " Its author only allows downloads from CurseForge's website, so switching opens its page there." : "")));
+    var p = det.preview, target = targetText();
+    if (p && p.kind !== "mods") target = p.kind === "shaderpacks" ? "any Minecraft version" : "Minecraft " + (server && server.target ? server.target.gameVersion : "");
+    // In a search preview nothing is installed yet: each version can be installed as it is.
+    var installedPreview = p && installedNow(p.hit), busyPreview = p && !!installing[p.hit.projectId];
+    body.append(h("p", { class: "hint", style: "margin:0 0 8px" }, "Every " + site + " version for " + target + ", newest first. Open one to read its changelog." +
+      (p ? (installedPreview ? " It's already installed: switch versions from its details in the list." : " Install this installs that version instead of the newest.") : "") +
+      (pageOnly ? " Its author only allows downloads from CurseForge's website, so " + (p ? "installing" : "switching") + " opens its page there." : "")));
     if (v.loose && !v.versions.some(function (x) { return x.installed; })) body.append(h("p", { class: "hint", style: "margin:0 0 8px" },
       "Your jar (" + (v.current && v.current.number || "its version") + ") isn't one of these files, so none is marked as newer. Switching replaces it with the one you pick."));
-    if (!v.versions.length) body.append(h("p", { class: "search-empty" }, site + " has no versions for " + targetText() + "."));
+    if (!v.versions.length) body.append(h("p", { class: "search-empty" }, site + " has no versions for " + target + "."));
     v.versions.forEach(function (ver) {
-      var install = ver.installed || !connected ? null : btn(pageOnly ? "Open page" : ver.newer ? "Update to this" : "Switch to this", function (e) {
+      var install = ver.installed || !connected || installedPreview ? null : btn(pageOnly ? "Open page" : p ? (busyPreview ? "Installing…" : "Install this") : ver.newer ? "Update to this" : "Switch to this", function (e) {
         e.preventDefault();
         e.stopPropagation();
-        if (pageOnly) { if (safeUrl(v.url)) openTab(v.url); } else askSwitch(ver);
-      }, ver.newer && !pageOnly ? "primary" : "");
+        if (pageOnly) { if (safeUrl(v.url)) openTab(v.url); }
+        else if (p) installPreviewVersion(v, ver);
+        else askSwitch(ver);
+      }, ver.newer && !pageOnly ? "primary" : "", { disabled: !!busyPreview });
       var item = h("details", { class: "ver" },
         h("summary", null, h("span", { class: "num" }, ver.number), vtypeTag(ver.type), h("span", { class: "date" }, dateText(ver.date)),
           ver.installed ? h("span", { class: "vtag" }, "installed") : null, h("span", { class: "spacer" }), install));
@@ -6214,7 +6250,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         // CurseForge changelogs are fetched one at a time, when opened.
         if (ver.cf && ver.changelog == null) {
           md.append(h("p", { class: "hint" }, "Getting the changelog…"));
-          api("GET", "/api/curseforge/changelog?file=" + encodeURIComponent(det.row.file) + "&id=" + encodeURIComponent(ver.id)).then(function (res) {
+          api("GET", "/api/curseforge/changelog?" + (p ? "project=" + encodeURIComponent(v.projectId) : "file=" + encodeURIComponent(det.row.file)) + "&id=" + encodeURIComponent(ver.id)).then(function (res) {
             ver.changelog = res.html || "";
             show(ver.changelog);
           }, function (e) { md.replaceChildren(h("p", { class: "hint" }, e.message)); });

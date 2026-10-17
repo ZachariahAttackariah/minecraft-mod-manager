@@ -514,11 +514,17 @@ namespace MinecraftModManager
         // versions and many only list the newest ones, so they aren't filtered by version.
         static Dictionary<string, object> BestPackVersion(string projectId, string kind)
         {
+            List<Dictionary<string, object>> versions = PackVersions(projectId, kind);
+            return versions.FirstOrDefault(v => S(v, "version_type") == "release") ?? versions.FirstOrDefault();
+        }
+
+        // Every version of a pack with a zip, newest first (for this Minecraft version; shader packs any).
+        static List<Dictionary<string, object>> PackVersions(string projectId, string kind)
+        {
             string query = "/project/" + Uri.EscapeDataString(projectId) + "/version?loaders=" + JsonArrayParam(PackLoaders(kind));
             if (kind != "shaderpacks") query += "&game_versions=" + JsonArrayParam(gameVersion);
-            List<Dictionary<string, object>> versions = A(ModrinthGet(query)).Select(D).Where(v => v != null && PackFile(v) != null)
+            return A(ModrinthGet(query)).Select(D).Where(v => v != null && PackFile(v) != null)
                 .OrderByDescending(v => S(v, "date_published")).ToList();
-            return versions.FirstOrDefault(v => S(v, "version_type") == "release") ?? versions.FirstOrDefault();
         }
 
         static Dictionary<string, object> NewerPack(Dictionary<string, object> current, Dictionary<string, object> latest)
@@ -608,7 +614,7 @@ namespace MinecraftModManager
             return installed;
         }
 
-        static Dictionary<string, object> InstallPack(string kind, string placeId, string projectId)
+        static Dictionary<string, object> InstallPack(string kind, string placeId, string projectId, string versionId = null)
         {
             if (string.IsNullOrWhiteSpace(projectId)) throw new UserError("No pack was chosen.");
             PackPlace place = FindPlace(kind, placeId);
@@ -620,7 +626,15 @@ namespace MinecraftModManager
                 if (project == null) throw new UserError("That pack wasn't found on Modrinth.");
                 title = S(project, "title");
                 if (InstalledPackProjects(place.Dir).Contains(S(project, "id"))) throw new UserError(title + " is already there.");
-                Dictionary<string, object> version = BestPackVersion(S(project, "id"), kind);
+                // A version picked in the preview's Versions tab, if it's really one of this pack's zips; else the best one.
+                Dictionary<string, object> version = null;
+                if (!string.IsNullOrEmpty(versionId))
+                {
+                    version = D(ModrinthGet("/version/" + Uri.EscapeDataString(versionId)));
+                    if (version == null || S(version, "project_id") != S(project, "id") || PackFile(version) == null)
+                        throw new UserError("That version isn't a " + KindNoun(kind) + " download of " + title + ".");
+                }
+                if (version == null) version = BestPackVersion(S(project, "id"), kind);
                 if (version == null)
                     throw new UserError("Modrinth has no " + KindNoun(kind) + " download of " + title + (kind == "shaderpacks" ? " for Iris." : " for Minecraft " + gameVersion + "."));
                 Directory.CreateDirectory(place.Dir);

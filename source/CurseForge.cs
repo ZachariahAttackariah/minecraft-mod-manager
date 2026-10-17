@@ -432,7 +432,7 @@ namespace MinecraftModManager
             return Obj("ok", true, "target", TargetObj(), "total", Math.Min(CfId(Get(page, "totalCount")), 10000), "offset", offset, "hits", hits);
         }
 
-        static Dictionary<string, object> CurseForgeInstall(string projectId)
+        static Dictionary<string, object> CurseForgeInstall(string projectId, string fileId = null)
         {
             long id = CfId((projectId ?? "").Replace("cf:", ""));
             if (id <= 0) throw new UserError("No mod was chosen.");
@@ -444,12 +444,23 @@ namespace MinecraftModManager
                 string title = S(mod, "name");
                 // The author's choice: no downloads through other apps. Their page opens instead.
                 if (!CfDownloadsAllowed(mod)) return Obj("ok", true, "manual", true, "url", CfUrl(mod), "title", title, "added", new List<object>(), "notes", new List<object>());
-                Dictionary<string, object> latest = CfLatestIndex(mod);
-                if (latest == null) throw new UserError("CurseForge has no file of " + title + " for Minecraft " + gameVersion + " with " + LoaderName() + ".");
+                // A file picked in the preview's Versions tab (it has to be one for this game and loader), else the newest.
+                long chosen = CfId((fileId ?? "").Replace("cf:", ""));
+                if (chosen > 0)
+                {
+                    if (!CfFiles(id).Any(f => CfId(Get(f, "id")) == chosen))
+                        throw new UserError("That file of " + title + " isn't for Minecraft " + gameVersion + " with " + LoaderName() + ".");
+                }
+                else
+                {
+                    Dictionary<string, object> latest = CfLatestIndex(mod);
+                    if (latest == null) throw new UserError("CurseForge has no file of " + title + " for Minecraft " + gameVersion + " with " + LoaderName() + ".");
+                    chosen = CfId(Get(latest, "fileId"));
+                }
                 if (CfIdentify(new DirectoryInfo(dir).GetFiles().Where(f => JarName.IsMatch(f.Name))).Values.Any(m => CfId(Get(m, "id")) == id))
                     throw new UserError(title + " is already in this mods folder.");
                 var notes = new List<string>();
-                string saved = CfDownloadFile(mod, CfId(Get(latest, "fileId")), dir, false, null, notes);
+                string saved = CfDownloadFile(mod, chosen, dir, false, null, notes);
                 var added = new List<object>();
                 if (saved != null)
                 {

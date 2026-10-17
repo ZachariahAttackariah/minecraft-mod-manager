@@ -427,6 +427,9 @@ namespace MinecraftModManager
                         case "/api/project/preview":
                             result = ProjectPreview(req.QueryString["id"], req.QueryString["kind"]);
                             break;
+                        case "/api/project/versions":
+                            result = PreviewVersions(req.QueryString["id"], req.QueryString["kind"]);
+                            break;
                         case "/api/modrinth/versions":
                             result = ModrinthVersions(req.QueryString["file"]);
                             break;
@@ -465,7 +468,7 @@ namespace MinecraftModManager
                             result = ReadLastCrash();
                             break;
                         case "/api/curseforge/changelog":
-                            result = CfFileChangelog(req.QueryString["file"], req.QueryString["id"]);
+                            result = CfFileChangelog(req.QueryString["file"], req.QueryString["id"], req.QueryString["project"]);
                             break;
                         case "/api/snapshots":
                             result = SnapshotsState();
@@ -718,10 +721,10 @@ namespace MinecraftModManager
                         SendJson(ctx, 200, SetCurseForgeKey(Str(body, "key")));
                         return;
                     case "/api/curseforge/install":
-                        SendJson(ctx, 200, CurseForgeInstall(Str(body, "projectId")));
+                        SendJson(ctx, 200, CurseForgeInstall(Str(body, "projectId"), Str(body, "fileId")));
                         return;
                     case "/api/modrinth/install":
-                        SendJson(ctx, 200, ModrinthInstall(Str(body, "projectId")));
+                        SendJson(ctx, 200, ModrinthInstall(Str(body, "projectId"), Str(body, "versionId")));
                         return;
                     case "/api/modrinth/update":
                         SendJson(ctx, 200, ModrinthUpdate(StrList(body, "files")));
@@ -752,10 +755,10 @@ namespace MinecraftModManager
                         SendJson(ctx, 200, SetSharedJavaArgs(Str(body, "javaArgs")));
                         return;
                     case "/api/packs/install":
-                        SendJson(ctx, 200, InstallPack(Str(body, "kind"), Str(body, "place"), Str(body, "projectId")));
+                        SendJson(ctx, 200, InstallPack(Str(body, "kind"), Str(body, "place"), Str(body, "projectId"), Str(body, "versionId")));
                         return;
                     case "/api/curseforge/packs/install":
-                        SendJson(ctx, 200, CurseForgePackInstall(Str(body, "kind"), Str(body, "place"), Str(body, "projectId")));
+                        SendJson(ctx, 200, CurseForgePackInstall(Str(body, "kind"), Str(body, "place"), Str(body, "projectId"), Str(body, "fileId")));
                         return;
                     case "/api/packs/update":
                         SendJson(ctx, 200, UpdatePacks(Str(body, "kind"), Str(body, "place"), StrList(body, "names")));
@@ -1405,7 +1408,7 @@ namespace MinecraftModManager
         }
 
         // Installs a mod and the required dependencies that aren't in the folder yet.
-        static Dictionary<string, object> ModrinthInstall(string projectIdOrSlug)
+        static Dictionary<string, object> ModrinthInstall(string projectIdOrSlug, string versionId = null)
         {
             if (string.IsNullOrWhiteSpace(projectIdOrSlug)) throw new UserError("No mod was chosen.");
             lock (ModrinthLock)
@@ -1414,7 +1417,7 @@ namespace MinecraftModManager
                 HashSet<string> installed = InstalledProjects(dir);
                 var plan = new List<PlanItem>();
                 var notes = new List<string>();
-                Resolve(projectIdOrSlug, null, null, installed, new HashSet<string>(installed), plan, notes);
+                Resolve(projectIdOrSlug, string.IsNullOrWhiteSpace(versionId) ? null : versionId.Trim(), null, installed, new HashSet<string>(installed), plan, notes);
                 var added = InstallPlan(plan, dir, notes);
                 return Obj("ok", true, "added", added, "notes", notes);
             }
@@ -1443,7 +1446,11 @@ namespace MinecraftModManager
             if (versionId != null)
             {
                 version = D(ModrinthGet("/version/" + Uri.EscapeDataString(versionId)));
+                if (version != null && S(version, "project_id") != id) version = null;
                 if (!Fits(version)) version = null;
+                // A version picked in the preview's Versions tab has to fit; don't quietly install another.
+                if (version == null && requiredBy == null)
+                    throw new UserError("That version of " + title + " isn't for Minecraft " + gameVersion + " with " + LoaderName() + ".");
             }
             if (version == null) version = BestVersion(id);
             if (version == null)
