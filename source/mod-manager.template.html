@@ -1166,7 +1166,9 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
 .packs-status { display: grid; gap: 8px; margin: 12px 0 4px; }
 .packs-status:empty { display: none; }
 .packs-status .warnbox { margin: 0; }
-.pack-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+.pack-row { display: grid; grid-template-columns: 20px 40px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--line); cursor: default; }
+.pack-row.is-selected { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.pack-selbar { margin: 4px 0 6px; user-select: none; }
 .pack-row:last-child { border-bottom: 0; }
 .pack-row.is-off .pack-icon, .pack-row.is-off .pack-name { opacity: 0.55; }
 .pack-icon { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; image-rendering: pixelated; background: var(--sunken); }
@@ -1178,7 +1180,7 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
 .pack-actions { display: flex; align-items: center; gap: 4px; }
 .pack-actions .act { opacity: 0.7; }
 .packs-empty { padding: 22px 4px; color: var(--muted); font-size: 13.5px; }
-@media (max-width: 640px) { .pack-row { grid-template-columns: 40px minmax(0, 1fr); } .pack-state, .pack-actions { grid-column: 2; } }
+@media (max-width: 640px) { .pack-row { grid-template-columns: 20px 40px minmax(0, 1fr); } .pack-state, .pack-actions { grid-column: 3; } }
 .inst-form .share-box { display: grid; gap: 10px; min-width: 0; margin: 0; padding: 8px 12px 12px; border: 1px solid var(--line); border-radius: 4px; }
 .inst-form .share-box legend { padding: 0 6px; font-weight: 700; font-size: 13.5px; color: var(--ink); }
 .inst-form .share-box .prop { margin-left: 24px; }
@@ -3140,7 +3142,102 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     else if (d.kind === "shaderpacks") rows.sort(function (a, b) { return (b.on === true) - (a.on === true) || packTitle(a).localeCompare(packTitle(b)); });
     else rows.sort(function (a, b) { return packTitle(a).localeCompare(packTitle(b)); });
     if (!rows.length) list.append(h("p", { class: "packs-empty" }, "No " + PACK_NOUNS[d.kind] + " here yet. Search for some, add .zip files, or download one in a tab (it lands here by itself)."));
+    else list.append(packSelectionBar(d, rows));
+    packs.rows = rows;
     rows.forEach(function (p) { list.append(packRow(d, p)); });
+  }
+
+  // ---- Selecting packs, like mods: a box on each row, one in the bar for all, and actions for the picked ones ----
+
+  function packSel(d) {
+    // One selection per kind and folder; packs that are gone drop out of it.
+    var key = d.kind + "|" + d.place;
+    if (packs.selFor !== key) { packs.selFor = key; packs.sel = {}; packs.anchor = null; }
+    var names = {};
+    d.packs.forEach(function (p) { names[p.name] = true; });
+    Object.keys(packs.sel).forEach(function (n) { if (!names[n]) delete packs.sel[n]; });
+    return packs.sel;
+  }
+  function selectedPacks(d) {
+    var sel = packSel(d);
+    return d.packs.filter(function (p) { return sel[p.name]; });
+  }
+  function togglePack(d, p, range) {
+    var sel = packSel(d), rows = packs.rows || [];
+    var i = rows.indexOf(p), a = rows.indexOf(rows.filter(function (x) { return x.name === packs.anchor; })[0]);
+    if (range && a >= 0 && i >= 0) {
+      // Shift: everything between the last picked pack and this one takes this one's new state.
+      var on = !sel[p.name];
+      rows.slice(Math.min(a, i), Math.max(a, i) + 1).forEach(function (x) { if (on) sel[x.name] = true; else delete sel[x.name]; });
+    } else if (sel[p.name]) delete sel[p.name];
+    else sel[p.name] = true;
+    packs.anchor = p.name;
+    renderPacks();
+  }
+
+  function packSelectionBar(d, rows) {
+    var sel = packSel(d), picked = selectedPacks(d);
+    var locked = !connected || d.gameRunning || d.serverRunning;
+    var all = h("button", { type: "button", class: "check", role: "checkbox",
+      "aria-checked": !picked.length ? "false" : picked.length === rows.length ? "true" : "mixed",
+      "aria-label": "Select all " + PACK_NOUNS[d.kind], title: picked.length === rows.length ? "Clear selection" : "Select all " + rows.length,
+      onclick: function () {
+        if (picked.length === rows.length) packs.sel = {};
+        else rows.forEach(function (p) { sel[p.name] = true; });
+        renderPacks();
+      } });
+    var bar = h("div", { class: "selection-bar pack-selbar" + (picked.length ? "" : " is-empty"), role: "region", "aria-label": "Selected " + PACK_NOUNS[d.kind] }, all);
+    var noun = function (n) { return count(n, PACK_NOUNS[d.kind].replace(/s$/, ""), PACK_NOUNS[d.kind]); };
+    if (!picked.length) {
+      bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · tick packs to act on several at once")));
+      return bar;
+    }
+    var turnOn = d.kind === "resourcepacks" ? picked.filter(function (p) { return p.on < 0; }) : [];
+    var turnOff = d.kind === "resourcepacks" ? picked.filter(function (p) { return p.on >= 0; }) : [];
+    var updatable = picked.filter(function (p) { return p.modrinth && p.modrinth.update; });
+    bar.append(
+      h("span", { class: "sel-count" }, noun(picked.length) + " selected"),
+      h("span", { class: "sel-actions" },
+        updatable.length ? btn("Update " + updatable.length, function () { updatePacks(updatable.map(function (p) { return p.name; })); }, "primary", { disabled: locked }) : null,
+        turnOn.length ? btn("Turn on " + turnOn.length, function () { setResourcePacks(turnOn, true); }, "", { disabled: locked }) : null,
+        turnOff.length ? btn("Turn off " + turnOff.length, function () { setResourcePacks(turnOff, false); }, "", { disabled: locked }) : null,
+        btn("Delete " + picked.length + "…", function () { askDeletePacks(d, picked); }, "danger-outline", { disabled: locked }),
+        h("button", { type: "button", class: "linkish", title: "Clear selection", onclick: function () { packs.sel = {}; renderPacks(); } }, "Clear")));
+    return bar;
+  }
+
+  // Several resource packs on or off, one after another (each one rewrites the game's list).
+  function setResourcePacks(list, on) {
+    var names = list.map(function (p) { return p.name; });
+    var chain = Promise.resolve(), done = 0, failed = [];
+    list.forEach(function (p) {
+      chain = chain.then(function () {
+        return api("POST", "/api/packs/resource", { name: p.name, on: on }).then(function () { done++; }, function (e) { failed.push(packTitle(p) + ": " + e.message); });
+      });
+    });
+    packAction(names, chain, function () {
+      toast((done ? (on ? "Turned on " : "Turned off ") + count(done, "resource pack", "resource packs") + ". It applies the next time the game starts." : "") +
+        (failed.length ? " " + failed.join(" ") : ""));
+    });
+  }
+
+  function askDeletePacks(d, list) {
+    if (list.length === 1) { askDeletePack(d, list[0]); return; }
+    confirmDialog({
+      title: "Delete " + count(list.length, PACK_NOUNS[d.kind].replace(/s$/, ""), PACK_NOUNS[d.kind]) + "?",
+      items: list.map(function (p) { return p.name; }),
+      body: "They move to the Recycle Bin, so you can restore them from there." +
+        (d.sharedWith && d.sharedWith.length ? " The folder is shared, so they're gone from " + d.sharedWith.join(", ") + " too." : "") +
+        (d.kind === "shaderpacks" ? " Their shader settings go with them." : ""),
+      ok: "Move " + list.length + " to Recycle Bin",
+      onOk: function () {
+        var names = list.map(function (p) { return p.name; });
+        packAction(names, api("POST", "/api/packs/delete", { kind: d.kind, place: d.place, names: names }), function () {
+          names.forEach(function (n) { delete packs.sel[n]; });
+          toast("Moved " + count(names.length, PACK_NOUNS[d.kind].replace(/s$/, ""), PACK_NOUNS[d.kind]) + " to the Recycle Bin.");
+        });
+      }
+    });
   }
 
   function packRow(d, p) {
@@ -3162,7 +3259,14 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       h("button", { type: "button", class: "act delete", disabled: locked, title: "Delete…", "aria-label": "Delete " + packTitle(p), onclick: function () { askDeletePack(d, p); } }, icon("trash")));
     var meta = [p.name, p.folder ? "folder" : formatBytes(p.size)];
     if (m) meta.push("Modrinth " + m.versionNumber);
-    return h("div", { class: "pack-row" + (off ? " is-off" : ""), "aria-busy": busyNow ? "true" : null },
+    var picked = !!packSel(d)[p.name];
+    var check = h("button", { type: "button", class: "check", role: "checkbox", "aria-checked": String(picked), "aria-label": "Select " + packTitle(p),
+      onclick: function (e) { e.stopPropagation(); togglePack(d, p, e.shiftKey); } });
+    return h("div", { class: "pack-row" + (off ? " is-off" : "") + (picked ? " is-selected" : ""), "aria-busy": busyNow ? "true" : null,
+      // A click on the row (not on its buttons or links) picks it too; Shift picks a range.
+      onmousedown: function (e) { if (e.shiftKey) e.preventDefault(); },
+      onclick: function (e) { if (!e.target.closest("button, a, select, input")) togglePack(d, p, e.shiftKey); } },
+      check,
       p.icon ? h("img", { class: "pack-icon", src: p.icon, alt: "" }) : h("span", { class: "pack-icon", "aria-hidden": "true" }),
       h("div", { style: "min-width:0" },
         h("div", { class: "pack-name" },
