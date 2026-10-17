@@ -318,9 +318,13 @@ On/off presets (Presets, next to Add mods)
 When the game crashes
   A red bar under the tabs says the game crashed (for crash reports from the last three days). "What went
   wrong?" reads the newest crash report, or latest.log when the game died without writing one, and lists
-  the mods it points at, most likely first, with why: NeoForge's own "mod loading issue" lines, its
-  suspected mods, the stack trace, and mixins that failed. For each: Turn it off (with Undo), Details, or
-  "Find ..." when it's missing a mod it needs. Also in the dots menu and Ctrl+K ("Read the last crash").
+  the mods it points at, most likely first, with why and how sure it is. What counts most: NeoForge's own
+  "mod loading issue" lines and suspected mods, mixins that really failed ("Attach error ... from mod x"),
+  and classes that couldn't be found, traced to the jar that has them (a turned-off one gets "Turn it
+  on") or, when no jar has them, to the missing mod the failing one requires ("Find ..."). The root cause
+  (the last "Caused by") counts double; stack lines are traced to jars by their Java package; mods that
+  only patched code that was running count very little. For each: Turn it on / Turn it off (with Undo),
+  Details, or "Find ...". Also in the dots menu and Ctrl+K ("Read the last crash").
 
 What the app is doing
   While something runs (checking mods, looking for updates, updating, installing, detecting sides, adding
