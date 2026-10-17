@@ -2754,6 +2754,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     search.loading = true;
     search.error = null;
     renderSearch();
+    // A new search (words, sort, filter, site or kind) starts at the top of the list; loading more pages doesn't.
+    if (reset) $("search-results").scrollTop = 0;
     var src = searchSource();
     var sites = src === "both" ? ["modrinth", "curseforge"] : [src];
     var cat = search.kind === "mods" ? $("search-cat").value : "", side = search.kind === "mods" ? $("search-side").value : "";
