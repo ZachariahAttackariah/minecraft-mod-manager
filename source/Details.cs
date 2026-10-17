@@ -146,6 +146,52 @@ namespace MinecraftModManager
             }
         }
 
+        // A search result's overview (Add mods, and packs), in the same shape as ModrinthInfo and CfInfo but for
+        // the project itself rather than an installed jar, with the version that installing would get.
+        static Dictionary<string, object> ProjectPreview(string id, string kind)
+        {
+            if (string.IsNullOrWhiteSpace(id)) throw new UserError("No project was chosen.");
+            bool pack = PackKinds.Contains(kind ?? "");
+            if (id.StartsWith("cf:"))
+            {
+                if (!CfReady) throw new UserError("Previews of CurseForge projects need a CurseForge API key (Settings > Sources).");
+                long cf = CfId(id.Substring(3));
+                Dictionary<string, object> mod = CfMod(cf);
+                if (mod == null) throw new UserError("CurseForge doesn't have that project any more.");
+                Dictionary<string, object> links = D(Get(mod, "links"));
+                Dictionary<string, object> author = D(A(Get(mod, "authors")).FirstOrDefault());
+                Dictionary<string, object> latest = pack ? CfPackLatestIndex(mod, kind) : CfLatestIndex(mod);
+                return Obj("found", true, "site", "curseforge", "projectId", "cf:" + cf, "slug", S(mod, "slug"), "title", S(mod, "name"),
+                    "description", S(mod, "summary"), "body", CfDescription(cf), "icon", CfIcon(mod), "author", S(author, "name"),
+                    "downloads", Get(mod, "downloadCount"), "followers", null, "clientSide", null, "serverSide", null,
+                    "categories", A(Get(mod, "categories")).Select(c => (object)S(D(c), "name")).Where(c => c != null).ToList(),
+                    "license", null, "url", S(links, "websiteUrl"), "source", S(links, "sourceUrl"), "issues", S(links, "issuesUrl"), "wiki", S(links, "wikiUrl"),
+                    "discord", null, "updated", S(mod, "dateModified"), "downloadsAllowed", CfDownloadsAllowed(mod),
+                    "gallery", A(Get(mod, "screenshots")).Select(x => D(x)).Where(x => x != null && S(x, "url") != null)
+                        .Select(x => (object)Obj("url", S(x, "thumbnailUrl") ?? S(x, "url"), "raw", S(x, "url"), "title", S(x, "title"), "description", S(x, "description"), "featured", false)).ToList(),
+                    "installVersion", S(latest, "filename"));
+            }
+            Dictionary<string, object> project, best = null;
+            lock (ModrinthLock)
+            {
+                project = GetProject(id);
+                if (project == null) throw new UserError("Modrinth doesn't have that project any more.");
+                try { best = pack ? BestPackVersion(S(project, "id"), kind) : BestVersion(S(project, "id")); } catch (UserError) { }
+            }
+            Dictionary<string, object> license = D(Get(project, "license"));
+            return Obj("found", true, "projectId", S(project, "id"), "slug", S(project, "slug"), "title", S(project, "title"),
+                "projectType", S(project, "project_type"),
+                "description", S(project, "description"), "body", S(project, "body"), "icon", S(project, "icon_url"),
+                "downloads", Get(project, "downloads"), "followers", Get(project, "followers"),
+                "clientSide", S(project, "client_side"), "serverSide", S(project, "server_side"),
+                "categories", A(Get(project, "categories")).ToList(),
+                "license", license == null ? null : S(license, "name") ?? S(license, "id"),
+                "source", S(project, "source_url"), "issues", S(project, "issues_url"), "wiki", S(project, "wiki_url"), "discord", S(project, "discord_url"),
+                "updated", S(project, "updated"),
+                "gallery", Gallery(project),
+                "installVersion", S(best, "version_number"));
+        }
+
         // The project's gallery images in the author's order, featured first: a smaller "url" for the grid
         // and the full-size "raw" for viewing one.
         static List<object> Gallery(Dictionary<string, object> project)

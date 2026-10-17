@@ -424,6 +424,9 @@ namespace MinecraftModManager
                         case "/api/mod/details":
                             result = ModDetails(req.QueryString["file"]);
                             break;
+                        case "/api/project/preview":
+                            result = ProjectPreview(req.QueryString["id"], req.QueryString["kind"]);
+                            break;
                         case "/api/modrinth/versions":
                             result = ModrinthVersions(req.QueryString["file"]);
                             break;

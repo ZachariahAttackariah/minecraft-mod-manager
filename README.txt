@@ -371,6 +371,10 @@ Modrinth (built in, no account or key needed)
   Search Modrinth ... search panel for your Minecraft version and loader. Install adds the mod plus the mods
                       it needs, checks every download against Modrinth's checksum, and tags new jars
                       client/server from Modrinth's info. A second copy of a mod you already have is skipped.
+                      Click a result's name for its preview (in the same window as an installed mod's details):
+                      description, gallery, links, what version Install would get, and Install itself. Results
+                      you already have say Installed, checked against the mod list as it is right now (matched
+                      by Modrinth project, CurseForge project, or the mod's own id or name).
   Status bar ........ how many jars Modrinth recognises and how many have updates (re-checked every 30 min).
   Minecraft x · y ... click it to change the Minecraft version and loader Modrinth looks for.
 

@@ -16,7 +16,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Another tool's `.mod-tags.json` (keyed by mod id) in the same folder is shown live, matched to jars by mod id. It's read-only: nothing is written in that folder, since that tool merges any `mod-tags.json` it finds.
 - **CurseForge** (with an API key in the local settings file, never in this repository)
   - Jars Modrinth doesn't know are recognised by CurseForge's file fingerprint: names, icons, update checks and updates.
-  - Add mods searches Modrinth and CurseForge in one list. A mod on both sites (found by the same file hash on both, or the same slug with the same name or source repository) shows once and downloads from Modrinth (CurseForge's file is used only when Modrinth has none for the game version and loader). Mods install with their required dependencies.
+  - Add mods searches Modrinth and CurseForge in one list. A mod on both sites (found by the same file hash on both, or the same slug with the same name or source repository) shows once and downloads from Modrinth (CurseForge's file is used only when Modrinth has none for the game version and loader). Mods install with their required dependencies. Clicking a result opens its preview (description, gallery, links, the version Install would get) in the same window as an installed mod's details, and "Installed" is checked against the current mod list.
   - Authors who turn off third-party downloads are respected: their mods are never downloaded by the app; their CurseForge page opens instead.
   - CurseForge data is kept in memory for the current run only.
 - **Modrinth**

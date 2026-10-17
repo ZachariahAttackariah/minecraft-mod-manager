@@ -229,6 +229,10 @@ html[data-blocky="on"] :is(.drawer-head h2, .dialog h2, .det-head h2) { font-fam
 .result-icon { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: var(--sunken); }
 .result-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
 .result-title { font-weight: 600; color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+button.result-title { padding: 0; font: inherit; font-weight: 600; text-align: left; background: none; border: 0; cursor: pointer; }
+button.result-title:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* A search result's preview opens in the details window, in front of the search. */
+#details-scrim { z-index: 43; }
 .result-title:hover { text-decoration: underline; text-decoration-color: var(--accent); }
 .result-author { font-size: 12.5px; color: var(--muted); }
 .result-desc { margin: 3px 0 4px; font-size: 13.5px; line-height: 1.4; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -1873,6 +1877,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       size: f ? f.size : 0,
       modified: f ? f.modified : null,
       requiredBy: f ? f.requiredBy || 0 : 0,
+      modId: f ? f.modId || null : null,
       version: f ? f.version : null
     };
   }
@@ -2521,6 +2526,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         Object.keys(selected).forEach(function (k) { if (!model.byKey[k]) delete selected[k]; });
         if (anchorKey && !model.byKey[anchorKey]) anchorKey = null;
         render();
+        refreshSearchMarks();
       } else {
         renderHeader();
       }
@@ -2561,6 +2567,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       mr.data = res;
       applyScan();
       render();
+      refreshSearchMarks();
       whatChanged();
     }, function (e) {
       mr.error = e.message;
@@ -2727,6 +2734,41 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }
     list.push(hit);
   }
+  // Whether a result is already here, checked against the list as it is right now (it refreshes on its own)
+  // rather than only the mark the search answer came with: that can predate a change, or come from a moment
+  // the app was busy and had nothing to compare with. A match is the same Modrinth project, the same
+  // CurseForge project, or the same mod id or name, from either site's half of a merged result.
+  function installedNow(hit) {
+    if (hit.installed) return true;
+    var mrId = hit.source === "curseforge" ? (hit.modrinth && hit.modrinth.projectId) : hit.projectId;
+    var cfHit = hit.source === "curseforge" ? hit : hit.also;
+    var cfId = cfHit && cfHit.projectId ? String(cfHit.projectId).replace(/^cf:/, "") : null;
+    var names = [hit.slug, hit.title, cfHit && cfHit.slug, cfHit && cfHit.title].map(normName).filter(Boolean);
+    if (search.kind === "mods") {
+      if (!model) return false;
+      return model.present.some(function (r) {
+        var i = r.mr || {};
+        if (mrId && i.projectId === mrId) return true;
+        if (cfId && i.cfModId && String(i.cfModId) === cfId) return true;
+        return [r.modId, r.slug, i.slug, r.name].map(normName).some(function (k) { return k && names.indexOf(k) >= 0; });
+      });
+    }
+    var d = packs.data;
+    if (!d || d.kind !== search.kind || !d.packs) return false;
+    return d.packs.some(function (p) {
+      var i = p.modrinth || {};
+      return (mrId && i.projectId === mrId) || (i.slug && names.indexOf(normName(i.slug)) >= 0);
+    });
+  }
+
+  // The list changed (or the Modrinth scan arrived) while the search is open: redraw only if a mark changes.
+  var searchMarksSig = "";
+  function refreshSearchMarks() {
+    if ($("search-scrim").hidden || !search.hits.length) return;
+    var sig = search.hits.map(function (x) { return installedNow(x) ? 1 : 0; }).join("");
+    if (sig !== searchMarksSig) { searchMarksSig = sig; renderSearch(); }
+  }
+
   // Results alternate between the sites, so each one's best matches sit near the top.
   function addHits(mrHits, cfHits) {
     var n = Math.max(mrHits.length, cfHits.length);
@@ -2847,13 +2889,14 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   $("search-results").addEventListener("scroll", maybeLoadMore);
 
   function resultCard(hit, stale) {
+    var installed = installedNow(hit);
     var busyNow = !!installing[hit.projectId];
     var sides = [];
     if (hit.clientSide !== "unsupported") sides.push("client");
     if (hit.serverSide !== "unsupported") sides.push("server");
     var isMod = search.kind === "mods", cf = hit.source === "curseforge";
     // A CurseForge author can switch off downloads through other apps: then the button opens their page.
-    var pageOnly = cf && hit.downloadsAllowed === false && !hit.installed;
+    var pageOnly = cf && hit.downloadsAllowed === false && !installed;
     var sites = server && server.curseforge
       ? h("span", { class: "src-marks" },
           cf ? null : h("span", { class: "src mr", title: hit.also ? "On Modrinth and CurseForge (matched by " + (hit.matchedBy === "file" ? "the same file on both" : hit.matchedBy) + "). Installs from Modrinth." : "From Modrinth" }, "Modrinth"),
@@ -2863,7 +2906,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       hit.icon ? h("img", { class: "result-icon", src: hit.icon, alt: "", loading: "lazy" }) : h("span", { class: "result-icon" }),
       h("div", null,
         h("div", { class: "result-top" },
-          h("a", { class: "result-title", href: cf ? hit.url : "https://modrinth.com/" + MODRINTH_PATH[search.kind] + "/" + encodeURIComponent(hit.slug), target: "_blank", rel: "noopener" }, hit.title),
+          h("button", { type: "button", class: "result-title", title: "Details, gallery and description", onclick: function () { openPreview(hit); } }, hit.title),
           hit.author ? h("span", { class: "result-author" }, "by " + hit.author) : null, sites),
         // More like this: the same category, no search words.
         isMod && hit.categories && hit.categories.length ? h("button", { type: "button", class: "linkish more-like", title: "Mods in the " + hit.categories[0] + " category",
@@ -2872,16 +2915,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         h("p", { class: "result-desc" }, hit.description || ""),
         h("div", { class: "result-meta" }, formatNum(hit.downloads) + " downloads" + (isMod && !cf ? " · " + (sides.join(" + ") || "side unknown") : "") + (hit.updated ? " · updated " + ago(hit.updated) : "") +
           (pageOnly ? " · download from CurseForge's site only" : ""))),
-      h("button", { type: "button", class: "btn" + (hit.installed || pageOnly ? "" : " primary"), disabled: hit.installed || busyNow || !connected,
+      h("button", { type: "button", class: "btn" + (installed || pageOnly ? "" : " primary"), disabled: installed || busyNow || !connected,
           title: pageOnly ? "The author only allows downloads from the CurseForge website. Opens its page; " + (isMod ? "a jar you download there goes straight into this mods folder." : "a zip you download there goes straight into the " + PACK_NOUNS[search.kind] + " folder.") : null,
-          "aria-label": (hit.installed ? "Installed: " : pageOnly ? "Open the page of " : "Install ") + hit.title, onclick: function () { if (isMod) installMod(hit); else installPack(hit); } },
-        hit.installed ? "Installed" : busyNow ? "Installing…" : pageOnly ? "Open page" : "Install"));
+          "aria-label": (installed ? "Installed: " : pageOnly ? "Open the page of " : "Install ") + hit.title, onclick: function () { if (isMod) installMod(hit); else installPack(hit); } },
+        installed ? "Installed" : busyNow ? "Installing…" : pageOnly ? "Open page" : "Install"));
   }
 
   // A mod on both sites installs from Modrinth; if Modrinth has no fitting file, CurseForge's copy is tried.
   function installMod(hit) {
     installing[hit.projectId] = true;
     renderSearch();
+    renderPreviewOf(hit);
     function attempt(src) {
       return api("POST", "/api/" + (src.source === "curseforge" ? "curseforge" : "modrinth") + "/install", { projectId: src.projectId });
     }
@@ -2914,6 +2958,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       delete installing[hit.projectId];
       forgetSearches();
       renderSearch();
+      renderPreviewOf(hit);
       return refresh(true);
     });
   }
@@ -2946,6 +2991,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       packs.data = res;
       packs.error = null;
       packs.places[kind] = res.place;
+      refreshSearchMarks();
     }, function (e) {
       if (seq === packs.seq) packs.error = e.message;
     }).then(function () {
@@ -3113,6 +3159,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function installPack(hit) {
     installing[hit.projectId] = true;
     renderSearch();
+    renderPreviewOf(hit);
     var kind = search.kind, fellBack = false;
     function attempt(src) {
       return api("POST", src.source === "curseforge" ? "/api/curseforge/packs/install" : "/api/packs/install", { kind: kind, place: packs.places[kind] || "", projectId: src.projectId });
@@ -3138,6 +3185,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       delete installing[hit.projectId];
       forgetSearches();
       renderSearch();
+      renderPreviewOf(hit);
       if (currentView === "packs") loadPacks(false);
     });
   }
@@ -5842,9 +5890,86 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   var KIND_NAMES = { neoforge: "NeoForge", forge: "Forge", fabric: "Fabric (through Connector)", quilt: "Quilt", none: "library (no mod metadata)" };
   var SIDE_WORDS = { required: "needed", optional: "optional", unsupported: "not used" };
 
+  // The jar-only tabs (versions to switch to, what it needs, its configs) don't apply to a search preview.
+  function detTabsForPreview(preview) {
+    ["versions", "deps", "configs"].forEach(function (t) { document.querySelector('#det-tabs [data-tab="' + t + '"]').hidden = preview; });
+  }
+
+  // A search result (mod or pack) in the details window: the site's description, gallery and links, and
+  // Install. A result on both sites shows Modrinth's page, or CurseForge's when Modrinth's can't be read.
+  function openPreview(hit) {
+    var kind = search.kind;
+    det = { seq: det.seq + 1, row: null, preview: { hit: hit, kind: kind }, data: null, error: null, versions: null, versionsError: null, versionsLoading: false, tab: "overview" };
+    var cf = hit.source === "curseforge";
+    $("det-title").textContent = hit.title;
+    $("det-sub").textContent = [hit.author ? "by " + hit.author : null, cf ? "CurseForge" : hit.also ? "Modrinth and CurseForge" : "Modrinth",
+      formatNum(hit.downloads) + " downloads"].filter(Boolean).join(" · ");
+    $("det-icon").replaceChildren(hit.icon ? h("img", { src: hit.icon, alt: "" }) : h("span", { class: "ph" }));
+    $("det-gallery-tab").hidden = true;
+    detTabsForPreview(true);
+    $("details-scrim").hidden = false;
+    setDetTab("overview");
+    $("details-close").focus();
+    var seq = det.seq;
+    var ask = function (id) { return api("GET", "/api/project/preview?id=" + encodeURIComponent(id) + "&kind=" + encodeURIComponent(kind)); };
+    ask(hit.projectId).then(null, function (e) {
+      if (hit.also && !cf) return ask(hit.also.projectId);
+      throw e;
+    }).then(function (info) {
+      if (seq !== det.seq) return;
+      det.data = info;
+      renderDetails();
+    }, function (e) {
+      if (seq !== det.seq) return;
+      det.error = e.message;
+      renderDetails();
+    });
+  }
+
+  // An install started or finished from the search: its preview, if open, shows it too.
+  function renderPreviewOf(hit) {
+    if (det.preview && det.preview.hit === hit && !$("details-scrim").hidden) renderDetails();
+  }
+
+  function renderPreviewOverview(body, info) {
+    var p = det.preview, hit = p.hit, isMod = p.kind === "mods";
+    if (info.description) body.append(h("p", { style: "margin:0 0 12px;font-size:15px" }, info.description));
+    var installed = installedNow(hit), busyNow = !!installing[hit.projectId];
+    var pageOnly = hit.source === "curseforge" && hit.downloadsAllowed === false && !installed;
+    body.append(h("div", { class: "row-actions" },
+      btn(installed ? "Installed" : busyNow ? "Installing…" : pageOnly ? "Open page" : "Install", function () { if (isMod) installMod(hit); else installPack(hit); },
+        installed || pageOnly ? "" : "primary", { disabled: installed || busyNow || !connected })));
+    var kv = h("dl", { class: "kv", style: "margin-top:14px" });
+    var add = function (k, v) { if (v !== null && v !== undefined && v !== "") kv.append(h("dt", null, k), h("dd", null, v)); };
+    add("From", hit.source === "curseforge" ? "CurseForge" : hit.also ? "Modrinth and CurseForge (installs from Modrinth)" : "Modrinth");
+    add("Would install", info.installVersion || (isMod ? "Nothing for " + targetText() + " yet" : p.kind === "shaderpacks" ? "No download listed" : "Nothing for Minecraft " + (server && server.target ? server.target.gameVersion : "") + " yet"));
+    if (isMod && info.clientSide) add("Where it's needed", "Client: " + (SIDE_WORDS[info.clientSide] || info.clientSide) + " · Server: " + (SIDE_WORDS[info.serverSide] || info.serverSide));
+    if (info.categories && info.categories.length) add("Categories", info.categories.join(", "));
+    add("License", info.license);
+    add("Downloads", formatNum(info.downloads) + (info.followers ? " · " + formatNum(info.followers) + " followers" : ""));
+    add("Last updated", info.updated ? dateText(info.updated) + " (" + ago(info.updated) + ")" : null);
+    body.append(kv);
+    var links = h("div", { class: "det-links" });
+    var mrSlug = hit.source === "curseforge" ? (hit.modrinth && hit.modrinth.slug) : hit.slug;
+    if (mrSlug) links.append(btn("Modrinth page", function () { openTab("https://modrinth.com/" + MODRINTH_PATH[p.kind] + "/" + encodeURIComponent(mrSlug)); }));
+    var cfUrl = hit.source === "curseforge" ? hit.url : hit.also && hit.also.url;
+    if (safeUrl(cfUrl)) links.append(btn("CurseForge page", function () { openTab(cfUrl); }));
+    [["Source code", info.source], ["Issues", info.issues], ["Wiki", info.wiki], ["Discord", info.discord]].forEach(function (l) {
+      if (safeUrl(l[1])) links.append(btn(l[0], function () { openTab(l[1]); }));
+    });
+    if (links.childNodes.length) body.append(links);
+    if (info.body) {
+      body.append(h("h3", { style: "margin:18px 0 4px;font:700 16px/1.3 var(--font-display)" }, "Description"));
+      var md = h("div", { class: "md" });
+      md.append(renderMarkdown(info.body));
+      body.append(md);
+    }
+  }
+
   function openDetails(r) {
     det = { seq: det.seq + 1, row: r, data: null, error: null, versions: null, versionsError: null, versionsLoading: false, tab: "overview" };
     if (!menuEl.hidden) closeMenu();
+    detTabsForPreview(false);
     $("det-title").textContent = r.name;
     $("det-sub").textContent = r.file;
     $("det-icon").replaceChildren(h("span", { class: "ph" }));
@@ -5902,6 +6027,14 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     body.replaceChildren();
     if (det.error) { body.append(h("p", { class: "search-empty" }, det.error)); return; }
     var d = det.data;
+    if (det.preview) {
+      if (!d) { body.append(h("p", { class: "search-empty" }, "Getting the details…")); return; }
+      var shots = d.gallery || [];
+      $("det-gallery-tab").hidden = !shots.length;
+      $("det-gallery-tab").textContent = "Gallery" + (shots.length ? " " + shots.length : "");
+      if (det.tab === "gallery") renderGallery(body, shots); else renderPreviewOverview(body, d);
+      return;
+    }
     if (!d) { body.append(h("p", { class: "search-empty" }, "Reading the jar…")); return; }
     var mr = d.modrinth || {};
     if (mr.icon) $("det-icon").replaceChildren(h("img", { src: mr.icon, alt: "" }));
