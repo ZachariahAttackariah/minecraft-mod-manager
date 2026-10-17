@@ -175,7 +175,7 @@ namespace MinecraftModManager
             return modIds.Contains(joined) ? joined : null;
         }
 
-        static List<ConfigItem> ComputeConfigSync(string gameConfig, string serverConfig, out int ignored, out int same)
+        static List<ConfigItem> ComputeConfigSync(string gameConfig, string serverConfig, out int ignored, out int same, List<ConfigItem> sameItems = null)
         {
             Dictionary<string, FileInfo> game = ConfigFiles(gameConfig), server = ConfigFiles(serverConfig);
             TagsDoc tags = GameTags();
@@ -198,7 +198,12 @@ namespace MinecraftModManager
                 {
                     int more;
                     // Equal files, or files whose settings match and only comments differ (Java writes a timestamp comment).
-                    if (g.Length == s.Length && FilesEqual(g, s) || ConfigChanges(g, s, out more).Count == 0 && more == 0 && TextConfig(rel)) { same++; continue; }
+                    if (g.Length == s.Length && FilesEqual(g, s) || ConfigChanges(g, s, out more).Count == 0 && more == 0 && TextConfig(rel))
+                    {
+                        same++;
+                        if (sameItems != null) sameItems.Add(new ConfigItem { Rel = rel, Kind = "same", Owner = owner, Game = g, Server = s });
+                        continue;
+                    }
                     items.Add(new ConfigItem { Rel = rel, Kind = "differ", Owner = owner, Game = g, Server = s });
                 }
                 else if (owner != null && sideOf.ContainsKey(owner))
@@ -295,7 +300,7 @@ namespace MinecraftModManager
                     "changes", changes, "moreChanges", more));
             }
             return Obj("ok", true, "serverFolder", server, "gameFolder", GameDir(), "running", ServerBusy() || ExternalServerRunning(server, null),
-                "mods", modList, "modsInSync", inSync, "configs", configList, "configsSame", same, "configsIgnored", ignored,
+                "mods", modList, "modsInSync", inSync, "configs", configList, "lastAutoConfigs", lastServerConfigSync, "configsSame", same, "configsIgnored", ignored,
                 "gameOn", gameJars.Count(j => j.Enabled), "gameOff", gameJars.Count(j => !j.Enabled), "serverOn", serverOn,
                 "comparedAt", DateTime.UtcNow.ToString("o"));
         }

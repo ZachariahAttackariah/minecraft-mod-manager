@@ -707,7 +707,7 @@ namespace MinecraftModManager
             try { cfg = ReadInstanceCfg(info); } catch { cfg = new List<string>(); }
             return Obj("java", !OwnJavaArgs(cfg), "javaArgs", IniGet(cfg, "JvmArgs") ?? "",
                 "shaderpacks", SharesFolder(info, "shaderpacks"), "resourcepacks", SharesFolder(info, "resourcepacks"),
-                "options", state.Options.Contains(info.Id));
+                "options", state.Options.Contains(info.Id), "configs", SharesConfigs(info));
         }
 
         static Dictionary<string, object> SharingInfo()
@@ -729,12 +729,14 @@ namespace MinecraftModManager
             }
             return Obj("ok", true, "javaArgs", SharedJavaArgs(), "launcherSetUp", File.Exists(LauncherConfigPath()), "prismRunning", PrismRunning(),
                 "shareByDefault", state.ShareByDefault,
-                "folders", folders, "hasOptions", File.Exists(SharedOptionsPath()), "instances", instances);
+                "folders", folders, "hasOptions", File.Exists(SharedOptionsPath()), "instances", instances,
+                "configCount", Directory.Exists(SharedConfigDir()) ? ShareableConfigs(SharedConfigDir()).Count : 0, "configsPath", SharedConfigDir(),
+                "serverConfigsAuto", PrefFlag("serverConfigsAuto", true), "lastServerConfigSync", lastServerConfigSync);
         }
 
         static void OpenSharedFolder(string kind)
         {
-            if (Array.IndexOf(SharedFolders, kind) < 0) throw new UserError("Unknown shared folder.");
+            if (Array.IndexOf(SharedFolders, kind) < 0 && kind != "config") throw new UserError("Unknown shared folder.");
             string dir = Path.Combine(SharedDir(), kind);
             Directory.CreateDirectory(dir);
             try { Process.Start("explorer.exe", "\"" + dir + "\""); } catch { }

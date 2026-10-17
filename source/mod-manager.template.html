@@ -3935,16 +3935,18 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var shareShaders = h("input", { type: "checkbox" });
     var sharePacks = h("input", { type: "checkbox" });
     var shareOptions = h("input", { type: "checkbox" });
+    var shareConfigs = h("input", { type: "checkbox" });
     var ownArgs = h("textarea", { class: "args", rows: "2", spellcheck: "false", maxlength: "4000", placeholder: "For example -XX:+UseZGC -XX:+ZGenerational", "aria-label": "This instance's own Java arguments" });
     var ownArgsProp = h("label", { class: "prop" }, h("b", null, "This instance's own Java arguments"), ownArgs,
       h("span", null, "Set the memory above, so leave out -Xmx and -Xms."));
     function setSharing(s) {
-      s = s || { java: true, javaArgs: "", shaderpacks: true, resourcepacks: true, options: true };
+      s = s || { java: true, javaArgs: "", shaderpacks: true, resourcepacks: true, options: true, configs: false };
       shareJava.checked = !!s.java;
       ownArgs.value = s.javaArgs || "";
       shareShaders.checked = !!s.shaderpacks;
       sharePacks.checked = !!s.resourcepacks;
       shareOptions.checked = !!s.options;
+      shareConfigs.checked = !!s.configs;
       ownArgsProp.hidden = shareJava.checked;
     }
     shareJava.addEventListener("change", function () { ownArgsProp.hidden = shareJava.checked; if (!shareJava.checked) ownArgs.focus(); });
@@ -3955,6 +3957,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       h("label", { class: "toggle" }, shareShaders, "Shader packs"),
       h("label", { class: "toggle" }, sharePacks, "Resource packs"),
       h("label", { class: "toggle" }, shareOptions, "Game settings (video, sound, controls, key binds)"),
+      h("label", { class: "toggle" }, shareConfigs, "Mod configs (only for the mods each instance has)"),
       h("p", { class: "hint", style: "margin:0;line-height:1.4" }, "Ticked items are the same in every instance that ticks them. " +
         "Ticking packs moves this instance's packs into the shared folder, and unticking gives it a copy of its own, so nothing is lost. " +
         "Edit the shared Java arguments under Shared settings in the instance list."));
@@ -4056,7 +4059,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       go.disabled = true;
       go.textContent = settings ? "Saving…" : "Creating…";
       var src = picked();
-      var sharing = { java: shareJava.checked, javaArgs: ownArgs.value, shaderpacks: shareShaders.checked, resourcepacks: sharePacks.checked, options: shareOptions.checked };
+      var sharing = { java: shareJava.checked, javaArgs: ownArgs.value, shaderpacks: shareShaders.checked, resourcepacks: sharePacks.checked, options: shareOptions.checked, configs: shareConfigs.checked };
       var body = settings
         ? { id: source.id, name: name, memoryMb: Number(memorySelect.value) || 0, loaderVersion: versionSelect.value, minecraft: mcSelect.value || source.minecraft, loader: loaderSelect.value, sharing: sharing }
         : { name: name, copyFrom: src ? src.id : null, minecraft: mcSelect.value, loader: loaderSelect.value, loaderVersion: versionSelect.value,
@@ -4267,6 +4270,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         h("section", null, h("h3", null, "Game settings"),
           h("div", { class: "who" }, "Video, sound, controls and key binds (options.txt). " + who("options", "game settings") +
             " A change made in one game reaches the others the next time you press Play here. Key binds for mods an instance doesn't have are kept for the ones that do.")),
+        h("section", null, h("h3", null, "Mod configs"),
+          h("div", { class: "who" }, count(d.configCount || 0, "config file", "config files") + " in the shared folder. " + who("configs", "mod configs") +
+            " A config changed in one game reaches the others the next time you press Play here (or the app starts), but only instances with that mod get it. Joining takes the shared configs and adds any only that instance has. Tick it in an instance's Settings; new instances don't share configs unless you do."),
+          h("div", { class: "share-row" }, btn("Open folder", function () { api("POST", "/api/sharing/open", { kind: "config" }).catch(function (e) { toast(e.message); }); }))),
         error);
     }, function (e) { form.replaceChildren(h("p", { class: "tag-error", role: "alert" }, e.message)); });
 
@@ -5134,7 +5141,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha", tagHide: "ctrl", accentColor: "#2fb465", background: "glow", corners: "round", textSize: "100", tagStyle: "tint",
     motion: "system", rowStyle: "lines", showIcons: true, colSide: true, colTags: true, colVersion: false, startPage: "mods", bgDim: "75", tagHues: {},
     worldBackups: false, updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false,
-    serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false, autoLibraries: true, tagLibraries: true };
+    serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false, autoLibraries: true, tagLibraries: true, serverConfigsAuto: true };
   var localPrefs = {};
   try { localPrefs = JSON.parse(localStorage.getItem("mmm.prefs") || "{}") || {}; } catch (e) {}
   function pref(k) {
@@ -7119,9 +7126,20 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var s = srv.sync;
     p.append(h("div", { class: "sync-tools", style: "justify-content:space-between;align-items:flex-start" },
       h("div", { style: "flex:1 1 360px;min-width:0" }, h("h2", null, "Mods & configs"),
-        h("p", { class: "lead", style: "margin:0" }, "Your game's mods folder decides what the server runs. Nothing changes until you apply: replaced jars go to the Recycle Bin and overwritten configs are backed up.")),
+        h("p", { class: "lead", style: "margin:0" }, "Your game's mods folder decides what the server runs. Mods change only when you apply them here: replaced jars go to the Recycle Bin and overwritten configs are backed up.")),
       h("div", { class: "row-actions" }, s && s.comparedAt ? h("span", { class: "hint" }, "Compared at " + clock(new Date(s.comparedAt))) : null,
         btn(srv.syncLoading ? "Comparing…" : "Compare again", loadSync, "", { disabled: srv.syncLoading }))));
+    // Configs changed in the game follow to the server by themselves (ConfigSharing.cs).
+    var autoCfg = h("input", { type: "checkbox" });
+    autoCfg.checked = pref("serverConfigsAuto") !== false;
+    autoCfg.addEventListener("change", function () { savePref("serverConfigsAuto", autoCfg.checked, true); });
+    var lastAuto = s && s.lastAutoConfigs;
+    p.append(h("div", { class: "auto-cfg", style: "margin-top:12px" },
+      h("label", { class: "toggle" }, autoCfg, h("strong", null, "Configs follow your game automatically")),
+      h("div", { class: "hint", style: "margin:2px 0 0 2px;line-height:1.4" },
+        "A config you change in your game is copied to the server before it starts from here, and every few minutes while it's stopped. " +
+        "Client-only configs, configs only the server has and changes made only on the server are left alone; overwritten files are backed up." +
+        (lastAuto ? " Last copied at " + clock(new Date(lastAuto.at)) + ": " + lastAuto.files.slice(0, 4).join(", ") + (lastAuto.files.length > 4 ? ", …" : "") + "." : ""))));
     if (srv.syncResult) p.append(syncResultBox());
     if (!s) { if (srv.syncLoading) p.append(h("p", { class: "search-empty" }, "Comparing your game and the server…")); return; }
     if (s.error) { p.append(h("p", { class: "search-empty" }, s.error)); return; }

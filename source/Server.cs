@@ -482,6 +482,9 @@ namespace MinecraftModManager
         static Dictionary<string, object> StartServer()
         {
             string dir = RequireServerDir();
+            // Configs changed in the game since the last look go over first (ConfigSharing.cs).
+            List<string> configs = ServerBusy() ? new List<string>() : AutoSyncServerConfigsSafe();
+            if (configs.Count > 0) AddConsole("Copied " + Plural(configs.Count, "config", "configs") + " changed in the game: " + string.Join(", ", configs.Take(5)) + (configs.Count > 5 ? ", …" : "") + ".", "app");
             lock (ServerLock)
             {
                 if (serverProcess != null) throw new UserError("The server is already " + (serverState == "stopping" ? "stopping." : "running."));

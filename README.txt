@@ -183,6 +183,12 @@ Sharing between instances
                       others each time you press Play here (and when the app starts). Key binds for mods an
                       instance doesn't have are kept for the instances that have them. Which resource packs are
                       turned on only travels between instances that share resource packs.
+  Mod configs ....... opt-in per instance (its Settings; new instances don't share configs by themselves).
+                      A config whose settings changed in one game (newest change wins; a mod rewriting the
+                      same values or a comment doesn't count) reaches the other sharing instances each time
+                      you press Play here (and when the app starts), but only instances that have that mod
+                      or already have the file. Joining takes the shared configs and adds any only that
+                      instance has. Overwritten files are backed up in ...\sync-backups\<time>\instances.
   The shared files are in %LOCALAPPDATA%\MinecraftModManager\shared.
 
 Play and the pre-launch check
@@ -337,6 +343,11 @@ Server (for hosting friends on this PC)
                       "Game -> server" or "Server -> game" for each. Nothing changes until you apply; while
                       the server runs the button is "Stop, apply and start". Replaced jars go to the Recycle
                       Bin; overwritten configs are backed up in %LOCALAPPDATA%\MinecraftModManager\sync-backups.
+                      Configs follow your game automatically (on by default): a config whose settings you
+                      changed in the game is copied to the server before it starts from here and every few
+                      minutes while it's stopped. Client-only configs, configs only the server has and
+                      changes made only on the server are left alone; the first look at a config that
+                      differs only remembers it. Copies are backed up like the manual ones.
   Players ........... who's online (Op, Kick, Ban), the whitelist (and turning it on or off), operators and
                       bans. While the server runs, changes go in as commands; while it's stopped they're
                       written to whitelist.json, ops.json and banned-players.json (a new name's UUID comes

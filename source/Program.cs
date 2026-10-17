@@ -207,7 +207,8 @@ namespace MinecraftModManager
 
             // Settings changed in a game since last time reach the other sharing instances, even ones
             // started from the launcher itself.
-            ThreadPool.QueueUserWorkItem(delegate { TryApplySharingDefaults(); TrySyncGameSettings(); });
+            ThreadPool.QueueUserWorkItem(delegate { TryApplySharingDefaults(); TrySyncGameSettings(); TrySyncSharedConfigs(); });
+            StartServerConfigWatch(); // configs changed in the game reach the server while it's stopped
 
             if (showWindow)
             {
@@ -1008,6 +1009,7 @@ namespace MinecraftModManager
             if (instance == null) throw new UserError("This mods folder isn't part of an instance, so there's nothing to launch. Pick an instance next to the Play button.");
             TryApplySharingDefaults(); // an instance made in the launcher since starts out sharing too
             TrySyncGameSettings(); // shared game settings changed in another instance come along
+            TrySyncSharedConfigs(); // and mod configs, the same way
             var start = new ProcessStartInfo(prism, "--launch \"" + instance[0] + "\"");
             start.UseShellExecute = false;
             start.WorkingDirectory = Path.GetDirectoryName(prism);

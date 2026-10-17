@@ -425,6 +425,8 @@ namespace MinecraftModManager
                 }
                 try { if (sharing != null && Bool(sharing, "options")) ShareGameSettings(created, true); }
                 catch (Exception ex) { problems.Add("The game settings couldn't be shared: " + ex.Message); }
+                try { if (sharing != null && Bool(sharing, "configs")) ShareConfigs(created, true); }
+                catch (Exception ex) { problems.Add("The mod configs couldn't be shared: " + ex.Message); }
             }
             string mods = Path.Combine(dir, "minecraft", "mods");
             Dictionary<string, object> selected = SelectInstance(mods);
@@ -564,11 +566,13 @@ namespace MinecraftModManager
             bool instanceFiles = changes.Count > 0;
             var folderChanges = SharedFolders.Where(kind => sharing != null && sharing.ContainsKey(kind) && Bool(sharing, kind) != SharesFolder(info, kind)).ToList();
             bool optionsChange = sharing != null && sharing.ContainsKey("options") && Bool(sharing, "options") != SharesGameSettings(info);
-            if (!instanceFiles && folderChanges.Count == 0 && !optionsChange) throw new UserError("Nothing was changed.");
+            bool configsChange = sharing != null && sharing.ContainsKey("configs") && Bool(sharing, "configs") != SharesConfigs(info);
+            if (!instanceFiles && folderChanges.Count == 0 && !optionsChange && !configsChange) throw new UserError("Nothing was changed.");
             if (instanceFiles) RequirePrismClosed();
 
             foreach (string kind in folderChanges) changes.Add(ApplyFolderSharing(info, kind, Bool(sharing, kind)));
             if (optionsChange) changes.Add(ShareGameSettings(info, Bool(sharing, "options")));
+            if (configsChange) changes.Add(ShareConfigs(info, Bool(sharing, "configs")));
             if (packJson != null)
             {
                 File.Copy(packPath, packPath + ".bak", true);
@@ -623,6 +627,7 @@ namespace MinecraftModManager
                 throw new UserError("Windows couldn't move the instance to the Recycle Bin (a file may be in use). Nothing was deleted.");
             }
             if (SharesGameSettings(info)) ShareGameSettings(info, false);
+            if (SharesConfigs(info)) ShareConfigs(info, false);
             Log("Instance  deleted " + info.Name + " (moved to the Recycle Bin)");
             return Obj("ok", true, "name", info.Name);
         }
