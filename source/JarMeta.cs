@@ -620,6 +620,7 @@ namespace MinecraftModManager
             Dictionary<string, List<Provider>> serverProviders = null; // read only when something is missing
 
             var issues = new List<object>();
+            var missingSeen = new Dictionary<string, MissingNeed>(StringComparer.OrdinalIgnoreCase);
             // The same mod twice (on or off): one issue per mod, with the copy to keep already picked (Duplicates.cs).
             List<DupGroup> dupes = FindDuplicates(jars, metas, mc);
             foreach (DupGroup g in dupes) issues.Add(DuplicateIssue(g, side == "client"));
@@ -700,18 +701,20 @@ namespace MinecraftModManager
                     if (present || dep.Type != "required") continue;
                     List<Provider> off, onServer = null;
                     if (side == "client" && serverProviders == null) serverProviders = ServerProviders();
+                    // One issue per missing mod, however many mods need it (NoteMissing).
                     if (offProviders.TryGetValue(dep.Id, out off) && off.Count > 0)
-                        issues.Add(Issue("error", "missing", owner + " needs " + off[0].Name + ", which is turned off.", new[] { jar.Name, off[0].File }.Distinct().ToList(),
-                            Obj("action", "enable", "file", off[0].File)));
+                        NoteMissing(issues, missingSeen, "enable:" + off[0].File, off[0].Name, ", which is turned off", null, owner, jar.Name, off[0].File,
+                            Obj("action", "enable", "file", off[0].File));
                     else if (serverProviders != null && serverProviders.TryGetValue(dep.Id, out onServer) && onServer.Any(p => !p.Nested && InRange(p.Version, dep.Range)))
                     {
                         Provider p = onServer.First(x => !x.Nested && InRange(x.Version, dep.Range));
-                        issues.Add(Issue("error", "missing", owner + " needs " + p.Name + ", which isn't installed in the game. The server has it (" + p.File + ").",
-                            new[] { jar.Name }, Obj("action", "copy-from-server", "file", p.File)));
+                        NoteMissing(issues, missingSeen, "copy:" + p.File, p.Name, ", which isn't installed in the game", " The server has it (" + p.File + ").", owner, jar.Name, null,
+                            Obj("action", "copy-from-server", "file", p.File));
                     }
                     else
-                        issues.Add(Issue("error", "missing", owner + " needs " + dep.Id + (dep.Range != null && dep.Range != "*" ? " (" + DescribeRange(dep.Range) + ")" : "") + ", which isn't installed.",
-                            new[] { jar.Name }, Obj("action", "install", "id", dep.Id, "for", jar.Name, "query", dep.Id)));
+                        NoteMissing(issues, missingSeen, "install:" + dep.Id.ToLowerInvariant(),
+                            dep.Id + (dep.Range != null && dep.Range != "*" ? " (" + DescribeRange(dep.Range) + ")" : ""), ", which isn't installed", null, owner, jar.Name, null,
+                            Obj("action", "install", "id", dep.Id, "for", jar.Name, "query", dep.Id));
                 }
             }
             int errors = issues.Count(i => (string)((Dictionary<string, object>)i)["level"] == "error");
@@ -770,6 +773,39 @@ namespace MinecraftModManager
             List<Provider> list;
             if (!map.TryGetValue(mod.Id, out list)) map[mod.Id] = list = new List<Provider>();
             list.Add(new Provider { File = file, Version = mod.Version, Name = mod.Name ?? mod.Id, Nested = nested });
+        }
+
+        sealed class MissingNeed
+        {
+            public Dictionary<string, object> Issue;
+            public string What, Why, After;
+            public readonly List<string> Owners = new List<string>();
+            public readonly List<string> Files = new List<string>();
+        }
+
+        // A missing mod is one problem however many mods need it: the first mod that needs it makes the issue,
+        // later ones are added to its "needed by" list (and files), so counts and "Add all missing" see it once.
+        static void NoteMissing(List<object> issues, Dictionary<string, MissingNeed> seen, string key, string what, string why, string after,
+            string owner, string ownerFile, string extraFile, Dictionary<string, object> fix)
+        {
+            MissingNeed m;
+            if (!seen.TryGetValue(key, out m))
+            {
+                m = new MissingNeed { What = what, Why = why, After = after, Issue = Issue("error", "missing", "", new string[0], fix) };
+                if (extraFile != null) m.Files.Add(extraFile);
+                seen[key] = m;
+                issues.Add(m.Issue);
+            }
+            if (!m.Owners.Contains(owner)) m.Owners.Add(owner);
+            if (!m.Files.Contains(ownerFile)) m.Files.Insert(m.Files.Count - (extraFile != null ? 1 : 0), ownerFile);
+            string who = m.Owners.Count == 1 ? m.Owners[0]
+                : m.Owners.Count <= 3 ? string.Join(", ", m.Owners.Take(m.Owners.Count - 1)) + " and " + m.Owners.Last()
+                : string.Join(", ", m.Owners.Take(3)) + " and " + (m.Owners.Count - 3) + " more";
+            m.Issue["message"] = m.Owners.Count == 1
+                ? who + " needs " + m.What + m.Why + "." + (m.After ?? "")
+                : m.What + m.Why.Replace(", which", "") + ", and " + who + " need it." + (m.After ?? ""); // "X is turned off, and A and B need it."
+            m.Issue["files"] = m.Files.ToList();
+            m.Issue["neededBy"] = m.Owners.ToList();
         }
 
         static Dictionary<string, object> Issue(string level, string kind, string message, IEnumerable<string> files, Dictionary<string, object> fix)
