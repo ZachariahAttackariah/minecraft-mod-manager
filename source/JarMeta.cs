@@ -749,6 +749,7 @@ namespace MinecraftModManager
                 Log("Copied    " + name + " from the server's mods folder");
             }
             try { UpdateTags(new List<string> { name }, new List<string> { "client", "server" }, new List<string>()); } catch (UserError) { }
+            TagLibraryByLookup(name, null);
             return Obj("ok", true, "file", name);
         }
 

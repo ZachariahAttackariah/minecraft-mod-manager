@@ -5134,7 +5134,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha", tagHide: "ctrl", accentColor: "#2fb465", background: "glow", corners: "round", textSize: "100", tagStyle: "tint",
     motion: "system", rowStyle: "lines", showIcons: true, colSide: true, colTags: true, colVersion: false, startPage: "mods", bgDim: "75", tagHues: {},
     worldBackups: false, updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false,
-    serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false, autoLibraries: true };
+    serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false, autoLibraries: true, tagLibraries: true };
   var localPrefs = {};
   try { localPrefs = JSON.parse(localStorage.getItem("mmm.prefs") || "{}") || {}; } catch (e) {}
   function pref(k) {
@@ -5252,7 +5252,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "tagHide", label: "Hiding a tag", desc: "How to filter out the mods with a tag. Right-click a tag hides it either way.", choices: [["ctrl", "Ctrl+click"], ["cycle", "Click twice"]] },
       { key: "tagOrder", label: "Tag order", desc: "How tags are listed in the side panel, on rows and when picking tags for a mod.", choices: [["alpha", "A to Z"], ["file", "As in the file"]] },
       { key: "confirmDelete", label: "Ask before deleting", desc: "Off sends mods straight to the Recycle Bin, where they can still be restored." },
-      { key: "autoLibraries", label: "Turn on what a mod needs", desc: "Turning a mod on also turns on the turned-off libraries and mods it requires (the newest copy, if there are several)." }
+      { key: "autoLibraries", label: "Turn on what a mod needs", desc: "Turning a mod on also turns on the turned-off libraries and mods it requires (the newest copy, if there are several)." },
+      { key: "tagLibraries", label: "Tag new libraries", desc: "A new jar that Modrinth or CurseForge lists as a library gets the library tag, so it's listed under Libraries. Installs, dropped and downloaded jars count; updates keep their tags." }
     ] },
     { title: "Folders", items: [
       { key: "folders", label: "Where things are", desc: "", custom: foldersControl }

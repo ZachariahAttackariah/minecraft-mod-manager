@@ -295,6 +295,7 @@ namespace MinecraftModManager
                 throw new UserError("CurseForge gave an unexpected download address for " + name + ", so it wasn't installed.");
             string sha1 = A(Get(file, "hashes")).Select(x => D(x)).Where(x => x != null && CfId(Get(x, "algo")) == 1).Select(x => S(x, "value")).FirstOrDefault();
             string saved = DownloadJar(url, name, sha1, "CurseForge", dir, disabled, replacing, notes);
+            if (saved != null && replacing == null && SamePath(dir, modsDir)) TagLibraryByCf(saved, mod, notes);
             if (saved != null) CfInstallDependencies(file, title, dir, notes, new HashSet<long> { CfId(Get(mod, "id")) });
             return saved;
         }

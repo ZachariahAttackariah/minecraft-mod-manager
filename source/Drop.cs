@@ -55,6 +55,7 @@ namespace MinecraftModManager
                     return Obj("ok", true, "kind", "mod", "skipped", true, "message", name + " is already in the mods folder.");
                 File.Move(temp, target);
                 Log("Added     " + name + " (dropped on the window)");
+                TagLibraryByLookup(name, null);
                 return Obj("ok", true, "kind", "mod", "file", name, "message", "Added " + name + " to the mods folder.");
             }
             finally

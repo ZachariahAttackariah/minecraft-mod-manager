@@ -271,6 +271,14 @@ namespace MinecraftModManager
                     Log("Downloaded " + saved + " into the mods folder");
                     report("Added " + saved + " to the mods folder.");
                     if (window != null && !window.IsDisposed) window.Notify("refresh");
+                    // Looked up off the window's thread; the list refreshes again if it got the library tag.
+                    ThreadPool.QueueUserWorkItem(delegate
+                    {
+                        var notes = new List<string>();
+                        TagLibraryByLookup(saved, notes);
+                        if (notes.Count > 0 && window != null && !window.IsDisposed)
+                            try { window.BeginInvoke((Action)(() => { if (!window.IsDisposed) window.Notify("refresh"); })); } catch (InvalidOperationException) { }
+                    });
                 }
                 else if (op.State == CoreWebView2DownloadState.Interrupted)
                 {
@@ -1505,7 +1513,7 @@ namespace MinecraftModManager
                     if (file == null) continue;
                     bool here = SamePath(dir, modsDir); // or the server's mods folder (a mod a pack needs)
                     Log("Installed " + file + " from Modrinth" + (item.RequiredBy != null ? " (needed by " + item.RequiredBy + ")" : "") + (here ? "" : " into " + dir));
-                    if (here) TagFromProject(file, S(item.Version, "project_id"), notes);
+                    if (here) { TagFromProject(file, S(item.Version, "project_id"), notes); TagLibraryByProject(file, S(item.Version, "project_id"), notes); }
                     added.Add(Obj("file", file, "title", item.Title, "projectId", S(item.Version, "project_id"), "dependency", item.RequiredBy != null));
                 }
                 catch (UserError ex)
