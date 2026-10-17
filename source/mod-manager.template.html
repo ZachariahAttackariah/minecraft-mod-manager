@@ -117,6 +117,17 @@ code { font-family: var(--font-mono); font-size: 0.92em; }
 .brand-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
 .launch { display: flex; align-items: stretch; justify-content: flex-end; gap: 8px; min-width: 0; max-width: 100%; flex-wrap: wrap; }
 .launch-row { display: flex; align-items: stretch; justify-content: flex-end; gap: 8px; min-width: 0; }
+/* While the game starts or runs: Play shows it, with the game's log and Stop beside it. */
+.game-tools { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+html.game-busy #check-bar { display: none !important; }
+.game-tools .btn { padding: 4px 10px; font-size: 12.5px; }
+.btn.play.is-busy:disabled { color: var(--ink); background: color-mix(in srgb, var(--accent) 22%, var(--btn)); }
+.btn.play.is-busy::before { content: ""; width: 9px; height: 9px; margin-right: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); animation: game-pulse 1.6s ease-in-out infinite; }
+@keyframes game-pulse { 50% { opacity: 0.35; } }
+html[data-anim="off"] .btn.play.is-busy::before { animation: none; }
+pre.game-log { margin: 8px 0 0; height: min(60vh, 560px); overflow: auto; padding: 8px 10px; font: 400 12px/1.45 var(--font-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+pre.game-log .w { color: var(--warn, #d9a400); }
+pre.game-log .e { color: var(--danger); }
 .launch .inst-btn { max-width: 320px; padding-block: 6px; }
 .launch .check-bar { margin: 0; padding: 6px 8px 6px 12px; font-size: 12.5px; flex-wrap: nowrap; max-width: 380px; }
 .launch .check-bar .btn { padding: 6px 10px 7px; font-size: 12.5px; }
@@ -1210,6 +1221,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
             <span class="caret" aria-hidden="true">▼</span>
           </button>
           <button class="btn play" type="button" id="play">Play</button>
+          <span class="game-tools" id="game-tools" hidden></span>
         </div>
       </div>
     </div>
@@ -2119,6 +2131,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     $("open-game-folder").textContent = prism.instanceId ? "Open instance folder" : "Open game folder";
     $("open-game-folder").title = "The folder the mods folder is in (configs, saves, packs and so on)";
     $("play").disabled = !canPlay();
+    renderGameTools();
     $("play").title = !prism.installed ? "The launcher isn't installed, so the game can't be started from here"
       : prism.instanceId ? "Start " + prism.instanceName : "This mods folder isn't an instance. Pick one from the list next to Play.";
     renderInstanceButton();
@@ -2628,6 +2641,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       render();
       refreshSearchMarks();
       whatChanged();
+      if (!gameBusy()) loadGame();
     }, function (e) {
       mr.error = e.message;
     }).then(function () {
@@ -3953,7 +3967,111 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   function canPlay() {
     var prism = server && server.prism;
-    return !!(connected && prism && prism.installed && prism.instanceId);
+    return !!(connected && prism && prism.installed && prism.instanceId) && !gameBusy();
+  }
+
+  // ---------- The game, followed from the app (GameWatch.cs): Starting / Running, its log, Stop ----------
+
+  var gameInfo = { state: "idle" }, gameTimer = 0, gameShownEnd = "";
+  function gameBusy() { return gameInfo.state === "starting" || gameInfo.state === "running"; }
+  function loadGame() {
+    if (!connected) return Promise.resolve();
+    return api("GET", "/api/game").then(function (g) {
+      var was = gameInfo.state;
+      gameInfo = g;
+      renderGameTools();
+      clearTimeout(gameTimer);
+      if (gameBusy()) gameTimer = setTimeout(loadGame, g.state === "starting" ? 1500 : 4000);
+      // How it ended, once: a crash opens the crash reader, a failed start says why.
+      var end = g.ended || "";
+      if (end && end !== gameShownEnd && (was === "starting" || was === "running")) {
+        gameShownEnd = end;
+        if (g.state === "crashed") {
+          toast(g.instance + " crashed. Looking at what went wrong…");
+          refresh(true).then(crashDialog);
+        } else if (g.state === "failed") gameFailedDialog(g);
+        else if (g.state === "stopped") refresh(true);
+      }
+    }, function () {});
+  }
+  function renderGameTools() {
+    var tools = $("game-tools"), play = $("play"), s = gameInfo.state;
+    play.textContent = s === "starting" ? "Starting…" : s === "running" ? "Playing" : "Play";
+    play.classList.toggle("is-busy", gameBusy());
+    document.documentElement.classList.toggle("game-busy", gameBusy()); // the pre-launch check makes way while the game runs
+    if (gameBusy()) play.disabled = true;
+    tools.replaceChildren();
+    tools.hidden = !gameBusy();
+    if (!gameBusy()) return;
+    [
+      btn("Game log", openGameLog, "", { title: "The game's log as it runs" }),
+      s === "starting" ? btn("Show Prism", function () { api("POST", "/api/game/show-prism").catch(function (e) { toast(e.message); }); }, "", { title: "Bring the launcher's window back, to see what it's doing" }) : null,
+      s === "running" ? btn("Stop", askStopGame, "danger-outline", { title: "End the game (like closing it from Task Manager)" }) : null
+    ].filter(Boolean).forEach(function (b) { tools.append(b); });
+  }
+  function askStopGame() {
+    confirmDialog({ title: "Stop " + (gameInfo.instance || "the game") + "?", items: [],
+      body: "This ends the game straight away, like closing it from Task Manager. Anything since the last autosave in a single-player world is lost; quitting from the game's own menu is the gentle way.",
+      ok: "Stop the game", okClass: "danger",
+      onOk: function () { api("POST", "/api/game/stop").then(loadGame, function (e) { toast(e.message); }); } });
+  }
+  function gameFailedDialog(g) {
+    var body = h("div");
+    body.append(h("p", { style: "margin:0 0 10px" }, "Prism stopped before the game started. " + (g.errors && g.errors.length ? "Its log says:" : "It didn't log a reason; its own window shows more.")));
+    if (g.errors && g.errors.length) body.append(h("pre", { class: "game-log", style: "max-height:260px" }, g.errors.join("\n")));
+    body.append(h("p", { class: "hint", style: "margin:10px 0 0" }, "Signing in again, or a failed download, are the usual reasons. Opening Prism shows its message and lets you sort it out there."));
+    openBig("The game didn't start", null, body, [btn("Close", closeBig), btn("Open Prism", function () { closeBig(); api("POST", "/api/game/show-prism").catch(function (e) { toast(e.message); }); }, "primary")]);
+  }
+
+  // The game's log, live: the end of logs\latest.log, then whatever's added while this is open.
+  var LOG_LEVEL = /\/(ERROR|FATAL)\]|\/WARN\]/;
+  function openGameLog() {
+    var pre = h("pre", { class: "game-log", tabindex: "0", "aria-label": "Game log" });
+    var lines = [], partial = "", first = true, from = 0, open = true, follow = true, show = "all", filterText = "";
+    var seg = h("div", { class: "seg-control", role: "group", "aria-label": "Show" });
+    [["all", "All"], ["warn", "Warnings and errors"], ["error", "Errors"]].forEach(function (o) {
+      seg.append(h("button", { type: "button", "aria-pressed": String(o[0] === show), onclick: function (e) {
+        show = o[0];
+        Array.prototype.forEach.call(seg.children, function (b) { b.setAttribute("aria-pressed", String(b === e.currentTarget)); });
+        draw();
+      } }, o[1]));
+    });
+    var find = h("input", { type: "search", placeholder: "Find in the log", "aria-label": "Find in the log", autocomplete: "off", spellcheck: "false" });
+    find.addEventListener("input", function () { filterText = find.value.trim().toLowerCase(); draw(); });
+    var keep = function (l) {
+      if (show === "error" && !/\/(ERROR|FATAL)\]/.test(l)) return false;
+      if (show === "warn" && !LOG_LEVEL.test(l)) return false;
+      return !filterText || l.toLowerCase().indexOf(filterText) >= 0;
+    };
+    var lineEl = function (l) { return h("div", { class: /\/(ERROR|FATAL)\]/.test(l) ? "e" : /\/WARN\]/.test(l) ? "w" : null }, l); };
+    function draw() {
+      pre.replaceChildren();
+      var shown = lines.filter(keep);
+      shown.slice(-4000).forEach(function (l) { pre.append(lineEl(l)); });
+      if (follow) pre.scrollTop = pre.scrollHeight;
+    }
+    pre.addEventListener("scroll", function () { follow = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 24; });
+    var tick = function () {
+      if (!open || $("big-scrim").hidden) { open = false; return; }
+      api("GET", "/api/game/log?from=" + from).then(function (r) {
+        if (!open) return;
+        if (r.reset) { lines = []; partial = ""; }
+        from = r.next;
+        if (!r.text && !r.reset) return;
+        // A line still being written stays back until its end arrives.
+        var parts = (partial + r.text.replace(/\r/g, "")).split("\n");
+        partial = parts.pop();
+        lines = lines.concat(parts);
+        if (lines.length > 20000) { lines = lines.slice(-15000); draw(); return; }
+        if (r.reset || first) { first = false; draw(); return; }
+        parts.filter(keep).forEach(function (l) { pre.append(lineEl(l)); });
+        if (follow) pre.scrollTop = pre.scrollHeight;
+      }, function () {}).then(function () { if (open) setTimeout(tick, gameBusy() ? 1000 : 3000); });
+    };
+    var body = h("div", { class: "game-log-wrap" }, h("div", { class: "sync-tools" }, seg, find), pre);
+    openBig("Game log", (gameInfo.instance || "The game") + (gameBusy() ? " · " + (gameInfo.state === "starting" ? "starting" : "running") : "") + " · logs\\latest.log",
+      body, [btn("Open the file", function () { api("POST", "/api/crash/open", { name: "latest.log" }).catch(function (e) { toast(e.message); }); }), btn("Close", closeBig)]);
+    tick();
   }
 
   function folderLabel(path) {
@@ -5305,7 +5423,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha", tagHide: "ctrl", accentColor: "#2fb465", background: "glow", corners: "round", textSize: "100", tagStyle: "tint",
     motion: "system", rowStyle: "lines", showIcons: true, colSide: true, colTags: true, colVersion: false, startPage: "mods", bgDim: "75", tagHues: {},
-    worldBackups: false, updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false,
+    worldBackups: false, updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false, hidePrism: true,
     serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false, autoLibraries: true, tagLibraries: true, tagSides: true, serverConfigsAuto: true };
   var localPrefs = {};
   try { localPrefs = JSON.parse(localStorage.getItem("mmm.prefs") || "{}") || {}; } catch (e) {}
@@ -5439,7 +5557,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "worldBackups", label: "Back up before risky changes", desc: "Zips your most recently played world before updates and before turning off or deleting worldgen mods. Backups are on the Snapshots page." }
     ] },
     { title: "Play", items: [
-      { key: "checkBeforePlay", label: "Check mods before Play", desc: "Runs the pre-launch check first, and only stops you when something would keep the game from starting." }
+      { key: "checkBeforePlay", label: "Check mods before Play", desc: "Runs the pre-launch check first, and only stops you when something would keep the game from starting." },
+      { key: "hidePrism", label: "Keep the launcher out of sight", desc: "Prism still signs in and starts the game, but its windows stay hidden: the app follows the game, shows its log, and opens the crash reader if it crashes. Prism's window comes back only if it needs you (a sign-in, say)." }
     ] },
     { title: "Updates", items: [
       { key: "updateChannel", label: "Updates come from", desc: "Match keeps a release on releases and lets a beta move to newer betas. Each mod can override this in its details.",
@@ -8805,10 +8924,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var btn = $("play");
     btn.disabled = true;
     api("POST", "/api/play").then(function (res) {
-      toast("Starting " + res.instanceName + ". A modded game takes a few minutes to load.");
+      toast("Starting " + res.instanceName + ". A modded game takes a few minutes to load." + (pref("hidePrism") !== false ? " The app follows it: Game log is next to Play." : ""));
     }, function (e) { toast(e.message); }).then(function () {
-      setTimeout(function () { btn.disabled = !canPlay(); }, 5000);
-    });
+      return loadGame();
+    }).then(function () { btn.disabled = !canPlay(); });
   }
   // Tag management panel.
   $("manage-tags").addEventListener("click", openTagManager);
@@ -8960,6 +9079,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (msg === "refresh") refresh(true);
       else if (msg === "packs") { if (currentView === "packs") loadPacks(false); refresh(true); }
       else if (msg === "server") refreshServer();
+      else if (msg === "game") loadGame();
       else if (msg === "confirm-quit") confirmQuit();
       else if (msg.indexOf("status:") === 0) toast(msg.slice(7));
     });
@@ -8973,6 +9093,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (Object.keys(busy).length || tagBusy) return;
     refresh(false);
     if (currentView !== "server") refreshServer();
+    if (!gameBusy()) loadGame(); // a game started from Prism itself is picked up too
   }, 15000);
   setInterval(function () {
     if (document.visibilityState === "visible" && connected && currentView === "server") refreshServer();

@@ -464,6 +464,12 @@ namespace MinecraftModManager
                         case "/api/mod/deptree":
                             result = DependencyTree(req.QueryString["file"]);
                             break;
+                        case "/api/game":
+                            result = GameStatus();
+                            break;
+                        case "/api/game/log":
+                            { long from; long.TryParse(req.QueryString["from"] ?? "0", out from); result = GameLogFrom(from); }
+                            break;
                         case "/api/configs":
                             result = ListConfigFiles();
                             break;
@@ -817,6 +823,12 @@ namespace MinecraftModManager
                     case "/api/check/copy-from-server":
                         SendJson(ctx, 200, CopyFromServer(Str(body, "file")));
                         return;
+                    case "/api/game/stop":
+                        SendJson(ctx, 200, StopGame());
+                        return;
+                    case "/api/game/show-prism":
+                        SendJson(ctx, 200, ShowPrism());
+                        return;
                     case "/api/configs/save":
                         SendJson(ctx, 200, SaveConfigEdits(body));
                         return;
@@ -1026,10 +1038,15 @@ namespace MinecraftModManager
             TryApplySharingDefaults(); // an instance made in the launcher since starts out sharing too
             TrySyncGameSettings(); // shared game settings changed in another instance come along
             TrySyncSharedConfigs(); // and mod configs, the same way
-            var start = new ProcessStartInfo(prism, "--launch \"" + instance[0] + "\"");
-            start.UseShellExecute = false;
-            start.WorkingDirectory = Path.GetDirectoryName(prism);
-            Process.Start(start);
+            lock (GameLock)
+                if (game.State == "starting" || game.State == "running") throw new UserError(instance[1] + " is already " + (game.State == "starting" ? "starting." : "running."));
+            if (GameRunning(GameDir())) throw new UserError(instance[1] + " is already running.");
+            // The launcher stays out of sight and the app follows the game (GameWatch.cs).
+            InstanceInfo info = null;
+            try { info = FindInstance(instance[0]); } catch (UserError) { }
+            if (info != null) QuietInstanceConsole(info);
+            Process prismProcess = StartPrismLaunch(prism, instance[0]);
+            BeginGameSession(instance[1], GameDir(), Path.GetDirectoryName(GameDir()), prismProcess);
             Log("Launched  " + instance[1]);
             return Obj("ok", true, "instanceName", instance[1]);
         }

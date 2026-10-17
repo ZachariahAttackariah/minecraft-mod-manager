@@ -50,7 +50,7 @@ try {
     & $csc /nologo /target:winexe /platform:x64 /optimize+ /utf8output `
         "/out:$exe" "/win32icon:$icon" "/resource:$page,MinecraftModManager.mod-manager.html" `
         /r:System.Web.Extensions.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll `
-        /r:System.Windows.Forms.dll /r:System.Drawing.dll `
+        /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.Management.dll `
         "/r:$lib\Microsoft.Web.WebView2.Core.dll" "/r:$lib\Microsoft.Web.WebView2.WinForms.dll" `
         (Get-ChildItem $src -Filter *.cs | Sort-Object Name | ForEach-Object { $_.FullName })
     if ($LASTEXITCODE -ne 0) { throw "Build failed (csc exit code $LASTEXITCODE)." }

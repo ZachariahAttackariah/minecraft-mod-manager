@@ -216,6 +216,14 @@ Sharing between instances
   The shared files are in %LOCALAPPDATA%\MinecraftModManager\shared.
 
 Play and the pre-launch check
+  The launcher stays out of sight (Settings > Play > "Keep the launcher out of sight", on by default):
+  Prism still signs in and starts the game, but it starts minimised and the instance's console is set
+  not to open. Its window comes back only if it's still busy after 25 seconds (a sign-in or a big
+  download), or with "Show Prism". While the game starts and runs, PLAY says Starting... / Playing, and
+  beside it "Game log" shows the game's log live (all, warnings and errors, or errors only, with a find
+  box) and "Stop" ends the game (like closing it from Task Manager). When the game crashes, the crash
+  reader opens by itself; when Prism stops before the game starts, the reason from its log is shown
+  with "Open Prism". A game started from Prism itself is followed too.
   Play starts the game straight away. The pre-launch check only runs when you press Check mods (under
   the PLAY button). It looks for the things that stop NeoForge from starting: a required mod
   that's missing or turned off, the wrong version of a library, the same mod twice, mods for another
