@@ -28,6 +28,9 @@ Settings (the gear at the right end of the section tabs)
   Mod list .......... open on (Mods, Libraries, Packs, Server, Snapshots, or wherever you left off),
                       turn on what a mod needs (on by default: turning a mod on also turns on the turned-off
                       libraries and mods it requires, the newest copy if there are several; Undo puts all back),
+                      tag new mods' sides (on by default: a new jar with no client or server tag, however it
+                      arrived, gets the side Detect finds, and libraries it requires get its sides too; tags
+                      already there are never changed),
                       tag new libraries (on by default: a new jar Modrinth or CurseForge lists as a library, or
                       whose summary calls it a library/API/framework for mods, gets the library tag, so it's
                       listed under Libraries; installs, dropped jars and site-tab downloads count, updates keep

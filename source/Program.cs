@@ -945,6 +945,7 @@ namespace MinecraftModManager
                     .OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase).ToList();
                 // Each jar's metadata is read once and kept; the first read of a folder goes four jars at a time.
                 System.Threading.Tasks.Parallel.ForEach(jars, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 4 }, f => { try { GetJarMeta(f); } catch (Exception) { } });
+                NoticeJars(dir, jars.Select(f => f.Name)); // new ones get their client / server tags (NewJarSides.cs)
                 // How many mods that are on require each jar (by the mod ids it has), so the page can tell
                 // a library nobody needs any more.
                 var providerOf = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
