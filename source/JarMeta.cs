@@ -720,6 +720,18 @@ namespace MinecraftModManager
                             Obj("action", "install", "id", dep.Id, "for", jar.Name, "query", dep.Id));
                 }
             }
+            // What the mods' code itself needs, beyond what they declare (DeepCheck.cs). A mod already reported
+            // for a missing or wrong-version requirement isn't reported again for the same gap.
+            try
+            {
+                var already = new HashSet<string>(issues.Select(i => (Dictionary<string, object>)i)
+                    .Where(i => (string)i["kind"] == "missing" || (string)i["kind"] == "dep-version")
+                    .SelectMany(i => ((List<string>)i["files"]).Take(1)), StringComparer.OrdinalIgnoreCase);
+                var deep = new List<object>();
+                DeepCheckMods(enabled, disabled, metas, side, deep);
+                issues.AddRange(deep.Where(i => !already.Contains(((List<string>)((Dictionary<string, object>)i)["files"])[0])));
+            }
+            catch (Exception ex) { Log("Check     the deep check failed: " + ex.Message); }
             int errors = issues.Count(i => (string)((Dictionary<string, object>)i)["level"] == "error");
             return Obj("ok", true, "side", side, "folder", dir, "minecraft", mc, "neoforge", nf, "jars", jars.Count, "enabled", enabled.Count,
                 "errors", errors, "warnings", issues.Count - errors, "issues", issues);

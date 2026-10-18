@@ -41,6 +41,7 @@ namespace MinecraftModManager
             public string Id, File, Name;
             public int Score;
             public bool TurnOn; // it's turned off, and turning it on is the fix
+            public bool Versions; // a library in the wrong version: picking another one is the fix
             public readonly List<string> Reasons = new List<string>();
             public readonly List<string> Missing = new List<string>();
         }
@@ -50,11 +51,25 @@ namespace MinecraftModManager
             string mods = modsDir;
             string game = GameDir();
             var crashDir = new DirectoryInfo(Path.Combine(game, "crash-reports"));
-            FileInfo report = crashDir.Exists ? crashDir.GetFiles("crash-*.txt").OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault() : null;
+            List<FileInfo> reports = crashDir.Exists ? crashDir.GetFiles("crash-*.txt").OrderByDescending(f => f.LastWriteTimeUtc).ToList() : new List<FileInfo>();
+            FileInfo report = reports.FirstOrDefault();
             var log = new FileInfo(Path.Combine(game, "logs", "latest.log"));
-            string text = null, source = null;
+            string text = null, source = null, aftermathOf = null;
             DateTime when = DateTime.MinValue;
             if (report != null) { text = ReadShared(report.FullName); source = report.FullName; when = report.LastWriteTimeUtc; }
+            // When mods fail to load, NeoForge writes a "-fml" report and shows its error screen; a crash right
+            // after that (a key press reaching a mod whose config never loaded, say) is only the aftermath.
+            // The mod-loading report is the one that says what went wrong.
+            if (report != null && !Regex.IsMatch(text, @"Mod loading failures have occurred|-- Mod loading issue for:"))
+            {
+                FileInfo loading = reports.Skip(1).FirstOrDefault(f => report.LastWriteTimeUtc - f.LastWriteTimeUtc < TimeSpan.FromMinutes(10) &&
+                    (f.Name.EndsWith("-fml.txt", StringComparison.OrdinalIgnoreCase) || Regex.IsMatch(ReadShared(f.FullName), @"Mod loading failures have occurred")));
+                if (loading != null)
+                {
+                    aftermathOf = Regex.Match(text, @"^Description: ([^\r\n]+)", RegexOptions.Multiline).Groups[1].Value;
+                    text = ReadShared(loading.FullName); source = loading.FullName; when = loading.LastWriteTimeUtc; report = loading;
+                }
+            }
             // A newer log that ends in an error (no crash report written) is the better evidence.
             if (log.Exists && (report == null || log.LastWriteTimeUtc > report.LastWriteTimeUtc.AddMinutes(1)))
             {
@@ -75,6 +90,8 @@ namespace MinecraftModManager
             {
                 JarMeta meta = GetJarMeta(jar);
                 foreach (ModInfo m in meta.Mods) { if (!byId.ContainsKey(m.Id)) byId[m.Id] = jar; names[m.Id] = m.Name ?? m.Id; }
+                // Mods bundled inside a jar (jar-in-jar) count as installed too: Almanac carries DungeonConfig, say.
+                foreach (ModInfo m in meta.Nested) if (m.Id != null && !byId.ContainsKey(m.Id)) { byId[m.Id] = jar; if (!names.ContainsKey(m.Id)) names[m.Id] = m.Name ?? m.Id; }
             }
             var byFile = jars.ToDictionary(f => Regex.Replace(f.Name, @"\.disabled$", "", RegexOptions.IgnoreCase), f => f, StringComparer.OrdinalIgnoreCase);
             var suspects = new Dictionary<string, Suspect>(StringComparer.OrdinalIgnoreCase);
@@ -104,10 +121,17 @@ namespace MinecraftModManager
             };
 
             // 1. NeoForge's own list of mods that failed to load, with why.
-            foreach (Match m in Regex.Matches(text, @"-- Mod loading issue for: (\S+) --\s*\r?\nDetails:\s*\r?\n(?:\s*Mod file: (.+?)\r?\n)?\s*Failure message: (.+?)\r?\n((?:\t\t.*\r?\n)*)"))
+            // Each block runs to the next "-- " section; "Caused by" lines can come before the mod file and message.
+            foreach (Match block in Regex.Matches(text, @"-- Mod loading issue for: (\S+) --\r?\n(.*?)(?=\r?\n-- |\z)", RegexOptions.Singleline))
             {
-                string id = m.Groups[1].Value, file = m.Groups[2].Success ? m.Groups[2].Value.Trim() : null;
-                string why = (m.Groups[3].Value.Trim() + " " + Regex.Replace(m.Groups[4].Value, @"\s+", " ").Trim()).Trim();
+                string id = block.Groups[1].Value, body = block.Groups[2].Value;
+                Match fileLine = Regex.Match(body, @"^\s*Mod file: (.+?)\r?$", RegexOptions.Multiline);
+                string file = fileLine.Success ? fileLine.Groups[1].Value.Trim() : null;
+                Match failure = Regex.Match(body, @"^\s*Failure message: (.+?)\r?\n((?:\t\t.*\r?\n)*)", RegexOptions.Multiline);
+                string why = failure.Success ? (failure.Groups[1].Value.Trim() + " " + Regex.Replace(failure.Groups[2].Value, @"\s+", " ").Trim()).Trim()
+                    : "NeoForge couldn't load it";
+                // "X has failed to load correctly" says little; the error under it says why.
+                why = Regex.Replace(why, @"^.+? \(\S+\) has failed to load correctly\s*", "Failed to load: ");
                 Suspect s = suspect(id, file);
                 note(s, 12, why);
                 if (s != null)
@@ -183,27 +207,75 @@ namespace MinecraftModManager
                 if (s != null && !failedMods.Contains(s)) failedMods.Add(s);
             }
 
+            // Which mod an error belongs to: the "Mod loading issue for" block it sits in, else the failed mixins' mods.
+            var blocks = Regex.Matches(text, @"-- Mod loading issue for: (\S+) --\r?\n(.*?)(?=\r?\n-- |\z)", RegexOptions.Singleline).Cast<Match>()
+                .Select(b => new { Start = b.Index, End = b.Index + b.Length, Id = b.Groups[1].Value,
+                    File = Regex.Match(b.Groups[2].Value, @"^\s*Mod file: (.+?)\r?$", RegexOptions.Multiline).Groups[1].Value.Trim() }).ToList();
+            Func<int, List<Suspect>> requesters = at =>
+            {
+                var b = blocks.FirstOrDefault(x => at >= x.Start && at < x.End);
+                if (b != null) { Suspect s = suspect(b.Id, b.File.Length > 0 ? b.File : null); return s == null ? new List<Suspect>() : new List<Suspect> { s }; }
+                return failedMods;
+            };
+            Func<IEnumerable<Suspect>, string> namesOf = group => string.Join(", ", group.Select(x => x.Name).Distinct());
+
             // 5. A class that couldn't be found: whose is it? A turned-off jar, or a mod nobody installed.
-            foreach (Match m in Regex.Matches(head, @"(?:ClassNotFoundException|NoClassDefFoundError):?\s+([\w.$/]+)"))
+            //    (The whole report: NeoForge's mod-loading details come after the "detailed walkthrough" line.)
+            var classSeen = new HashSet<string>();
+            foreach (Match m in Regex.Matches(text, @"(?:ClassNotFoundException|NoClassDefFoundError):?\s+([\w.$/]+)"))
             {
                 string missingClass = m.Groups[1].Value.Replace('/', '.');
                 if (Regex.IsMatch(missingClass, @"^(java|javax|jdk|sun|net\.minecraft|com\.mojang)\.")) continue;
+                List<Suspect> wanting = requesters(m.Index);
+                if (!classSeen.Add(missingClass + "|" + namesOf(wanting))) continue;
                 FileInfo owner = index.Find(missingClass.Contains(".") ? missingClass.Substring(0, missingClass.LastIndexOf('.')) : missingClass);
                 if (owner != null && owner.Name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase))
                 {
                     Suspect off = suspect(null, owner.Name);
-                    note(off, 18, "It's turned off, but the game needed its code (" + missingClass + ")" + (failedMods.Count > 0 ? " for " + string.Join(", ", failedMods.Select(x => x.Name).Distinct()) : "") + ".");
+                    note(off, 18, "It's turned off, but the game needed its code (" + missingClass + ")" + (wanting.Count > 0 ? " for " + namesOf(wanting) : "") + ".");
                     if (off != null) off.TurnOn = true;
                     continue;
                 }
                 if (owner != null) continue; // it's there and on: some other problem (a load order or version clash)
-                // Nobody has it: the mod that wanted it is missing a dependency. Which one, from what it requires.
-                foreach (Suspect s in failedMods)
+                // Nobody has it: the mod that wanted it is missing a mod. Its requirements say which, or the package guesses.
+                string[] parts = missingClass.Split('.');
+                string guess = parts.Length >= 4 ? parts[2] : parts.Length >= 2 ? parts[1] : null;
+                foreach (Suspect s in wanting)
                 {
-                    note(s, 6, "It needs " + missingClass + ", which no jar here has");
-                    foreach (string dep in MissingRequirements(s.File, byId))
+                    note(s, 10, "It needs " + missingClass + ", which no installed mod has");
+                    List<string> deps = MissingRequirements(s.File, byId);
+                    foreach (string dep in deps)
                         if (!s.Missing.Contains(dep)) { s.Missing.Add(dep); note(s, 6, "It requires " + dep + ", which isn't installed"); }
+                    // It doesn't list the mod it needs: the class's package names it (com.samsthenerd.inline -> inline).
+                    if (deps.Count == 0 && guess != null && !s.Missing.Contains(guess))
+                    {
+                        s.Missing.Add(guess);
+                        note(s, 4, "It doesn't list the mod it needs; from the package, it's probably one called \"" + guess + "\"");
+                    }
                 }
+            }
+
+            // 6. A method or field that isn't there: the mod was made for another version of the jar that has the class.
+            foreach (Match m in Regex.Matches(text, @"(NoSuchMethodError|NoSuchFieldError|AbstractMethodError|IncompatibleClassChangeError):\s*'?(?:[\w.$\[\]<>]+ )?([\w.$]+)\.([\w$<>]+)(\([^)]*\))?"))
+            {
+                string cls = m.Groups[2].Value, member = m.Groups[3].Value, args = m.Groups[4].Value;
+                if (Regex.IsMatch(cls, @"^(java|javax|jdk|sun)\.")) continue;
+                List<Suspect> wanting = requesters(m.Index);
+                if (!classSeen.Add("member|" + cls + "." + member + "|" + namesOf(wanting))) continue;
+                string shortName = cls.Substring(cls.LastIndexOf('.') + 1) + "." + member + Regex.Replace(args, @"[\w.$]+\.(\w+)", "$1");
+                FileInfo lib = Regex.IsMatch(cls, @"^(net\.minecraft|com\.mojang)\.") ? null : index.Find(cls.Contains(".") ? cls.Substring(0, cls.LastIndexOf('.')) : cls);
+                if (lib != null && !lib.Name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase))
+                {
+                    Suspect s = suspect(null, lib.Name);
+                    note(s, 14, "This version of it doesn't have " + shortName + (wanting.Count > 0 ? ", which " + namesOf(wanting) + " calls" : "") +
+                        ": " + (wanting.Count > 0 ? namesOf(wanting) : "a mod") + " was made for a different version of it.");
+                    if (s != null) s.Versions = true;
+                    foreach (Suspect w in wanting) if (w != s) note(w, 10, "It was made for a different version of " + (s != null ? s.Name : lib.Name) + " (it calls " + shortName + ")");
+                }
+                else
+                    foreach (Suspect w in wanting)
+                        note(w, 10, "It calls " + shortName + ", which isn't there: it was made for a different version of " +
+                            (Regex.IsMatch(cls, @"^(net\.minecraft|com\.mojang)\.") ? "Minecraft" : "the mod that has " + cls));
             }
             // A mod that failed while one of its required mods is missing or off: that's very likely why.
             foreach (Suspect s in suspects.Values.Where(x => x.Score >= 8 && x.File != null).ToList())
@@ -213,16 +285,20 @@ namespace MinecraftModManager
             string description = Regex.Match(text, @"^Description: ([^\r\n]+)", RegexOptions.Multiline).Groups[1].Value;
             List<Suspect> ranked = suspects.Values.Where(s => s.Score > 0).OrderByDescending(s => s.Score).Take(8).ToList();
             List<object> list = ranked.Select(s => (object)Obj("id", s.Id, "file", s.File, "name", s.Name, "score", s.Score, "reasons", s.Reasons,
-                "missing", s.Missing, "turnOn", s.TurnOn)).ToList();
+                "missing", s.Missing, "turnOn", s.TurnOn, "versions", s.Versions)).ToList();
             // How sure: a clear leader with direct evidence, or only hints.
             int top = ranked.Count > 0 ? ranked[0].Score : 0, second = ranked.Count > 1 ? ranked[1].Score : 0;
             string confidence = top >= 16 && top >= second * 2 ? "high" : top >= 8 && top > second ? "medium" : "low";
             // The root cause: the last "Caused by" (the first exception is often only a wrapper).
             string cause = Regex.Matches(head, @"^Caused by: ([^\r\n]+)", RegexOptions.Multiline).Cast<Match>().Select(m => m.Groups[1].Value).LastOrDefault();
+            if (blocks.Count > 0)
+                cause = (blocks.Count == 1 ? "1 mod failed to load: " : blocks.Count + " mods failed to load: ") +
+                    string.Join(", ", blocks.Select(b => { Suspect s = suspect(b.Id, b.File.Length > 0 ? b.File : null); return s != null ? s.Name : b.Id; }).Distinct());
             return Obj("ok", true, "found", true, "path", source, "name", Path.GetFileName(source), "time", when.ToString("o"),
                 "fromLog", source != null && source.EndsWith("latest.log", StringComparison.OrdinalIgnoreCase),
                 "description", description.Length > 0 ? description : null, "exception", exception.Length > 0 ? exception : null,
-                "cause", cause != null && cause != exception ? cause : null, "confidence", confidence, "suspects", list);
+                "cause", cause != null && cause != exception ? cause : null, "confidence", confidence, "suspects", list,
+                "aftermathOf", aftermathOf, "newest", reports.Count > 0 ? reports[0].Name : null, "failedToLoad", blocks.Count);
         }
     
         // Which jar a Java package lives in, for stack frames without a mod tag and for classes that couldn't be

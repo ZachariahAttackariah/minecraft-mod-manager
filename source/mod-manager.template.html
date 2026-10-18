@@ -5162,11 +5162,14 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (!res.found) { body.append(h("p", { class: "search-empty" }, "There's no crash report or error log for this game yet.")); return; }
       $("big-lead").textContent = (res.fromLog ? "From the game's log (no crash report was written), " : "From " + res.name + ", ") + dateText(res.time) + " " + clock(new Date(res.time)) + ".";
       $("big-lead").hidden = false;
+      if (res.aftermathOf) body.append(h("p", { class: "hint", style: "margin:0 0 10px" },
+        "The newest crash (" + (res.aftermathOf || "an unexpected error") + ", " + res.newest + ") only followed this one: mods had already failed to load, so this earlier report is the one that says what went wrong."));
       // The root cause (the last "Caused by") says more than the wrapper the report starts with.
       if (res.description || res.exception) body.append(h("div", { class: "crash-what" }, res.description ? h("div", { class: "d" }, res.description) : null,
         res.cause ? h("code", { title: "The root cause: the last \"Caused by\" in the report" }, res.cause) : res.exception ? h("code", null, res.exception) : null));
       if (!res.suspects.length) body.append(h("p", { class: "hint" }, "It doesn't name any mod in this folder. The crash may come from Minecraft, the loader, Java or a driver; the report itself has the details."));
       else body.append(h("p", { class: "hint", style: "margin:12px 0 6px" },
+        res.failedToLoad > 1 ? "These mods failed to load, each for its own reason: each needs sorting out." :
         res.confidence === "high" ? "The report points clearly at this:" :
         res.confidence === "medium" ? (res.suspects.length === 1 ? "It most likely comes from this mod:" : "Most likely first; the others are weaker leads:") :
         "Only weak hints: these mods were involved, but none is clearly to blame. The report itself may say more."));
@@ -5178,6 +5181,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           actions.append(btn("Find " + id, function () { closeBig(); $("search-q").value = id; openSearch(); runSearch(true); }, i === 0 ? "primary" : ""));
         });
         if (r && s.turnOn && r.status === "disabled") actions.append(btn("Turn it on", function (e) { e.currentTarget.disabled = true; setEnabled([r], true); }, i === 0 ? "primary" : ""));
+        if (r && s.versions) actions.append(btn("Pick another version", function () { closeBig(); openDetails(r); setDetTab("versions"); }, i === 0 ? "primary" : "", { title: "Its versions, to switch to the one the other mod was made for" }));
         else if (r && r.status === "enabled" && !(s.missing || []).length && res.confidence !== "low") actions.append(btn("Turn it off", function (e) { e.currentTarget.disabled = true; setEnabled([r], false); }, i === 0 ? "primary" : ""));
         if (r) actions.append(btn("Details", function () { closeBig(); openDetails(r); }));
         body.append(h("div", { class: "suspect" + (i === 0 ? " top" : "") },
@@ -6023,6 +6027,21 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           $("search-q").value = fix.query;
           openSearch();
           runSearch(true);
+        }));
+      } else if (fix.action === "versions") {
+        // A library a mod wasn't made for: its Versions tab, to pick the one the mod needs.
+        fixes.append(btn("Pick another version", function () {
+          var r = rowsFor([fix.file.replace(/\.disabled$/i, "")])[0];
+          if (!r) { toast(fix.file + " isn't in the list any more."); return; }
+          closeBig();
+          openDetails(r);
+          setDetTab("versions");
+        }, "primary", { title: "Opens " + nameOf(fix.file) + "'s versions, to switch to one " + nameOf(fix["for"]) + " works with" }),
+        btn("Turn off " + nameOf(fix["for"]), function (e) {
+          e.currentTarget.disabled = true;
+          api("POST", "/api/set-enabled", { files: [fix["for"]], enabled: false }).then(function () {
+            return after("Turned off " + nameOf(fix["for"]) + ".");
+          }, function (err) { toast(err.message); });
         }));
       } else if (fix.action === "search") {
         fixes.append(btn("Search for it", function () {

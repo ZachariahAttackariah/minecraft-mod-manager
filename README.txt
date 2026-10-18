@@ -230,6 +230,16 @@ Play and the pre-launch check
   server inside the game, so the game needs them too), the wrong version of a library, the same mod twice, mods for another
   Minecraft version, Fabric mods without Sinytra Connector. Anything it finds is listed with one-click
   fixes (turn it on, copy it from the server, install it, search for it).
+  It also reads the mods' code (their class files), because some mods list their requirements wrong:
+  - a mod that uses a library it doesn't list at all (Inline Tooltips uses Inline): what its main class
+    and its mixins need at startup has to be in some installed mod, or in a turned-off one ("Turn it
+    on"); otherwise "Search for it", with the library's likely name;
+  - a mod made for a different version of a mod it depends on (Let Me Despawn 1.5 calls a method that
+    Almanac 1.26 no longer has): "Pick another version" opens that mod's Versions tab, or turn the mod off.
+  It stays quiet about anything it can't confirm: code for optional mods (the jar names that mod's id, or
+  it's a compatibility pack touching several absent mods), mixins whose target isn't installed (the game
+  skips those), and code that comes from Minecraft, Java or the game's own libraries. The first check
+  reads every mod (a few seconds); later ones only reread jars that changed.
   Missing mods: "Install it" on one, or "Add all missing" at the top for all of them at once (it turns on
   the ones that are off and copies the ones the server has too). A missing mod is only an id, often named
   differently on the sites ("fusion" is Fusion (Connected Textures)), so the app gathers likely mods: what
@@ -319,7 +329,10 @@ On/off presets (Presets, next to Add mods)
 When the game crashes
   A red bar under the tabs says the game crashed (for crash reports from the last three days). "What went
   wrong?" reads the newest crash report, or latest.log when the game died without writing one, and lists
-  the mods it points at, most likely first, with why and how sure it is. What counts most: NeoForge's own
+  the mods it points at, most likely first, with why and how sure it is. When mods fail to load, NeoForge
+  writes a "-fml" report and a crash right after it (pressing a key on the error screen, say) is only
+  the aftermath: the reader then reads the mod-loading report and says so. "Made for a different
+  version" errors (NoSuchMethodError and friends) point at the library, with "Pick another version". What counts most: NeoForge's own
   "mod loading issue" lines and suspected mods, mixins that really failed ("Attach error ... from mod x"),
   and classes that couldn't be found, traced to the jar that has them (a turned-off one gets "Turn it
   on") or, when no jar has them, to the missing mod the failing one requires ("Find ..."). The root cause
