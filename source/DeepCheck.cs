@@ -469,6 +469,22 @@ namespace MinecraftModManager
                             new[] { file, provider }, Obj("action", "versions", "file", provider, "for", file)));
                         continue;
                     }
+                    // A class missing from a mod that IS installed, in that mod's own package (net/satisfy/vinery in
+                    // Vinery): any code for it runs, since its "is it loaded?" check passes. That's how the MineColonies
+                    // compatibility addon broke on Vinery 1.5.5, which renamed RecipeTypesRegistry.
+                    string installedOwner = PackageOwner(r.Owner, packageOwner);
+                    if (installedOwner != null && installedOwner != file && OwnsPackage(metas, installedOwner, r.Owner))
+                    {
+                        // Startup code and mixins: the game won't load. Other code: it breaks when that part runs.
+                        // (Only the @Mod class itself or a mixin: code the main class merely reaches may never run.)
+                        bool atStartup = from != null && from.IsModEntry || mixin;
+                        if (reported.Add("class|" + file + "|" + installedOwner))
+                            issues.Add(Issue(atStartup ? "error" : "warning", "api-mismatch", who + " was made for a different version of " + nameOf(installedOwner) + ": it uses " +
+                                Dotted(r.Owner) + ", which " + nameOf(installedOwner) + " " + JarVersion(metas, installedOwner) + " doesn't have. " +
+                                (atStartup ? "The game won't load like this." : "Its " + nameOf(installedOwner) + " support runs because that mod is installed, so it may crash when that part is used (or as the game loads)."),
+                                new[] { file, installedOwner }, Obj("action", "versions", "file", installedOwner, "for", file)));
+                        continue;
+                    }
                     // A class no jar here has. Only the main class and mixins are checked: other code may only touch
                     // optional mods when they're installed.
                     if (!entry && !mixin) continue;
@@ -513,6 +529,16 @@ namespace MinecraftModManager
                 // them only runs when they're installed. One or two missing mods is the telling case.
                 if (missingRoots.Count < 4) issues.AddRange(missingHere);
             }
+        }
+
+        // Is the package really that mod's (one of its mod ids is a word of the package), not a partial copy
+        // some other jar carries?
+        static bool OwnsPackage(Dictionary<string, JarMeta> metas, string jar, string internalName)
+        {
+            JarMeta meta;
+            if (!metas.TryGetValue(jar, out meta)) return false;
+            var words = new HashSet<string>(internalName.Split('/').Select(Squash), StringComparer.Ordinal);
+            return meta.Mods.Any(m => m.Id != null && words.Contains(Squash(m.Id)));
         }
 
         // The jar with the closest package to a class (at least three levels deep, so com/github alone never counts).
