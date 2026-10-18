@@ -995,7 +995,7 @@ details.more > summary { cursor: pointer; font: 600 13.5px/1.3 var(--font-displa
 /* Configs page: files on the left, the open one as a settings page on the right. */
 .cfg-wrap { display: grid; grid-template-columns: minmax(240px, 320px) minmax(0, 1fr); gap: 12px; align-items: start; }
 .cfg-side { position: sticky; top: 8px; display: grid; gap: 8px; max-height: calc(100vh - 150px); grid-template-rows: auto auto minmax(0, 1fr); }
-.cfg-side input[type=search], .cfg-main input[type=search] { width: 100%; padding: 8px 10px; font: inherit; font-size: 13.5px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
+.cfg-side input[type=search], .cfg-main input[type=search], #det-body input[type=search] { width: 100%; padding: 8px 10px; font: inherit; font-size: 13.5px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
 .cfg-files { position: relative; overflow-y: auto; min-height: 0; margin: 0 -6px; padding: 0 6px; }
 .cfg-group { margin: 10px 0 2px; font: 700 11.5px/1.3 var(--font-body); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
 .cfg-file { display: flex; align-items: center; gap: 6px; width: 100%; padding: 6px 8px; text-align: left; font: 400 12.5px/1.3 var(--font-mono); color: var(--ink); background: none; border: 0; border-radius: 4px; cursor: pointer; }
@@ -6229,6 +6229,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // Install. A result on both sites shows Modrinth's page, or CurseForge's when Modrinth's can't be read.
   function openPreview(hit) {
     var kind = search.kind;
+    endConfigEmbed();
     det = { seq: det.seq + 1, row: null, preview: { hit: hit, kind: kind }, data: null, error: null, versions: null, versionsError: null, versionsLoading: false, tab: "overview" };
     var cf = hit.source === "curseforge";
     $("det-title").textContent = hit.title;
@@ -6297,6 +6298,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   function openDetails(r) {
+    endConfigEmbed();
     det = { seq: det.seq + 1, row: r, data: null, error: null, versions: null, versionsError: null, versionsLoading: false, tab: "overview" };
     if (!menuEl.hidden) closeMenu();
     detTabsForPreview(false);
@@ -6323,6 +6325,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
   }
   function closeDetails() {
+    // A config being edited here with unsaved changes: ask first.
+    if (cfg.embed && cfgDirty()) { cfgLeave(function () { endConfigEmbed(); closeDetails(); }); return; }
+    endConfigEmbed();
     closeLightbox();
     $("details-scrim").hidden = true;
     det.seq++;
@@ -6662,7 +6667,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   function renderConfigs(body, d) {
-    body.append(h("p", { class: "hint", style: "margin:0 0 8px" }, "Files in the game's config folder named after this mod. Edit opens one in Configs as a settings page; \"Server\" shows whether the server's copy matches."));
+    // A file opened from here is edited right here (the same editor as the Configs page).
+    if (cfg.embed && cfg.embedFor === det.seq && cfg.open) {
+      cfg.embed = body;
+      renderConfigMain();
+      return;
+    }
+    body.append(h("p", { class: "hint", style: "margin:0 0 8px" }, "Files in the game's config folder named after this mod. Edit opens one here as settings; \"Server\" shows whether the server's copy matches."));
     if (!d.configs.length) body.append(h("p", { class: "search-empty" }, "No config files found for it (some mods keep settings in the world, or make them on first launch)."));
     d.configs.forEach(function (c) {
       var server = c.server === null ? null : h("span", { class: "st " + c.server }, c.server === "same" ? "same on server" : c.server === "different" ? "different on server" : "not on server");
@@ -6671,7 +6682,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       };
       body.append(h("div", { class: "dep" },
         h("div", null, h("div", { style: "font-family:var(--font-mono);font-size:13px" }, c.path), h("div", { class: "sub" }, formatBytes(c.size) + " · changed " + dateTimeText(c.modified))),
-        h("div", { class: "row-actions" }, server, btn("Edit", function () { closeDetails(); openConfig("game", c.path); }, "primary"), btn("Open in Notepad", open("game", false)), btn("Show in folder", open("game", true)),
+        h("div", { class: "row-actions" }, server, btn("Edit", function () { cfg.embedHasServer = c.server === "same" || c.server === "different"; openConfig("game", c.path, null, $("det-body")); }, "primary"), btn("Open in Notepad", open("game", false)), btn("Show in folder", open("game", true)),
           c.server === "same" || c.server === "different" ? btn("Open server's", open("server", false)) : null)));
     });
   }
@@ -6687,7 +6698,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // above each one; JSON files show their values; anything else, or "Edit as text", is a text editor.
 
   var cfg = { files: null, error: null, open: null, doc: null, docError: null, json: undefined, edits: {}, mode: "settings",
-    text: "", textDirty: false, filter: "", within: "", hits: null, hitsFor: "", timer: 0, seq: 0, focus: null, saving: false };
+    text: "", textDirty: false, filter: "", within: "", hits: null, hitsFor: "", timer: 0, seq: 0, focus: null, saving: false,
+    embed: null, embedFor: 0 }; // embed: a mod's details window showing the editor instead of the Configs page
+  function cfgHost() { return cfg.embed || $("cfg-main"); }
 
   function cfgKey(section, key) { return section + "\u0000" + key; }
   function cfgDirty() { return cfg.mode === "text" ? cfg.textDirty : Object.keys(cfg.edits).length > 0; }
@@ -6774,13 +6787,29 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }, 300);
   });
 
-  function openConfig(side, path, focus) {
-    if (cfg.open && cfg.open.path === path && cfg.open.side === side && cfg.doc) {
+  // embed: the element to show the editor in (a mod's details window) instead of the Configs page.
+  function openConfig(side, path, focus, embed) {
+    if (cfg.open && cfg.open.path === path && cfg.open.side === side && cfg.doc && (embed || null) === cfg.embed) {
       if (focus) { cfg.focus = focus; cfg.within = ""; renderConfigMain(); }
-      if (currentView !== "configs") setView("configs");
+      if (!embed && currentView !== "configs") setView("configs");
       return;
     }
     cfgLeave(function () {
+      if (embed) {
+        // The details window takes the editor over; the Configs page behind it lets go of its copy.
+        cfg.embed = embed;
+        cfg.embedFor = det.seq;
+        $("cfg-main").replaceChildren();
+        cfg.open = { side: side, path: path };
+        cfg.edits = {};
+        cfg.textDirty = false;
+        cfg.within = "";
+        cfg.focus = focus || null;
+        readOpenConfig();
+        if (!cfg.files) loadConfigList(); // for the running-game guard and the server-copy hints
+        return;
+      }
+      if (cfg.embed) endConfigEmbed();
       cfg.open = { side: side, path: path };
       cfg.edits = {};
       cfg.textDirty = false;
@@ -6796,6 +6825,18 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (currentView !== "configs") setView("configs");
       readOpenConfig();
     });
+  }
+
+  // The details window lets go of the editor (closed, another mod, or "Open in Configs").
+  function endConfigEmbed() {
+    if (!cfg.embed) return;
+    cfg.embed = null;
+    cfg.open = null;
+    cfg.doc = null;
+    cfg.edits = {};
+    cfg.textDirty = false;
+    cfg.seq++;
+    if (currentView === "configs") { renderConfigSide(); renderConfigMain(); }
   }
 
   function readOpenConfig() {
@@ -6924,7 +6965,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   function renderConfigMain() {
-    var main = $("cfg-main");
+    var main = cfgHost();
     main.replaceChildren();
     if (!cfg.open) {
       main.append(h("h2", null, "Configs"), h("p", { class: "lead", style: "margin:0" },
@@ -6932,15 +6973,26 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         "The old file is kept as a backup each time you save, and configs you change in the game reach the server by themselves (Server › Mods & configs)."));
       return;
     }
-    var o = cfg.open, f = cfgFileInfo(o.path), d = cfg.doc;
-    var head = h("div", { class: "cfg-head" }, h("h2", { style: "flex:1 1 280px;min-width:0" }, o.path));
-    if (f && f.game && f.server) {
+    var o = cfg.open, f = cfgFileInfo(o.path), d = cfg.doc, embed = cfg.embed;
+    var head = h("div", { class: "cfg-head" });
+    if (embed) {
+      // In a mod's details: back to its list of files, or over to the Configs page.
+      head.append(btn("‹ Config files", function () {
+        cfgLeave(function () { endConfigEmbed(); renderDetails(); });
+      }, "", { title: "Back to this mod's config files" }));
+    }
+    head.append(h("h2", { style: "flex:1 1 280px;min-width:0" + (embed ? ";font-size:15px" : "") }, o.path));
+    if (f && f.game && f.server || embed && cfg.embedHasServer) {
       var seg = h("div", { class: "seg-control", role: "group", "aria-label": "Which copy" });
       [["game", "Game's copy"], ["server", "Server's copy"]].forEach(function (s) {
-        seg.append(h("button", { type: "button", "aria-pressed": String(o.side === s[0]), onclick: function () { if (o.side !== s[0]) openConfig(s[0], o.path); } }, s[1]));
+        seg.append(h("button", { type: "button", "aria-pressed": String(o.side === s[0]), onclick: function () { if (o.side !== s[0]) openConfig(s[0], o.path, null, cfg.embed); } }, s[1]));
       });
       head.append(seg);
     }
+    if (embed) head.append(btn("Open in Configs", function () {
+      var side = o.side, path = o.path;
+      cfgLeave(function () { endConfigEmbed(); closeDetails(); openConfig(side, path); });
+    }, "", { title: "Edit it on the Configs page instead" }));
     var canSettings = d && (d.format === "toml" ? d.entries && d.entries.length : d.format === "json" && jsonEntries().length);
     if (canSettings) head.append(btn(cfg.mode === "text" ? "Show as settings" : "Edit as text", function () {
       cfgLeave(function () { cfg.edits = {}; cfg.textDirty = false; cfg.text = d.text; cfg.mode = cfg.mode === "text" ? "settings" : "text"; renderConfigMain(); });
