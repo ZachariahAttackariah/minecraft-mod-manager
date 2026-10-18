@@ -25,6 +25,7 @@ namespace MinecraftModManager
     sealed class DepInfo
     {
         public string Owner, Id, Type, Range, Side; // Type: required | optional | incompatible | discouraged
+        public bool OldOptional; // "mandatory = false" in a neoforge.mods.toml: meant as optional, but NeoForge reads it as required
     }
 
     sealed class JarMeta
@@ -105,6 +106,8 @@ namespace MinecraftModManager
                     meta.Side = "client";
                     meta.SideReason = "its " + (kind == "forge" ? "mods.toml" : "neoforge.mods.toml") + " says clientSideOnly";
                 }
+                var tomlDeps = new List<DepInfo>();
+                var tomlMods = new HashSet<string>(StringComparer.Ordinal);
                 foreach (KeyValuePair<string, Dictionary<string, string>> section in sections)
                 {
                     Dictionary<string, string> v = section.Value;
@@ -112,6 +115,7 @@ namespace MinecraftModManager
                     {
                         string id = Val(v, "modId");
                         if (id == null) continue;
+                        tomlMods.Add(id);
                         // IGNORE_SERVER_VERSION only says the server needn't have it. Client-only mods set it, but so
                         // do some server-side ones (Axes Are Weapons), so it's a hint, not an answer.
                         if (string.Equals(Val(v, "displayTest"), "IGNORE_SERVER_VERSION", StringComparison.OrdinalIgnoreCase))
@@ -126,23 +130,31 @@ namespace MinecraftModManager
                         string id = Val(v, "modId");
                         if (id == null) continue;
                         string type = Val(v, "type");
+                        bool oldOptional = false;
                         if (type == null)
                         {
                             // Old Forge's "mandatory". NeoForge doesn't read it: without a "type" its dependency is
-                            // required, so "mandatory = false" there still stops the game (Let's Do Camping and Curios).
+                            // required, so "mandatory = false" there still stops the game (Let's Do Camping and Curios;
+                            // FancyModLoader 4's ModVersion only reads "type", defaulting to REQUIRED).
                             string mandatory = Val(v, "mandatory");
                             type = kind == "neoforge" || mandatory == null || mandatory == "true" ? "required" : "optional";
+                            oldOptional = kind == "neoforge" && mandatory == "false";
                         }
-                        meta.Deps.Add(new DepInfo
+                        tomlDeps.Add(new DepInfo
                         {
-                            Owner = section.Key.Substring("dependencies.".Length),
+                            Owner = section.Key.Substring("dependencies.".Length).Trim().Trim('"', '\''),
                             Id = id,
                             Type = type.ToLowerInvariant(),
                             Range = Val(v, "versionRange"),
-                            Side = (Val(v, "side") ?? "BOTH").ToUpperInvariant()
+                            Side = (Val(v, "side") ?? "BOTH").ToUpperInvariant(),
+                            OldOptional = oldOptional
                         });
                     }
                 }
+                // The loader reads [[dependencies.<id>]] only for the mods this file declares. Blocks for another id are
+                // leftovers from a template (Mobs Use Shields and NeuroLib carry Survivor's Delight's, which needs
+                // Farmer's Delight) and never stop the game.
+                meta.Deps.AddRange(tomlDeps.Where(d => tomlMods.Contains(d.Owner)));
                 // Modrinth's generated datapack jars write their mod as one inline table:
                 // mods = [ { modId = '...', version = '...', displayName = '...' } ]
                 if (meta.Mods.Count == 0)
@@ -663,6 +675,8 @@ namespace MinecraftModManager
                     // isn't safe: single player runs a server inside the game, so "needed on servers" counts in the game too.
                     if (dep.Side == "CLIENT" && side == "server") continue;
                     string sideNote = dep.Side == "SERVER" && side == "client" ? " It's listed as needed on servers only, but single player runs a server inside the game, so the game needs it too." : null;
+                    if (dep.OldOptional)
+                        sideNote += " " + owner + " marks it optional the old Forge way (mandatory = false), which NeoForge doesn't read, so the game still won't start without it.";
                     if (meta.Mods.Any(m => m.Id.Equals(dep.Id, StringComparison.OrdinalIgnoreCase))) continue;
                     string have;
                     if (builtin.TryGetValue(dep.Id, out have))

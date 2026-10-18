@@ -230,16 +230,19 @@ Play and the pre-launch check
   the PLAY button). It looks for the things that stop NeoForge from starting: a required mod
   that's missing or turned off (counting ones a mod says it needs "on servers only": single player runs a
   server inside the game, so the game needs them too), the wrong version of a library, the same mod twice, mods for another
-  Minecraft version, Fabric mods without Sinytra Connector. Anything it finds is listed with one-click
+  Minecraft version, Fabric mods without Sinytra Connector. It reads requirements the way NeoForge does: a
+  "mandatory = false" requirement still counts (NeoForge only reads "type", and says why), and a
+  [[dependencies.<id>]] block for a mod that isn't in that jar (a template leftover) doesn't. Anything it finds is listed with one-click
   fixes (turn it on, copy it from the server, install it, search for it).
   It also reads the mods' code (their class files), because some mods list their requirements wrong:
-  - a mod that uses a library it doesn't list at all (Inline Tooltips uses Inline): what its main class
-    and its mixins need at startup has to be in some installed mod, or in a turned-off one ("Turn it
+  - a mod that uses a library it doesn't list at all (Inline Tooltips uses Inline): what its startup
+    code (followed call by call from its main class) and its mixins need has to be in some installed mod, or in a turned-off one ("Turn it
     on"); otherwise "Search for it", with the library's likely name;
   - a mod made for a different version of a mod it depends on (Let Me Despawn 1.5 calls a method that
     Almanac 1.26 no longer has): "Pick another version" opens that mod's Versions tab, or turn the mod off.
   It stays quiet about anything it can't confirm: code for optional mods (the jar names that mod's id, or
-  it's a compatibility pack touching several absent mods), mixins whose target isn't installed (the game
+  it's a compatibility pack touching several absent mods), code that only runs later (event
+  handlers, data generators) or inside a library the jar carries a copy of, mixins whose target isn't installed (the game
   skips those), and code that comes from Minecraft, Java or the game's own libraries. The first check
   reads every mod (a few seconds); later ones only reread jars that changed.
   Missing mods: "Install it" on one, or "Add all missing" at the top for all of them at once (it turns on

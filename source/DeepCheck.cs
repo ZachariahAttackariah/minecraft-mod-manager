@@ -28,6 +28,10 @@ namespace MinecraftModManager
             public string[] Interfaces = new string[0];
             public HashSet<string> Methods = new HashSet<string>(StringComparer.Ordinal); // name + descriptor
             public bool IsModEntry;
+            public bool IsSubscriber;                                                       // @EventBusSubscriber: NeoForge loads it as the mod starts
+            // What each method's code does, by method (name + descriptor): "I<class>" sets a class up (new, static
+            // field or static call), "M<class>.<name><descriptor>" calls a method. Game, loader and Java classes left out.
+            public Dictionary<string, List<string>> Calls = new Dictionary<string, List<string>>(StringComparer.Ordinal);
             public List<string> MixinTargets = new List<string>();                          // from @Mixin(value / targets)
             public HashSet<string> Strings = new HashSet<string>(StringComparer.Ordinal);   // text constants ("thirst" in ModList.isLoaded("thirst"))
             public bool ChecksLoaded;                                                       // calls ModList.isLoaded (or similar) somewhere
@@ -55,7 +59,8 @@ namespace MinecraftModManager
 
         // Fabric's intermediary names, which Connector maps to real ones as the game loads.
         static readonly HashSet<string> CommonPackageWords = new HashSet<string>(StringComparer.Ordinal) { "com", "net", "org", "dev", "api", "client", "common", "core", "util", "utils", "mixin", "mixins", "impl", "init", "item", "items", "block", "blocks", "entity", "world", "config", "content", "data", "neoforge", "forge", "fabric", "main", "mod", "mods", "lib", "github", "gitlab" };
-        static readonly Regex Intermediary = new Regex(@"(^|[/$])(class|method|field|comp)_\d+");
+        static readonly Regex ShadedLibrary = new Regex(@"/(shadow|shaded|repack|repackaged|relocated|relocate|libs|thirdparty|third_party|dependencies|deps)/|/(org|com|io|net)/(apache|google|github|eclipse|jetbrains)/", RegexOptions.IgnoreCase);
+        static readonly Regex Intermediary =new Regex(@"(^|[/$])(class|method|field|comp)_\d+");
 
         static HashSet<string> libraryRoots;
 
@@ -148,7 +153,18 @@ namespace MinecraftModManager
                     if (utf[desc] != null) memberDescs.Add(utf[desc]);
                     int attrs = u2();
                     // (Not "p += u4()": that reads p before u4 moves it on.)
-                    for (int a = 0; a < attrs; a++) { p += 2; int length = u4(); p += length; }
+                    for (int a = 0; a < attrs; a++)
+                    {
+                        string attr = utf[u2()];
+                        int length = u4();
+                        if (pass == 1 && attr == "Code" && utf[name] != null && utf[desc] != null && length >= 8)
+                        {
+                            int codeLength = (b[p + 4] << 24) | (b[p + 5] << 16) | (b[p + 6] << 8) | b[p + 7];
+                            if (codeLength > 0 && p + 8 + codeLength <= b.Length)
+                                info.Calls[utf[name] + utf[desc]] = ScanCode(b, p + 8, codeLength, utf, cls, refs, nat);
+                        }
+                        p += length;
+                    }
                 }
             }
             // Class attributes: the @Mixin annotation names what the mixin changes.
@@ -170,6 +186,7 @@ namespace MinecraftModManager
                 if ((kind[i] == 10 || kind[i] == 11) && Regex.IsMatch(utf[nat[refs[i, 1], 0]] ?? "", @"^(isLoaded|isModLoaded|getModContainerById|isModPresent)$")) info.ChecksLoaded = true;
             // @Mod is marked by its annotation descriptor in the constant pool.
             for (int i = 1; i < count; i++) if (kind[i] == 1 && utf[i] == "Lnet/neoforged/fml/common/Mod;") info.IsModEntry = true;
+            for (int i = 1; i < count; i++) if (kind[i] == 1 && utf[i] == "Lnet/neoforged/fml/common/EventBusSubscriber;") info.IsSubscriber = true;
             // Every class this one uses: class constants, and the types in its own and its calls' signatures
             // (the JVM loads those too when it checks the code: that's how Inline Tooltips failed).
             for (int i = 1; i < count; i++)
@@ -194,6 +211,57 @@ namespace MinecraftModManager
                     }
                 }
             return info;
+        }
+
+        // Walks one method's bytecode (JVM spec chapter 6) for the classes it sets up and the methods it calls.
+        static List<string> ScanCode(byte[] b, int start, int length, string[] utf, int[] cls, int[,] refs, int[,] nat)
+        {
+            var found = new List<string>();
+            Func<int, string> className = i => i > 0 && i < cls.Length && cls[i] > 0 ? utf[cls[i]] : null;
+            Func<string, bool> skip = o => o == null || o.StartsWith("[") || o.StartsWith("java/") || o.StartsWith("net/minecraft/") || o.StartsWith("net/neoforged/") || o.StartsWith("com/mojang/");
+            int pc = 0;
+            while (pc < length)
+            {
+                int at = start + pc, op = b[at], size;
+                if (op == 0xaa || op == 0xab) // tableswitch / lookupswitch: padded to 4 bytes, then a table
+                {
+                    int q = at + 1 + ((4 - (pc + 1) % 4) % 4);
+                    if (q + 12 > start + length) break;
+                    Func<int, int> i4 = x => (b[x] << 24) | (b[x + 1] << 16) | (b[x + 2] << 8) | b[x + 3];
+                    size = op == 0xaa ? q - at + 12 + (i4(q + 8) - i4(q + 4) + 1) * 4 : q - at + 8 + i4(q + 4) * 8;
+                    if (size <= 0) break;
+                    pc += size;
+                    continue;
+                }
+                size = op == 0xc4 ? (pc + 1 < length && b[at + 1] == 0x84 ? 6 : 4)
+                    : op == 0x10 || op == 0x12 || op == 0x15 || op == 0x16 || op == 0x17 || op == 0x18 || op == 0x19 || op == 0xa9 || op == 0xbc || (op >= 0x36 && op <= 0x3a) ? 2
+                    : op == 0x11 || op == 0x13 || op == 0x14 || op == 0x84 || (op >= 0x99 && op <= 0xa8) || (op >= 0xb2 && op <= 0xb8) || op == 0xbb || op == 0xbd || op == 0xc0 || op == 0xc1 || op == 0xc6 || op == 0xc7 ? 3
+                    : op == 0xc5 ? 4
+                    : op == 0xb9 || op == 0xba || op == 0xc8 || op == 0xc9 ? 5
+                    : 1;
+                if (pc + size > length) break;
+                int index = size >= 3 ? (b[at + 1] << 8) | b[at + 2] : 0;
+                if (op == 0xbb) // new
+                {
+                    string c = className(index);
+                    if (!skip(c)) found.Add("I" + c);
+                }
+                else if (op == 0xb2 || op == 0xb3 || (op >= 0xb6 && op <= 0xb9)) // getstatic, putstatic, invoke*
+                {
+                    if (index > 0 && index < cls.Length)
+                    {
+                        string owner = className(refs[index, 0]);
+                        if (!skip(owner))
+                        {
+                            if (op == 0xb2 || op == 0xb3 || op == 0xb8) found.Add("I" + owner);
+                            int nt = refs[index, 1];
+                            if (op != 0xb2 && op != 0xb3 && nt > 0 && nt < cls.Length) found.Add("M" + owner + "." + utf[nat[nt, 0]] + utf[nat[nt, 1]]);
+                        }
+                    }
+                }
+                pc += size;
+            }
+            return found;
         }
 
         // One annotation (JVM spec 4.7.16); for @Mixin, its class values and target names are kept.
@@ -441,6 +509,8 @@ namespace MinecraftModManager
                     frontier = next;
                 }
 
+                HashSet<string> loaded = LoadedAtStartup(code);
+
                 var missingHere = new List<object>();
                 var missingRoots = new HashSet<string>(StringComparer.Ordinal);
                 foreach (ClassRef r in code.Refs)
@@ -485,9 +555,15 @@ namespace MinecraftModManager
                                 new[] { file, installedOwner }, Obj("action", "versions", "file", installedOwner, "for", file)));
                         continue;
                     }
-                    // A class no jar here has. Only the main class and mixins are checked: other code may only touch
-                    // optional mods when they're installed.
-                    if (!entry && !mixin) continue;
+                    // A class no jar here has. Only classes the mod sets up as it starts (LoadedAtStartup) and mixins
+                    // are checked: Java checks a class's code when it's first used, so a class that only runs later or
+                    // behind an "is that mod there?" check (Serene Seasons Plus' Better Days support, Connected Glass'
+                    // Rechiseled data generator) never needs the other mod.
+                    bool atLoad = loaded.Contains(r.From);
+                    if (!atLoad && !mixin) continue;
+                    // A library the jar carries a copy of has optional extras of its own (Euphoria Patcher's copy of
+                    // Commons Compress only uses Brotli for Brotli files), and the calls followed can't tell which branch runs.
+                    if (!mixin && ShadedLibrary.IsMatch(r.From)) continue;
                     string root = Root(r.Owner);
                     if (root == null || libs.Contains(root)) continue;
                     string[] segments = r.Owner.Split('/');
@@ -520,7 +596,7 @@ namespace MinecraftModManager
                     string guess = segments.Length >= 4 ? segments[2] : segments.Length >= 2 ? segments[1] : null;
                     missingRoots.Add(root);
                     missingHere.Add(Issue(guarded ? "warning" : "error", "missing",
-                        who + (entry ? " can't start" : "'s mixin " + ShortClass(r.From) + " can't be applied") + ": it uses " + Dotted(r.Owner) +
+                        who + (atLoad ? " can't start" : "'s mixin " + ShortClass(r.From) + " can't be applied") + ": it uses " + Dotted(r.Owner) +
                         ", and no installed mod has it. It needs a mod it doesn't list" + (guess != null ? " (probably one called \"" + guess + "\")" : "") + "." +
                         (guarded ? " Its mixin plugin may skip this when that mod isn't there." : ""),
                         new[] { file }, Obj("action", "search", "query", guess ?? root)));
@@ -529,6 +605,61 @@ namespace MinecraftModManager
                 // them only runs when they're installed. One or two missing mods is the telling case.
                 if (missingRoots.Count < 4) issues.AddRange(missingHere);
             }
+        }
+
+        // The mod's own classes Java loads and checks as the mod starts: its @Mod class (built by the loader) and
+        // @EventBusSubscriber classes (loaded by NeoForge), plus every class the constructors and static set-up
+        // reach by creating it, reading its static fields or calling into it, followed call by call. Code that only
+        // runs later (event handlers, lambdas, data generators) isn't followed: Java checks a class when it's first
+        // used, so a class only that code uses can need a mod that isn't there without stopping the game.
+        static HashSet<string> LoadedAtStartup(JarCode code)
+        {
+            var loaded = new HashSet<string>(StringComparer.Ordinal);
+            var ran = new HashSet<string>(StringComparer.Ordinal);
+            var queue = new Queue<string>(); // "<class>.<method name><descriptor>"
+            Action<string> run = m => { if (ran.Add(m)) queue.Enqueue(m); };
+            Action<string> setUp = c =>
+            {
+                ClassInfo ci;
+                // Setting a class up sets up its superclasses first; its interfaces are loaded with it.
+                while (c != null && code.Classes.TryGetValue(c, out ci) && loaded.Add(c))
+                {
+                    run(c + ".<clinit>()V");
+                    foreach (string i in ci.Interfaces) if (code.Classes.ContainsKey(i)) loaded.Add(i);
+                    c = ci.Super;
+                }
+            };
+            foreach (ClassInfo c in code.Classes.Values)
+            {
+                if (!c.IsModEntry && !c.IsSubscriber) continue;
+                setUp(c.Name);
+                if (c.IsModEntry) foreach (string m in c.Calls.Keys) if (m.StartsWith("<init>", StringComparison.Ordinal)) run(c.Name + "." + m);
+            }
+            while (queue.Count > 0)
+            {
+                string m = queue.Dequeue();
+                int dot = m.IndexOf('.');
+                string cls = m.Substring(0, dot), method = m.Substring(dot + 1);
+                // The method may be inherited: look for it up the superclasses in this jar.
+                List<string> calls = null;
+                ClassInfo ci;
+                while (cls != null && code.Classes.TryGetValue(cls, out ci))
+                {
+                    if (ci.Calls.TryGetValue(method, out calls)) break;
+                    cls = ci.Super;
+                }
+                if (calls == null) continue;
+                foreach (string t in calls)
+                {
+                    if (t[0] == 'I') setUp(t.Substring(1));
+                    else
+                    {
+                        string target = t.Substring(1);
+                        if (code.Classes.ContainsKey(target.Substring(0, target.IndexOf('.')))) run(target);
+                    }
+                }
+            }
+            return loaded;
         }
 
         // Is the package really that mod's (one of its mod ids is a word of the package), not a partial copy
