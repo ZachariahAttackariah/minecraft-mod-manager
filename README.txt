@@ -277,7 +277,8 @@ Mod details
   turned-off ones marked; click a name to open that mod.
 
 Notes, pins and skipped updates (right-click a mod)
-  Add a note... ..... a note on the mod: shown on hover over the note mark beside its file name, and found by
+  Add a note... ..... a note on the mod: shown in a small card when the cursor rests on its row (a note mark
+                      sits beside its file name), and found by
                       the search box. Also editable in its details.
   Pin this version .. Update all and the update arrow leave it alone (a pin mark shows beside its file name).
   Skip this update .. hides this one update; a newer version shows again. "Show the ... update again" undoes it.

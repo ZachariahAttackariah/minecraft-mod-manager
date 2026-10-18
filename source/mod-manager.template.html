@@ -435,6 +435,10 @@ a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--acce
 .mark svg { width: 13px; height: 13px; }
 .mark.pin { color: var(--warn); }
 .mark.note { color: var(--c-client); }
+/* A mod's note, shown when the cursor rests on its row. */
+.note-pop { position: fixed; z-index: 30; max-width: min(380px, calc(100vw - 24px)); padding: 8px 11px 9px; font-size: 13px; line-height: 1.45; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--c-client); border-radius: 6px; box-shadow: var(--shadow-lg); pointer-events: none; }
+.note-pop .k { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; font: 700 11px/1 var(--font-body); letter-spacing: 0.05em; text-transform: uppercase; color: var(--c-client); }
+.note-pop .k svg { width: 12px; height: 12px; }
 .note-input { width: 100%; min-height: 44px; padding: 8px 10px; font: 400 13.5px/1.45 var(--font-body); color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; resize: vertical; }
 .det-extras { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 8px 16px; align-items: center; margin-top: 14px; padding: 12px; background: var(--raised); border: 1px solid var(--line); border-radius: 4px; }
 .det-extras .note-input, .det-extras .hint { grid-column: 1 / -1; }
@@ -2399,7 +2403,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
             title: "Delete…", "aria-label": "Delete " + r.name }, icon("trash")));
       }
       return h("div", { class: "row" + (sel ? " is-selected" : "") + (r.status === "disabled" ? " is-disabled" : "") + (r.status === "missing" ? " is-missing" : ""),
-          role: "row", "aria-selected": sel ? "true" : "false", "data-key": r.key, "aria-busy": busy[r.key] ? "true" : null },
+          role: "row", "aria-selected": sel ? "true" : "false", "data-key": r.key, "aria-busy": busy[r.key] ? "true" : null, "data-note": ex.note || null },
         h("div", { class: "c-check", role: "cell" },
           h("button", { type: "button", class: "check", role: "checkbox", "aria-checked": sel ? "true" : "false", "aria-label": "Select " + r.name })),
         // "Off" sits on the icon, so a turned-off mod's row is no taller than the others.
@@ -2416,6 +2420,46 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // The list keeps each row's element while nothing it shows has changed, so filtering, searching and
   // refreshing only build the rows that changed (a full list is hundreds of rows), focus and icons stay
   // put, and a switch can slide. Anything that changes every row (the look, the tag list) starts afresh.
+  // A mod's note shows in a small card when the cursor rests on its row (after a moment, so moving down
+  // the list doesn't flash one per row). It follows the cursor across the row and goes on a click,
+  // scroll or when the cursor leaves.
+  var notePop = null, noteRow = null, noteTimer = 0, noteXY = [0, 0];
+  function hideNote() {
+    clearTimeout(noteTimer);
+    noteRow = null;
+    if (notePop) notePop.hidden = true;
+  }
+  function placeNote() {
+    if (!notePop || notePop.hidden || !noteRow) return;
+    var rect = noteRow.getBoundingClientRect(), w = notePop.offsetWidth, ht = notePop.offsetHeight;
+    var x = Math.min(Math.max(8, noteXY[0] + 14), window.innerWidth - w - 8);
+    var y = rect.bottom + 6;
+    if (y + ht > window.innerHeight - 8) y = Math.max(8, rect.top - ht - 6); // no room below: above the row
+    notePop.style.left = x + "px";
+    notePop.style.top = y + "px";
+  }
+  function showNote(row) {
+    if (!notePop) {
+      notePop = h("div", { class: "note-pop", role: "tooltip", hidden: true });
+      document.body.append(notePop);
+    }
+    notePop.replaceChildren(h("div", { class: "k" }, icon("note"), "Note"), row.getAttribute("data-note"));
+    notePop.hidden = false;
+    placeNote();
+  }
+  $("rows").addEventListener("mouseover", function (e) {
+    var row = e.target.closest(".row[data-note]");
+    if (row === noteRow) return;
+    hideNote();
+    if (!row || !menuEl.hidden) return;
+    noteRow = row;
+    noteTimer = setTimeout(function () { if (noteRow === row) showNote(row); }, 450);
+  });
+  $("rows").addEventListener("mousemove", function (e) { noteXY = [e.clientX, e.clientY]; placeNote(); });
+  $("rows").addEventListener("mouseleave", hideNote);
+  ["mousedown", "wheel", "keydown", "contextmenu"].forEach(function (ev) { document.addEventListener(ev, hideNote, true); });
+  window.addEventListener("scroll", hideNote, true);
+
   var rowCache = {}, rowCacheEpoch = "";
   function rowSig(r) {
     var ex = extOf(r), m = r.mr || {};
