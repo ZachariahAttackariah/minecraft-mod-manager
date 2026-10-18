@@ -185,8 +185,9 @@ Configs
                       under %LOCALAPPDATA%\MinecraftModManager\sync-backups\<time>\editor-game (or
                       editor-server). A file the game saved meanwhile isn't overwritten: open it again. Close
                       the game first (the server, for its files): they rewrite configs as they close.
-  From a mod ........ its details > Config files > Edit opens the same editor right there in the details
-                      window ("‹ Config files" goes back to its list, "Open in Configs" moves to this page).
+  From a mod ........ its details > Config files shows its settings straight away, in the same editor
+                      (a list at the top picks the file when it has several; "Open in Configs" moves it
+                      to this page).
 
 Sharing between instances
   Shared settings... in the instance list shows what's shared. Each instance ticks what it shares in its
