@@ -123,10 +123,10 @@ namespace MinecraftModManager
                 }
                 else inSync++;
             }
-            // Mod ids the game's enabled mods require (client or both sides), to spot server jars the game is missing.
+            // Mod ids the game's enabled mods require (any side: single player runs a server in the game), to spot server jars the game is missing.
             var gameNeeds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (SideJar g in game.Where(x => x.Enabled))
-                foreach (DepInfo dep in GetJarMeta(g.File).Deps.Where(d => d.Type == "required" && d.Side != "SERVER"))
+                foreach (DepInfo dep in GetJarMeta(g.File).Deps.Where(d => d.Type == "required"))
                     if (!gameNeeds.ContainsKey(dep.Id)) gameNeeds[dep.Id] = Label(g);
             var gameHas = new HashSet<string>(game.SelectMany(x => GetJarMeta(x.File).Mods.Concat(GetJarMeta(x.File).Nested)).Select(m => m.Id), StringComparer.OrdinalIgnoreCase);
 

@@ -111,7 +111,7 @@ namespace MinecraftModManager
                     foreach (DepInfo dep in meta.Deps)
                     {
                         if (dep.Type != "required" || dep.Id == null || BuiltInIds.Contains(dep.Id)) continue;
-                        int need = mine & (dep.Side == "CLIENT" ? 1 : dep.Side == "SERVER" ? 2 : 3);
+                        int need = mine & (dep.Side == "CLIENT" ? 1 : 3); // "server only" needs still go to the client: single player
                         List<FileInfo> libs;
                         if (need == 0 || !providers.TryGetValue(dep.Id, out libs)) continue;
                         foreach (FileInfo lib in libs.Where(l => l != jar))

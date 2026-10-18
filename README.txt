@@ -226,7 +226,8 @@ Play and the pre-launch check
   with "Open Prism". A game started from Prism itself is followed too.
   Play starts the game straight away. The pre-launch check only runs when you press Check mods (under
   the PLAY button). It looks for the things that stop NeoForge from starting: a required mod
-  that's missing or turned off, the wrong version of a library, the same mod twice, mods for another
+  that's missing or turned off (counting ones a mod says it needs "on servers only": single player runs a
+  server inside the game, so the game needs them too), the wrong version of a library, the same mod twice, mods for another
   Minecraft version, Fabric mods without Sinytra Connector. Anything it finds is listed with one-click
   fixes (turn it on, copy it from the server, install it, search for it).
   Missing mods: "Install it" on one, or "Add all missing" at the top for all of them at once (it turns on

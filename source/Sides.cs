@@ -179,7 +179,7 @@ namespace MinecraftModManager
                     foreach (DepInfo dep in user.Meta.Deps)
                     {
                         if (dep.Type != "required" || BuiltInIds.Contains(dep.Id) || user.Meta.Mods.Any(m => m.Id.Equals(dep.Id, StringComparison.OrdinalIgnoreCase))) continue;
-                        int need = user.Sides & (dep.Side == "CLIENT" ? 1 : dep.Side == "SERVER" ? 2 : 3);
+                        int need = user.Sides & (dep.Side == "CLIENT" ? 1 : 3); // "server only" needs still go to the client: single player runs a server in the game
                         List<SideGuess> libs;
                         if (need == 0 || !providers.TryGetValue(dep.Id, out libs)) continue;
                         foreach (SideGuess lib in libs)

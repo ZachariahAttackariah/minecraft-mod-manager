@@ -61,7 +61,8 @@ namespace MinecraftModManager
             // one may not be there in its range at all.
             Func<DepInfo, IEnumerable<ModInfo>, bool> holds = (dep, own) =>
             {
-                if (dep.Side == "SERVER" || dep.Type == "discouraged" || dep.Id == null || own.Any(m => m.Id.Equals(dep.Id, StringComparison.OrdinalIgnoreCase))) return true;
+                // "Needed on servers" counts in the game too: single player runs a server inside it.
+                if (dep.Type == "discouraged" || dep.Id == null || own.Any(m => m.Id.Equals(dep.Id, StringComparison.OrdinalIgnoreCase))) return true;
                 string have;
                 List<string> versions;
                 if (dep.Type == "incompatible") return !(providers.TryGetValue(dep.Id, out versions) && versions.Any(v => InRange(v, dep.Range)));

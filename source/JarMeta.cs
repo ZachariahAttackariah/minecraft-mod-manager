@@ -659,7 +659,10 @@ namespace MinecraftModManager
 
                 foreach (DepInfo dep in meta.Deps)
                 {
-                    if (dep.Side == "CLIENT" && side == "server" || dep.Side == "SERVER" && side == "client") continue;
+                    // A server never runs client code, so client-only needs are skipped there. The other way round
+                    // isn't safe: single player runs a server inside the game, so "needed on servers" counts in the game too.
+                    if (dep.Side == "CLIENT" && side == "server") continue;
+                    string sideNote = dep.Side == "SERVER" && side == "client" ? " It's listed as needed on servers only, but single player runs a server inside the game, so the game needs it too." : null;
                     if (meta.Mods.Any(m => m.Id.Equals(dep.Id, StringComparison.OrdinalIgnoreCase))) continue;
                     string have;
                     if (builtin.TryGetValue(dep.Id, out have))
@@ -703,17 +706,17 @@ namespace MinecraftModManager
                     if (side == "client" && serverProviders == null) serverProviders = ServerProviders();
                     // One issue per missing mod, however many mods need it (NoteMissing).
                     if (offProviders.TryGetValue(dep.Id, out off) && off.Count > 0)
-                        NoteMissing(issues, missingSeen, "enable:" + off[0].File, off[0].Name, ", which is turned off", null, owner, jar.Name, off[0].File,
+                        NoteMissing(issues, missingSeen, "enable:" + off[0].File, off[0].Name, ", which is turned off", sideNote, owner, jar.Name, off[0].File,
                             Obj("action", "enable", "file", off[0].File));
                     else if (serverProviders != null && serverProviders.TryGetValue(dep.Id, out onServer) && onServer.Any(p => !p.Nested && InRange(p.Version, dep.Range)))
                     {
                         Provider p = onServer.First(x => !x.Nested && InRange(x.Version, dep.Range));
-                        NoteMissing(issues, missingSeen, "copy:" + p.File, p.Name, ", which isn't installed in the game", " The server has it (" + p.File + ").", owner, jar.Name, null,
+                        NoteMissing(issues, missingSeen, "copy:" + p.File, p.Name, ", which isn't installed in the game", " The server has it (" + p.File + ")." + (sideNote ?? ""), owner, jar.Name, null,
                             Obj("action", "copy-from-server", "file", p.File));
                     }
                     else
                         NoteMissing(issues, missingSeen, "install:" + dep.Id.ToLowerInvariant(),
-                            dep.Id + (dep.Range != null && dep.Range != "*" ? " (" + DescribeRange(dep.Range) + ")" : ""), ", which isn't installed", null, owner, jar.Name, null,
+                            dep.Id + (dep.Range != null && dep.Range != "*" ? " (" + DescribeRange(dep.Range) + ")" : ""), ", which isn't installed", sideNote, owner, jar.Name, null,
                             Obj("action", "install", "id", dep.Id, "for", jar.Name, "query", dep.Id));
                 }
             }
@@ -827,7 +830,7 @@ namespace MinecraftModManager
             var turningOn = new HashSet<string>(files.Where(metas.ContainsKey), StringComparer.OrdinalIgnoreCase);
             var provided = new HashSet<string>(jars.Where(f => !isOff(f.Name) || turningOn.Contains(f.Name)).SelectMany(f => ids(metas[f.Name])).Select(m => m.Id),
                 StringComparer.OrdinalIgnoreCase);
-            // A server's own mods folder doesn't need client-side dependencies, and a game's doesn't need server-side ones.
+            // A server's own mods folder doesn't need client-side dependencies. A game needs all of them: single player runs a server inside it.
             bool serverFolder = serverDir != null && SamePath(Path.Combine(serverDir, "mods"), modsDir);
             var added = new List<string>();
             var queue = new Queue<string>(turningOn);
@@ -837,7 +840,7 @@ namespace MinecraftModManager
                 foreach (DepInfo dep in meta.Deps)
                 {
                     if (dep.Type != "required" || dep.Id == null || provided.Contains(dep.Id)) continue;
-                    if (dep.Side == (serverFolder ? "CLIENT" : "SERVER")) continue;
+                    if (serverFolder && dep.Side == "CLIENT") continue; // single player needs "server" ones in the game too
                     string id = dep.Id;
                     FileInfo pick = jars.Where(f => isOff(f.Name) && !turningOn.Contains(f.Name) && ids(metas[f.Name]).Any(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase)))
                         .OrderByDescending(f => ids(metas[f.Name]).First(m => string.Equals(m.Id, id, StringComparison.OrdinalIgnoreCase)).Version ?? "",
@@ -864,7 +867,7 @@ namespace MinecraftModManager
                 var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (DepInfo dep in metas[jar.Name].Deps)
                 {
-                    if (dep.Type != "required" || dep.Side == "CLIENT" && side == "server" || dep.Side == "SERVER" && side == "client") continue;
+                    if (dep.Type != "required" || dep.Side == "CLIENT" && side == "server") continue;
                     List<Provider> found;
                     if (!providers.TryGetValue(dep.Id, out found)) continue;
                     foreach (Provider p in found) if (!p.File.Equals(jar.Name, StringComparison.OrdinalIgnoreCase)) set.Add(p.File);
