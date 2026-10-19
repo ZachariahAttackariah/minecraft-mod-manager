@@ -2498,9 +2498,15 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var box = $("rows"), kids = box.children, same = kids.length === els.length;
     for (var i = 0; same && i < els.length; i++) same = kids[i] === els[i];
     if (!same) {
+      // A focused element inside the rows (the check box the right-click menu hands focus back to, say) is
+      // taken out and put back as the rows are re-inserted, and losing it that way scrolled the page to the top
+      // (deleting a mod jumped to the top of the list). Focus leaves first and comes back without scrolling.
+      var focused = box.contains(document.activeElement) ? document.activeElement : null;
+      if (focused) focused.blur();
       var frag = document.createDocumentFragment();
       els.forEach(function (el) { frag.append(el); });
       box.replaceChildren(frag);
+      if (focused && box.contains(focused)) focused.focus({ preventScroll: true });
     }
     $("empty").hidden = rows.length > 0 || !model;
     var onlyStatus = !state.q && !state.tags.length && !state.excluded.length && !state.sides.length && !state.untagged;
@@ -3821,7 +3827,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function closeDialog() {
     $("scrim").hidden = true;
     dialogConfirm = null;
-    if (dialogReturn && document.contains(dialogReturn)) dialogReturn.focus();
+    // preventScroll: the page has only just become scrollable again (it's frozen behind a dialog), and focusing
+    // a row then scrolled the list to the top (deleting from the right-click menu jumped to the top).
+    if (dialogReturn && document.contains(dialogReturn)) dialogReturn.focus({ preventScroll: true });
     dialogReturn = null;
   }
   function deleteMods(rows, backedUp) {
@@ -3851,7 +3859,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function applyTags(rows, add, remove, focusAfter, undo) {
     if (tagBusy || !connected || !rows.length) return;
     tagBusy = true;
-    if (!menuEl.hidden) renderMenu();
+    // The menu stays as it is while the change saves (redrawing it with every option disabled made it fade for a
+    // moment): only the ticked boxes change, straight away. Clicks in the meantime are ignored (tagBusy).
+    if (!menuEl.hidden) {
+      add.forEach(function (t) { var b = menuEl.querySelector('.tag-opt[data-tag="' + t + '"]'); if (b) b.setAttribute("aria-checked", "true"); });
+      remove.forEach(function (t) { var b = menuEl.querySelector('.tag-opt[data-tag="' + t + '"]'); if (b) b.setAttribute("aria-checked", "false"); });
+    }
     api("POST", "/api/tags", { keys: rows.map(function (r) { return r.key; }), add: add, remove: remove }).then(function () {
       var who = rows.length === 1 ? rows[0].name : count(rows.length, "mod", "mods");
       var msg = add.length ? "Added " + add.join(", ") + " to " + who : "Removed " + remove.join(", ") + " from " + who;
@@ -3951,7 +3964,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var checked = n === 0 ? "false" : n === rows.length ? "true" : "mixed";
       list.append(h("button", { type: "button", class: "tag-opt", role: "checkbox", "aria-checked": checked, "data-tag": t, style: "--c:" + colorOf(t),
           "aria-label": t + (checked === "mixed" ? ", on " + n + " of " + rows.length + " mods" : ""),
-          disabled: tagBusy || !connected, title: model.defs[t] || null,
+          disabled: !connected, title: model.defs[t] || null,
           onclick: function () { if (checked === "true") applyTags(rows, [], [t], t); else applyTags(rows, [t], [], t); } },
         h("span", { class: "box", "aria-hidden": "true" }), h("span", null, t),
         checked === "mixed" ? h("span", { class: "ct" }, n + "/" + rows.length) : null));
