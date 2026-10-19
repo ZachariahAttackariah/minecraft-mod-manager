@@ -404,7 +404,11 @@ Server (for hosting friends on this PC)
                       Kept on the server: server-side mods the sync never turns off there, even when the
                       game doesn't have them or has them off (Chunky, say). Keep one from its row ("Keep it
                       on the server") or pick any jar in the server's mods folder; a kept mod that's off on the
-                      server is offered "Turn on", and newer versions from the game still go across.
+                      server is offered "Turn on", and newer versions from the game still go across. The kept
+                      list looks like the mod list (icon, name, file, version, an on/off switch and delete for
+                      the server's copy, a filter, select-all and bulk actions) and has its own Add mods: search
+                      Modrinth and CurseForge, or add .jar files; they go straight into the server's mods folder
+                      (with the mods they need) and are kept there.
                       Configs follow your game automatically (on by default): a config whose settings you
                       changed in the game is copied to the server before it starts from here and every few
                       minutes while it's stopped. Client-only configs, configs only the server has and

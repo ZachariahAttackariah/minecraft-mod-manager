@@ -14,13 +14,14 @@ namespace MinecraftModManager
     {
         const long MaxDropBytes = 1L << 30;
 
-        static Dictionary<string, object> ReceiveDroppedFile(HttpListenerRequest req)
+        static Dictionary<string, object> ReceiveDroppedFile(HttpListenerRequest req, string into = null)
         {
             string name = Path.GetFileName(req.QueryString["name"] ?? "");
             bool jar = name.EndsWith(".jar", StringComparison.OrdinalIgnoreCase), zip = name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
             if (name.Length == 0 || name.StartsWith(".") || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
                 throw new UserError("That file name can't be used.");
             if (!jar && !zip) throw new UserError(name + " isn't a .jar or a pack .zip, so it wasn't added.");
+            if (zip && into != null) throw new UserError(name + " isn't a mod: only .jar files go on the server from here.");
             if (req.ContentLength64 > MaxDropBytes) throw new UserError(name + " is too big to add this way.");
             string staging = Path.Combine(dataDir, "downloads");
             Directory.CreateDirectory(staging);
@@ -49,14 +50,14 @@ namespace MinecraftModManager
                     string message = PlaceDownloadedPack(temp, name, downloads);
                     return Obj("ok", true, "kind", "pack", "message", message);
                 }
-                string dir = modsDir;
+                string dir = into ?? modsDir;
                 string target = Path.Combine(dir, name);
                 if (File.Exists(target) || File.Exists(target + ".disabled"))
                     return Obj("ok", true, "kind", "mod", "skipped", true, "message", name + " is already in the mods folder.");
                 File.Move(temp, target);
-                Log("Added     " + name + " (dropped on the window)");
-                TagLibraryByLookup(name, null);
-                return Obj("ok", true, "kind", "mod", "file", name, "message", "Added " + name + " to the mods folder.");
+                Log("Added     " + name + " (dropped on the window)" + (into != null ? " into " + dir : ""));
+                if (into == null) TagLibraryByLookup(name, null);
+                return Obj("ok", true, "kind", "mod", "file", name, "message", "Added " + name + " to the " + (into != null ? "server's " : "") + "mods folder.");
             }
             finally
             {

@@ -79,6 +79,67 @@ namespace MinecraftModManager
 
         static string SyncKey(SideJar j) { return j.ModId ?? j.Key.ToLowerInvariant(); }
 
+        // Add mods (search, files) aimed at the server: installs into its mods folder and keeps every jar that
+        // came with it, the mods it needs included. A running server picks them up when it next starts.
+        static Dictionary<string, object> InstallKeptOnServer(Func<string, Dictionary<string, object>> install)
+        {
+            string server = RequireServerDir();
+            string serverMods = Path.Combine(server, "mods");
+            Directory.CreateDirectory(serverMods);
+            var before = new HashSet<string>(Directory.GetFiles(serverMods).Select(Path.GetFileName), StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, object> result = install(serverMods);
+            var kept = new List<object>();
+            foreach (SideJar j in ListSideJars(serverMods, null).Where(j => !before.Contains(j.File.Name)))
+            {
+                SetKeptOnServer(SyncKey(j), Label(j), true);
+                kept.Add(Label(j));
+            }
+            result["kept"] = kept;
+            result["serverRunning"] = ServerBusy() || ExternalServerRunning(server, null);
+            return result;
+        }
+
+        // The kept list's row buttons: turn a jar in the server's mods folder on or off, or delete it.
+        static Dictionary<string, object> ServerModAction(string file, string action)
+        {
+            string server = RequireServerDir();
+            if (ServerBusy() || ExternalServerRunning(server, null)) throw new UserError("Stop the server first. Its mods are in use while it runs.");
+            string serverMods = Path.Combine(server, "mods");
+            string path = ResolveModFile(serverMods, file ?? "");
+            bool off = path.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase);
+            lock (FileLock)
+            {
+                switch (action)
+                {
+                    case "on":
+                    case "off":
+                    {
+                        if ((action == "on") != off) return Obj("ok", true, "file", Path.GetFileName(path));
+                        string to = off ? path.Substring(0, path.Length - ".disabled".Length) : path + ".disabled";
+                        if (File.Exists(to)) throw new UserError(Path.GetFileName(to) + " already exists on the server.");
+                        AssertNotInUse(path);
+                        File.Move(path, to);
+                        Log("Server    turned " + action + " " + Path.GetFileName(to));
+                        return Obj("ok", true, "file", Path.GetFileName(to));
+                    }
+                    case "delete":
+                        AssertNotInUse(path);
+                        if (!RecyclePaths(new[] { path })) throw new UserError("Windows couldn't move " + Path.GetFileName(path) + " to the Recycle Bin.");
+                        Log("Server    deleted " + Path.GetFileName(path) + " (moved to the Recycle Bin)");
+                        return Obj("ok", true);
+                    default:
+                        throw new UserError("Unknown action.");
+                }
+            }
+        }
+
+        // One server jar as a row: what the kept list and its picker show.
+        static Dictionary<string, object> ServerJarRow(SideJar j, bool kept)
+        {
+            return Obj("key", SyncKey(j), "name", Label(j), "file", j.File.Name, "version", j.Version, "enabled", j.Enabled, "kept", kept,
+                "logo", GetJarMeta(j.File).Mods.Any(m => m.Logo != null));
+        }
+
         // The kept mods with how the server has them: on, off or missing.
         static List<object> KeptList(string serverMods)
         {
@@ -86,9 +147,12 @@ namespace MinecraftModManager
             return KeptOnServer().OrderBy(k => k.Value, StringComparer.OrdinalIgnoreCase).Select(k =>
             {
                 List<SideJar> copies = server.Where(s => string.Equals(SyncKey(s), k.Key, StringComparison.OrdinalIgnoreCase)).ToList();
-                SideJar on = copies.FirstOrDefault(s => s.Enabled);
-                return (object)Obj("id", k.Key, "name", k.Value, "state", on != null ? "on" : copies.Count > 0 ? "off" : "missing",
-                    "file", (on ?? copies.FirstOrDefault()) == null ? null : (on ?? copies.First()).File.Name);
+                SideJar best = copies.FirstOrDefault(s => s.Enabled) ?? copies.FirstOrDefault();
+                Dictionary<string, object> row = best == null ? Obj("key", k.Key, "name", k.Value, "kept", true) : ServerJarRow(best, true);
+                row["id"] = k.Key;
+                row["name"] = k.Value;
+                row["state"] = best == null ? "missing" : best.Enabled ? "on" : "off";
+                return (object)row;
             }).ToList();
         }
 
@@ -383,11 +447,12 @@ namespace MinecraftModManager
                     "serverModified", c.Server == null ? null : c.Server.LastWriteTimeUtc.ToString("o"),
                     "changes", changes, "moreChanges", more));
             }
+            Dictionary<string, string> keptNow = KeptOnServer();
             return Obj("ok", true, "serverFolder", server, "gameFolder", GameDir(), "running", ServerBusy() || ExternalServerRunning(server, null),
                 "mods", modList, "modsInSync", inSync, "configs", configList, "lastAutoConfigs", lastServerConfigSync, "configsSame", same, "configsIgnored", ignored,
                 "gameOn", gameJars.Count(j => j.Enabled), "gameOff", gameJars.Count(j => !j.Enabled), "serverOn", serverOn,
                 "kept", KeptList(serverMods),
-                "serverJars", ListSideJars(serverMods, null).GroupBy(SyncKey).Select(g => (object)Obj("key", g.Key, "name", Label(g.First()), "file", g.OrderByDescending(j => j.Enabled).First().File.Name)).ToList(),
+                "serverJars", ListSideJars(serverMods, null).GroupBy(SyncKey).Select(g => (object)ServerJarRow(g.OrderByDescending(j => j.Enabled).First(), keptNow.ContainsKey(g.Key))).ToList(),
                 "comparedAt", DateTime.UtcNow.ToString("o"));
         }
 

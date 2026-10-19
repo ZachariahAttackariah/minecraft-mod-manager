@@ -433,13 +433,13 @@ namespace MinecraftModManager
             return Obj("ok", true, "target", TargetObj(), "total", Math.Min(CfId(Get(page, "totalCount")), 10000), "offset", offset, "hits", hits);
         }
 
-        static Dictionary<string, object> CurseForgeInstall(string projectId, string fileId = null)
+        static Dictionary<string, object> CurseForgeInstall(string projectId, string fileId = null, string into = null)
         {
             long id = CfId((projectId ?? "").Replace("cf:", ""));
             if (id <= 0) throw new UserError("No mod was chosen.");
             lock (ModrinthLock)
             {
-                string dir = modsDir;
+                string dir = into ?? modsDir;
                 Dictionary<string, object> mod = CfMod(id);
                 if (mod == null) throw new UserError("That mod wasn't found on CurseForge.");
                 string title = S(mod, "name");

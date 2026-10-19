@@ -358,7 +358,7 @@ namespace MinecraftModManager
                 if (method == "GET" && path == "/api/mod-icon")
                 {
                     if (req.QueryString["t"] != Token) { SendText(ctx, 403, "text/plain; charset=utf-8", "Forbidden"); return; }
-                    SendModIcon(ctx, req.QueryString["file"]);
+                    SendModIcon(ctx, req.QueryString["file"], req.QueryString["side"] == "server");
                     return;
                 }
                 if (req.Headers["X-Mod-Manager-Token"] != Token)
@@ -528,7 +528,7 @@ namespace MinecraftModManager
                 // A file dropped on the window arrives as raw bytes, not JSON (Drop.cs).
                 if (path == "/api/upload")
                 {
-                    SendJson(ctx, 200, ReceiveDroppedFile(req));
+                    SendJson(ctx, 200, req.QueryString["dest"] == "server" ? InstallKeptOnServer(dir => ReceiveDroppedFile(req, dir)) : ReceiveDroppedFile(req));
                     return;
                 }
                 if (path == "/api/background")
@@ -745,10 +745,12 @@ namespace MinecraftModManager
                         SendJson(ctx, 200, SetCurseForgeKey(Str(body, "key")));
                         return;
                     case "/api/curseforge/install":
-                        SendJson(ctx, 200, CurseForgeInstall(Str(body, "projectId"), Str(body, "fileId")));
+                        SendJson(ctx, 200, Bool(body, "server") ? InstallKeptOnServer(dir => CurseForgeInstall(Str(body, "projectId"), Str(body, "fileId"), dir))
+                            : CurseForgeInstall(Str(body, "projectId"), Str(body, "fileId")));
                         return;
                     case "/api/modrinth/install":
-                        SendJson(ctx, 200, ModrinthInstall(Str(body, "projectId"), Str(body, "versionId")));
+                        SendJson(ctx, 200, Bool(body, "server") ? InstallKeptOnServer(dir => ModrinthInstall(Str(body, "projectId"), Str(body, "versionId"), dir))
+                            : ModrinthInstall(Str(body, "projectId"), Str(body, "versionId")));
                         return;
                     case "/api/modrinth/update":
                         SendJson(ctx, 200, ModrinthUpdate(StrList(body, "files")));
@@ -892,6 +894,9 @@ namespace MinecraftModManager
                         return;
                     case "/api/sync/keep":
                         SendJson(ctx, 200, SetKeptOnServer(Str(body, "id"), Str(body, "name"), Bool(body, "keep")));
+                        return;
+                    case "/api/sync/server-mod":
+                        SendJson(ctx, 200, ServerModAction(Str(body, "file"), Str(body, "action")));
                         return;
 
                     case "/api/snapshots/create":
@@ -1454,12 +1459,12 @@ namespace MinecraftModManager
         }
 
         // Installs a mod and the required dependencies that aren't in the folder yet.
-        static Dictionary<string, object> ModrinthInstall(string projectIdOrSlug, string versionId = null)
+        static Dictionary<string, object> ModrinthInstall(string projectIdOrSlug, string versionId = null, string into = null)
         {
             if (string.IsNullOrWhiteSpace(projectIdOrSlug)) throw new UserError("No mod was chosen.");
             lock (ModrinthLock)
             {
-                string dir = modsDir;
+                string dir = into ?? modsDir;
                 HashSet<string> installed = InstalledProjects(dir);
                 var plan = new List<PlanItem>();
                 var notes = new List<string>();
@@ -2298,10 +2303,10 @@ namespace MinecraftModManager
             using (Stream output = res.OutputStream) output.Write(bytes, 0, bytes.Length);
         }
 
-        static void SendModIcon(HttpListenerContext ctx, string name)
+        static void SendModIcon(HttpListenerContext ctx, string name, bool onServer = false)
         {
             string path;
-            try { path = ResolveModFile(modsDir, name ?? ""); }
+            try { path = ResolveModFile(onServer ? Path.Combine(RequireServerDir(), "mods") : modsDir, name ?? ""); }
             catch (UserError) { SendText(ctx, 404, "text/plain; charset=utf-8", "Not found"); return; }
             string type;
             byte[] bytes = JarLogo(new FileInfo(path), out type);
