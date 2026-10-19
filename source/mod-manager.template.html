@@ -7507,6 +7507,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!i.creating) {
       var pill = syncPill();
       if (pill) actions.append(pill);
+      if (state === "stopped" || state === "running")
+        actions.append(btn(srv.syncApplying ? "Syncing…" : "Sync with game", syncEverything, "", { disabled: !connected || srv.syncApplying || i.externalRunning,
+          title: "Brings the server in line with your game in one go: its mods (adds, updates, turns on and off) and its config files. " +
+            "You see what will change first" + (state === "running" ? "; the server stops for it and starts again after." : ".") }));
       if (state === "stopped") {
         actions.append(btn("Start server", startServerChecked, "primary", { disabled: !connected || !i.eula || i.externalRunning || !!i.launchProblem }));
       } else {
@@ -8002,7 +8006,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       h("div", { style: "flex:1 1 360px;min-width:0" }, h("h2", null, "Mods & configs"),
         h("p", { class: "lead", style: "margin:0" }, "Your game's mods folder decides what the server runs. Mods change only when you apply them here: replaced jars go to the Recycle Bin and overwritten configs are backed up.")),
       h("div", { class: "row-actions" }, s && s.comparedAt ? h("span", { class: "hint" }, "Compared at " + clock(new Date(s.comparedAt))) : null,
-        btn(srv.syncLoading ? "Comparing…" : "Compare again", loadSync, "", { disabled: srv.syncLoading }))));
+        btn(srv.syncLoading ? "Comparing…" : "Compare again", loadSync, "", { disabled: srv.syncLoading }),
+        btn("Sync with game", syncEverything, "primary", { disabled: !connected || srv.syncLoading || srv.syncApplying,
+          title: "Everything at once, your game as the source: the changes ticked by default and every config file that differs" }))));
     // Configs changed in the game follow to the server by themselves (ConfigSharing.cs).
     var autoCfg = h("input", { type: "checkbox" });
     autoCfg.checked = pref("serverConfigsAuto") !== false;
@@ -8443,6 +8449,49 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (srv.sub === "sync") renderSync();
     });
   }
+  // "Sync with game": everything in one go, the game as the source. Compares afresh, then applies every mod change
+  // the preview ticks by itself (never turning off server-only or kept mods) and copies every config file that
+  // differs from the game to the server (overwritten copies backed up; files only the server has are left
+  // alone). A running server is stopped first and started again after.
+  function syncEverything() {
+    if (!connected || srv.syncApplying) return;
+    var external = !!(srv.info && srv.info.externalRunning);
+    if (external) { toast("The server was started outside this app. Stop it there first."); return; }
+    track("Comparing the server with your game", loadSync()).then(function () {
+      var s = srv.sync;
+      if (!s || s.error) { toast(s && s.error ? s.error : "Couldn't compare the server with your game."); return; }
+      var offs = s.mods.filter(function (m) { return m.kind === "disable"; }).length;
+      var caution = offs >= 20 && offs >= (s.serverOn || 0) * 0.25;
+      var mods = s.mods.filter(function (m) { return m.default && !(caution && m.kind === "disable"); });
+      var up = s.configs.filter(function (c) { return c.kind !== "server-only"; }).map(function (c) { return c.id; });
+      if (!mods.length && !up.length) {
+        toast("The server already matches your game" + (caution ? " (apart from " + count(offs, "mod", "mods") + " turned off in your game, which are left on: see Mods & configs)." : "."));
+        return;
+      }
+      var items = [];
+      SYNC_GROUPS.forEach(function (g) {
+        var list = mods.filter(function (m) { return g.kinds.indexOf(m.kind) >= 0; });
+        if (list.length) items.push(g.chip + ": " + (list.length <= 3 ? list.map(function (m) { return m.title; }).join(", ") : count(list.length, "mod", "mods")));
+      });
+      if (up.length) items.push("Configs to the server: " + (up.length <= 3 ? up.map(function (id) { return id.slice(4); }).join(", ") : count(up.length, "file", "files")));
+      var running = serverRunning();
+      var players = running ? (srv.info.players || []) : [];
+      confirmDialog({
+        title: (running ? "Stop the server and sync " : "Sync ") + count(mods.length + up.length, "change", "changes") + " from your game?",
+        items: items,
+        body: (running ? "The server saves and stops" + (players.length ? " (" + count(players.length, "player is", "players are") + " online)" : "") + ", the changes are made, and it starts again. " : "") +
+          "Your game is the source: the server gets its mods and config settings. Mods only the server has (and kept ones) stay, replaced jars go to the Recycle Bin, and the server's old config files are backed up first." +
+          (caution ? " Your game has " + count(offs, "mod", "mods") + " turned off right now, so turning those off on the server is left out; tick them in Mods & configs if you mean it." : ""),
+        ok: running ? "Stop, sync and start" : "Sync",
+        okClass: "primary",
+        onOk: function () {
+          if (srv.sub !== "sync") setSub("sync"); // where the result shows
+          runSyncApply({ mods: mods, up: up, down: [], total: mods.length + up.length }, running);
+        }
+      });
+    }, function (e) { toast(e.message); });
+  }
+
   // Resolves once the server has saved and exited (up to 5 minutes).
   function waitForStopped() {
     var since = Date.now();

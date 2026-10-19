@@ -404,6 +404,11 @@ Server (for hosting friends on this PC)
                       "Game -> server" or "Server -> game" for each. Nothing changes until you apply; while
                       the server runs the button is "Stop, apply and start". Replaced jars go to the Recycle
                       Bin; overwritten configs are backed up in %LOCALAPPDATA%\MinecraftModManager\sync-backups.
+                      Sync with game (on the server's bar and here) does it all in one go, your game as the
+                      source: it compares afresh, shows what will change, then applies every mod change ticked
+                      by default and copies every config file that differs to the server. Mods and configs only
+                      the server has (and kept mods) stay; a running server stops for it and starts again; a
+                      game with lots of mods turned off leaves turning those off on the server out.
                       Server mods: every jar in the server's mods folder, listed like an instance's mod list
                       (icon, name, file, version, a filter for all / kept / off, select-all and bulk actions).
                       Each row has a pin to keep it on the server, an on/off switch and delete for the server's
