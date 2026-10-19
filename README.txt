@@ -401,6 +401,10 @@ Server (for hosting friends on this PC)
                       "Game -> server" or "Server -> game" for each. Nothing changes until you apply; while
                       the server runs the button is "Stop, apply and start". Replaced jars go to the Recycle
                       Bin; overwritten configs are backed up in %LOCALAPPDATA%\MinecraftModManager\sync-backups.
+                      Kept on the server: server-side mods the sync never turns off there, even when the
+                      game doesn't have them or has them off (Chunky, say). Keep one from its row ("Keep it
+                      on the server") or pick any jar in the server's mods folder; a kept mod that's off on the
+                      server is offered "Turn on", and newer versions from the game still go across.
                       Configs follow your game automatically (on by default): a config whose settings you
                       changed in the game is copied to the server before it starts from here and every few
                       minutes while it's stopped. Client-only configs, configs only the server has and
