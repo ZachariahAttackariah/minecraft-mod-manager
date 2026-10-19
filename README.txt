@@ -337,7 +337,9 @@ When the game crashes
   wrong?" reads the newest crash report, or latest.log when the game died without writing one, and lists
   the mods it points at, most likely first, with why and how sure it is. When mods fail to load, NeoForge
   writes a "-fml" report and a crash right after it (pressing a key on the error screen, say) is only
-  the aftermath: the reader then reads the mod-loading report and says so. "Made for a different
+  the aftermath: the reader then reads the mod-loading report and says so. Only within one launch:
+  a crash from a later launch (latest.log started after the mod-loading report, or the game reached a
+  world) is read on its own. "Made for a different
   version" errors (NoSuchMethodError and friends) point at the library, with "Pick another version". What counts most: NeoForge's own
   "mod loading issue" lines and suspected mods, mixins that really failed ("Attach error ... from mod x"),
   and classes that couldn't be found, traced to the jar that has them (a turned-off one gets "Turn it

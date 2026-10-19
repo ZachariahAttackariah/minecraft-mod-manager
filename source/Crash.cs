@@ -46,6 +46,24 @@ namespace MinecraftModManager
             public readonly List<string> Missing = new List<string>();
         }
 
+        // When the launch that wrote latest.log started: its first line reads "[18Oct2026 17:09:12.710] [main/INFO] ...".
+        static DateTime? LaunchStartUtc(string logPath)
+        {
+            try
+            {
+                string first;
+                using (var stream = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                using (var reader = new StreamReader(stream)) first = reader.ReadLine();
+                Match m = Regex.Match(first ?? "", @"^\[(\d{1,2}[A-Za-z]{3}\d{4} \d{2}:\d{2}:\d{2})");
+                DateTime t;
+                if (m.Success && DateTime.TryParseExact(m.Groups[1].Value, "dMMMyyyy HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.AssumeLocal, out t))
+                    return t.ToUniversalTime();
+            }
+            catch (Exception) { }
+            return null;
+        }
+
         static Dictionary<string, object> ReadLastCrash()
         {
             string mods = modsDir;
@@ -60,9 +78,15 @@ namespace MinecraftModManager
             // When mods fail to load, NeoForge writes a "-fml" report and shows its error screen; a crash right
             // after that (a key press reaching a mod whose config never loaded, say) is only the aftermath.
             // The mod-loading report is the one that says what went wrong.
-            if (report != null && !Regex.IsMatch(text, @"Mod loading failures have occurred|-- Mod loading issue for:"))
+            // Only within the same launch: a game that failed to load never reaches a world (so a "-server" report
+            // or one naming a level is a later launch), and no launch may have started in between (latest.log's
+            // first line carries the launch's date and time).
+            DateTime? launchStart = log.Exists ? LaunchStartUtc(log.FullName) : null;
+            if (report != null && !Regex.IsMatch(text, @"Mod loading failures have occurred|-- Mod loading issue for:") &&
+                !report.Name.EndsWith("-server.txt", StringComparison.OrdinalIgnoreCase) && !text.Contains("-- Affected level --"))
             {
                 FileInfo loading = reports.Skip(1).FirstOrDefault(f => report.LastWriteTimeUtc - f.LastWriteTimeUtc < TimeSpan.FromMinutes(10) &&
+                    !(launchStart > f.LastWriteTimeUtc && launchStart <= report.LastWriteTimeUtc) &&
                     (f.Name.EndsWith("-fml.txt", StringComparison.OrdinalIgnoreCase) || Regex.IsMatch(ReadShared(f.FullName), @"Mod loading failures have occurred")));
                 if (loading != null)
                 {
