@@ -452,7 +452,7 @@ namespace MinecraftModManager
                 "mods", modList, "modsInSync", inSync, "configs", configList, "lastAutoConfigs", lastServerConfigSync, "configsSame", same, "configsIgnored", ignored,
                 "gameOn", gameJars.Count(j => j.Enabled), "gameOff", gameJars.Count(j => !j.Enabled), "serverOn", serverOn,
                 "kept", KeptList(serverMods),
-                "serverJars", ListSideJars(serverMods, null).GroupBy(SyncKey).Select(g => (object)ServerJarRow(g.OrderByDescending(j => j.Enabled).First(), keptNow.ContainsKey(g.Key))).ToList(),
+                "serverJars", ListSideJars(serverMods, null).OrderBy(j => Label(j), StringComparer.OrdinalIgnoreCase).Select(j => (object)ServerJarRow(j, keptNow.ContainsKey(SyncKey(j)))).ToList(),
                 "comparedAt", DateTime.UtcNow.ToString("o"));
         }
 

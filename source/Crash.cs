@@ -118,6 +118,21 @@ namespace MinecraftModManager
                 foreach (ModInfo m in meta.Nested) if (m.Id != null && !byId.ContainsKey(m.Id)) { byId[m.Id] = jar; if (!names.ContainsKey(m.Id)) names[m.Id] = m.Name ?? m.Id; }
             }
             var byFile = jars.ToDictionary(f => Regex.Replace(f.Name, @"\.disabled$", "", RegexOptions.IgnoreCase), f => f, StringComparer.OrdinalIgnoreCase);
+            // What the game actually loads (jars that are on, and the mods inside them), and which turned-off jar
+            // has a mod that isn't loaded: a requirement it provides is missing in the game but only needs turning on.
+            var onIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var offProvider = new Dictionary<string, FileInfo>(StringComparer.OrdinalIgnoreCase);
+            foreach (FileInfo jar in jars.Where(j => !j.Name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)))
+            {
+                JarMeta meta = GetJarMeta(jar);
+                foreach (ModInfo m in meta.Mods.Concat(meta.Nested)) if (m.Id != null) onIds.Add(m.Id);
+            }
+            foreach (FileInfo jar in jars.Where(j => j.Name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)))
+            {
+                JarMeta meta = GetJarMeta(jar);
+                foreach (ModInfo m in meta.Mods.Concat(meta.Nested))
+                    if (m.Id != null && !onIds.Contains(m.Id) && !offProvider.ContainsKey(m.Id)) offProvider[m.Id] = jar;
+            }
             var suspects = new Dictionary<string, Suspect>(StringComparer.OrdinalIgnoreCase);
             Func<string, string, Suspect> suspect = (id, file) =>
             {
@@ -151,9 +166,11 @@ namespace MinecraftModManager
                 string id = block.Groups[1].Value, body = block.Groups[2].Value;
                 Match fileLine = Regex.Match(body, @"^\s*Mod file: (.+?)\r?$", RegexOptions.Multiline);
                 string file = fileLine.Success ? fileLine.Groups[1].Value.Trim() : null;
-                Match failure = Regex.Match(body, @"^\s*Failure message: (.+?)\r?\n((?:\t\t.*\r?\n)*)", RegexOptions.Multiline);
-                string why = failure.Success ? (failure.Groups[1].Value.Trim() + " " + Regex.Replace(failure.Groups[2].Value, @"\s+", " ").Trim()).Trim()
-                    : "NeoForge couldn't load it";
+                // The message's last line ends the block, with no line break after it ("Currently, x is not installed").
+                Match failure = Regex.Match(body, @"^\s*Failure message: ([^\r\n]+)\r?\n?((?:\t\t[^\r\n]*(?:\r?\n|\z))*)", RegexOptions.Multiline);
+                string first = failure.Success ? failure.Groups[1].Value.Trim() : null, more = failure.Success ? Regex.Replace(failure.Groups[2].Value, @"\s+", " ").Trim() : "";
+                string why = first == null ? "NeoForge couldn't load it"
+                    : more.Length == 0 ? first : first + (Regex.IsMatch(first, @"[.!?:]$") ? " " : ". ") + more;
                 // "X has failed to load correctly" says little; the error under it says why.
                 why = Regex.Replace(why, @"^.+? \(\S+\) has failed to load correctly\s*", "Failed to load: ");
                 Suspect s = suspect(id, file);
@@ -267,9 +284,9 @@ namespace MinecraftModManager
                 foreach (Suspect s in wanting)
                 {
                     note(s, 10, "It needs " + missingClass + ", which no installed mod has");
-                    List<string> deps = MissingRequirements(s.File, byId);
+                    List<string> deps = MissingRequirements(s.File, onIds);
                     foreach (string dep in deps)
-                        if (!s.Missing.Contains(dep)) { s.Missing.Add(dep); note(s, 6, "It requires " + dep + ", which isn't installed"); }
+                        if (!s.Missing.Contains(dep)) { s.Missing.Add(dep); note(s, 6, "It requires " + dep + (offProvider.ContainsKey(dep) ? ", which is turned off" : ", which isn't installed")); }
                     // It doesn't list the mod it needs: the class's package names it (com.samsthenerd.inline -> inline).
                     if (deps.Count == 0 && guess != null && !s.Missing.Contains(guess))
                     {
@@ -303,13 +320,45 @@ namespace MinecraftModManager
             }
             // A mod that failed while one of its required mods is missing or off: that's very likely why.
             foreach (Suspect s in suspects.Values.Where(x => x.Score >= 8 && x.File != null).ToList())
-                foreach (string dep in MissingRequirements(s.File, byId))
-                    if (!s.Missing.Contains(dep)) { s.Missing.Add(dep); note(s, 4, "It requires " + dep + ", which isn't installed"); }
+                foreach (string dep in MissingRequirements(s.File, onIds))
+                    if (!s.Missing.Contains(dep)) { s.Missing.Add(dep); note(s, 4, "It requires " + dep + (offProvider.ContainsKey(dep) ? ", which is turned off" : ", which isn't installed")); }
 
             string description = Regex.Match(text, @"^Description: ([^\r\n]+)", RegexOptions.Multiline).Groups[1].Value;
             List<Suspect> ranked = suspects.Values.Where(s => s.Score > 0).OrderByDescending(s => s.Score).Take(8).ToList();
             List<object> list = ranked.Select(s => (object)Obj("id", s.Id, "file", s.File, "name", s.Name, "score", s.Score, "reasons", s.Reasons,
                 "missing", s.Missing, "turnOn", s.TurnOn, "versions", s.Versions)).ToList();
+            // What the crash says is missing, one entry per mod, for the dialog to offer: turn on the turned-off jar
+            // that has it, or install it (found the way the pre-launch check finds missing mods).
+            var needs = new List<Dictionary<string, object>>();
+            Func<string, Dictionary<string, object>> needFor = key =>
+            {
+                Dictionary<string, object> n = needs.FirstOrDefault(x => string.Equals((string)x["id"], key, StringComparison.OrdinalIgnoreCase));
+                if (n == null) needs.Add(n = Obj("id", key, "name", null, "turnOn", null, "neededBy", new List<string>(), "for", null));
+                return n;
+            };
+            foreach (Suspect s in ranked)
+            {
+                foreach (string id in s.Missing)
+                {
+                    Dictionary<string, object> n = needFor(id);
+                    FileInfo off;
+                    if (offProvider.TryGetValue(id, out off))
+                    {
+                        n["turnOn"] = off.Name;
+                        n["name"] = names.ContainsKey(id) ? names[id] : id;
+                    }
+                    var by = (List<string>)n["neededBy"];
+                    if (s.Name != null && !by.Contains(s.Name)) by.Add(s.Name);
+                    if (n["for"] == null) n["for"] = s.File;
+                }
+                // A turned-off jar whose code the game needed (a missing class it has).
+                if (s.TurnOn && s.File != null && s.File.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase))
+                {
+                    Dictionary<string, object> n = needFor(s.Id ?? s.File);
+                    n["turnOn"] = s.File;
+                    n["name"] = s.Name;
+                }
+            }
             // How sure: a clear leader with direct evidence, or only hints.
             int top = ranked.Count > 0 ? ranked[0].Score : 0, second = ranked.Count > 1 ? ranked[1].Score : 0;
             string confidence = top >= 16 && top >= second * 2 ? "high" : top >= 8 && top > second ? "medium" : "low";
@@ -322,7 +371,7 @@ namespace MinecraftModManager
                 "fromLog", source != null && source.EndsWith("latest.log", StringComparison.OrdinalIgnoreCase),
                 "description", description.Length > 0 ? description : null, "exception", exception.Length > 0 ? exception : null,
                 "cause", cause != null && cause != exception ? cause : null, "confidence", confidence, "suspects", list,
-                "aftermathOf", aftermathOf, "newest", reports.Count > 0 ? reports[0].Name : null, "failedToLoad", blocks.Count);
+                "aftermathOf", aftermathOf, "newest", reports.Count > 0 ? reports[0].Name : null, "failedToLoad", blocks.Count, "needs", needs);
         }
     
         // Which jar a Java package lives in, for stack frames without a mod tag and for classes that couldn't be
@@ -395,15 +444,15 @@ namespace MinecraftModManager
             return index;
         }
 
-        // The required mods of a jar that aren't here at all (ids, for "Find ...").
-        static List<string> MissingRequirements(string file, Dictionary<string, FileInfo> byId)
+        // The required mods of a jar the game doesn't load: not here at all, or only in a turned-off jar.
+        static List<string> MissingRequirements(string file, HashSet<string> onIds)
         {
             var missing = new List<string>();
             if (file == null) return missing;
             var jar = new FileInfo(Path.Combine(modsDir, file));
             if (!jar.Exists) return missing;
             foreach (DepInfo dep in GetJarMeta(jar).Deps)
-                if (dep.Type == "required" && dep.Id != null && !BuiltInIds.Contains(dep.Id) && !NotSuspects.Contains(dep.Id) && !byId.ContainsKey(dep.Id) && !missing.Contains(dep.Id))
+                if (dep.Type == "required" && dep.Id != null && !BuiltInIds.Contains(dep.Id) && !NotSuspects.Contains(dep.Id) && !onIds.Contains(dep.Id) && !missing.Contains(dep.Id))
                     missing.Add(dep.Id);
             return missing;
         }

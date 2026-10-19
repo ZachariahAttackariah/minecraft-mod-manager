@@ -683,6 +683,11 @@ html[data-anim="off"] :is(.spin, .jobbar span) { animation-duration: 3s; }
 .cb-text { flex: 1 1 240px; }
 .crash-what { display: grid; gap: 6px; padding: 10px 12px; background: var(--sunken); border-radius: 4px; }
 .crash-what code { font: 400 12.5px/1.4 var(--font-mono); color: var(--danger-fg); overflow-wrap: anywhere; }
+.crash-needs { margin-top: 12px; padding: 10px 12px; background: color-mix(in srgb, var(--warn) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line)); border-radius: 6px; }
+.crash-needs .cn-title { margin-bottom: 6px; font: 600 14px/1.3 var(--font-display); }
+.crash-needs .cn-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 6px 0; border-top: 1px solid color-mix(in srgb, var(--warn) 25%, var(--line)); }
+.crash-needs .cn-row:first-of-type { border-top: 0; }
+.crash-needs .cn-text { flex: 1 1 260px; font-size: 13.5px; }
 .suspect { display: grid; gap: 6px; margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 4px; }
 .suspect.top { border-color: color-mix(in srgb, var(--danger) 55%, var(--line)); }
 .s-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
@@ -868,13 +873,14 @@ html[data-blocky="on"] .set-card h2 { font-family: var(--font-blocky); font-weig
 .k-kept { --c: var(--c-server); }
 .kept-box { overflow: visible; }
 .kept-box > .sg-head { border-radius: 5px 5px 0 0; }
-.kept-box .list-head, .kept-box .row { --cols: 22px minmax(0, 1fr) minmax(70px, 150px) 112px; }
 .kept-box .row:last-child { border-bottom: 0; }
 .kept-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; }
 .kept-tools input[type=search] { flex: 1 1 220px; max-width: 360px; padding: 6px 9px; font: 400 13px/1.2 var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
 .kept-box .selection-bar { width: auto; margin: 0 12px 4px; }
 .kept-existing { border-top: 1px solid var(--line); }
 .keep-pill { margin-left: 8px; padding: 1px 6px; font: 600 10.5px/1.4 var(--font-body); letter-spacing: 0.02em; color: var(--c-server); border: 1px solid color-mix(in srgb, var(--c-server) 55%, transparent); border-radius: 9px; vertical-align: 1px; }
+.act.keep-btn.on { opacity: 1; color: var(--c-server); background: color-mix(in srgb, var(--c-server) 14%, transparent); border-color: color-mix(in srgb, var(--c-server) 45%, transparent); }
+.kept-box .list-head, .kept-box .row { --cols: 22px minmax(0, 1fr) minmax(70px, 150px) 112px; }
 .sync-sum { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 10px; }
 .sum-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; font: 600 13px/1.2 var(--font-body); color: var(--ink); background: color-mix(in srgb, var(--c, var(--muted)) 9%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c, var(--muted)) 38%, var(--line)); border-radius: 5px; cursor: pointer; }
 .sum-chip b { font: 700 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -5245,6 +5251,29 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       // The root cause (the last "Caused by") says more than the wrapper the report starts with.
       if (res.description || res.exception) body.append(h("div", { class: "crash-what" }, res.description ? h("div", { class: "d" }, res.description) : null,
         res.cause ? h("code", { title: "The root cause: the last \"Caused by\" in the report" }, res.cause) : res.exception ? h("code", null, res.exception) : null));
+      // Missing mods it names: turn on the turned-off jar that has one, or install it (the pre-launch check's way).
+      var needs = res.needs || [];
+      if (needs.length && connected) {
+        var fixOf = function (n) { return n.turnOn ? { action: "enable", file: n.turnOn } : { action: "install", id: n.id, "for": n["for"], query: n.id }; };
+        var prompt = h("div", { class: "crash-needs" }, h("div", { class: "cn-title" },
+          needs.length === 1 ? (needs[0].turnOn ? "A mod it needs is turned off" : "A mod it needs isn't installed")
+            : count(needs.length, "mod it needs is", "mods it needs are") + " missing or turned off"));
+        needs.forEach(function (n) {
+          var who = n.neededBy && n.neededBy.length ? n.neededBy.join(", ") : null;
+          var text = n.turnOn ? (n.name || n.id) + " is installed but turned off" + (who ? ", and " + who + (n.neededBy.length > 1 ? " need" : " needs") + " it." : ": the game needed its code.")
+            : n.id + " isn't installed" + (who ? ", and " + who + (n.neededBy.length > 1 ? " need" : " needs") + " it." : ".");
+          prompt.append(h("div", { class: "cn-row" }, h("span", { class: "cn-text" }, text), h("span", { class: "row-actions" },
+            n.turnOn ? btn("Turn on " + (n.name || n.id), function () { closeBig(); addMissing([fixOf(n)]); }, "primary", { title: "Turns on " + n.turnOn })
+              : btn("Install " + n.id, function () { closeBig(); addMissing([fixOf(n)]); }, "primary",
+                  { title: "Finds it on Modrinth and CurseForge (what " + (who || "the mod") + " lists as required first) and checks the jar really is " + n.id + " before keeping it" }),
+            n.turnOn ? null : btn("Search", function () { closeBig(); $("search-q").value = n.id; openSearch(); runSearch(true); }))));
+        });
+        if (needs.length > 1) prompt.append(h("div", { class: "row-actions", style: "margin-top:8px" },
+          btn("Fix all " + needs.length, function () { closeBig(); addMissing(needs.map(fixOf)); }, "primary")));
+        body.append(prompt);
+      }
+      var inNeeds = {};
+      needs.forEach(function (n) { inNeeds[String(n.id).toLowerCase()] = true; if (n.turnOn) inNeeds["file:" + n.turnOn.toLowerCase()] = true; });
       if (!res.suspects.length) body.append(h("p", { class: "hint" }, "It doesn't name any mod in this folder. The crash may come from Minecraft, the loader, Java or a driver; the report itself has the details."));
       else body.append(h("p", { class: "hint", style: "margin:12px 0 6px" },
         res.failedToLoad > 1 ? "These mods failed to load, each for its own reason: each needs sorting out." :
@@ -5255,10 +5284,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       res.suspects.forEach(function (s, i) {
         var r = s.file ? rowsFor([s.file.replace(/\.disabled$/i, "")])[0] : null;
         var actions = h("div", { class: "row-actions" });
+        // Missing mods are offered in the prompt above; only ones it couldn't list get a search here.
         (s.missing || []).forEach(function (id) {
+          if (inNeeds[String(id).toLowerCase()]) return;
           actions.append(btn("Find " + id, function () { closeBig(); $("search-q").value = id; openSearch(); runSearch(true); }, i === 0 ? "primary" : ""));
         });
-        if (r && s.turnOn && r.status === "disabled") actions.append(btn("Turn it on", function (e) { e.currentTarget.disabled = true; setEnabled([r], true); }, i === 0 ? "primary" : ""));
+        if (r && s.turnOn && r.status === "disabled" && !inNeeds["file:" + String(s.file).toLowerCase()])
+          actions.append(btn("Turn it on", function (e) { e.currentTarget.disabled = true; setEnabled([r], true); }, i === 0 ? "primary" : ""));
         if (r && s.versions) actions.append(btn("Pick another version", function () { closeBig(); openDetails(r); setDetTab("versions"); }, i === 0 ? "primary" : "", { title: "Its versions, to switch to the one the other mod was made for" }));
         else if (r && r.status === "enabled" && !(s.missing || []).length && res.confidence !== "low") actions.append(btn("Turn it off", function (e) { e.currentTarget.disabled = true; setEnabled([r], false); }, i === 0 ? "primary" : ""));
         if (r) actions.append(btn("Details", function () { closeBig(); openDetails(r); }));
@@ -8118,11 +8150,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }, function (e) { toast(e.message); });
   }
 
-  // ---- Kept on the server, in the mod list's style ----
-  // Mods the server keeps whatever the game does (Sync.cs). Rows like the mod list's: icon, name, file,
-  // version, an on/off switch and delete for the server's copy; a filter; a selection with bulk actions; and
-  // Add mods (search, or .jar files) that installs straight into the server's mods folder and keeps them.
-  var keptSel = {}, keptQ = "", keptMenu = null;
+  // ---- Server mods, in the mod list's style ----
+  // Every jar in the server's mods folder, with rows like an instance's mod list: icon, name, file, version, a pin
+  // to keep it on the server whatever the sync says (Sync.cs), an on/off switch and delete for the server's copy;
+  // a filter (all, kept, off); a selection with bulk actions; and Add mods (search, or .jar files) that installs
+  // straight into the server's mods folder and keeps them.
+  var keptSel = {}, keptQ = "", keptFilter = "all", keptMenu = null;
   var serverFileInput = h("input", { type: "file", multiple: true, accept: ".jar", hidden: true });
   document.body.append(serverFileInput);
   serverFileInput.addEventListener("change", function () {
@@ -8140,14 +8173,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       return p.then(function () { return api("POST", "/api/sync/server-mod", { file: k.file, action: action }); });
     }, Promise.resolve())).then(null, function (e) { toast(e.message); }).then(loadSync);
   }
-  function stopKeeping(rows) {
-    return rows.reduce(function (p, k) {
-      return p.then(function () { return api("POST", "/api/sync/keep", { id: k.id, name: k.name, keep: false }); });
+  // Keep (or stop keeping) server mods: by mod id, so every copy of a mod goes together.
+  function setKept(rows, keep) {
+    var seen = {}, list = rows.filter(function (k) { if (!k.key || seen[k.key] || !!k.kept === keep) return false; seen[k.key] = true; return true; });
+    if (!list.length) return Promise.resolve().then(loadSync);
+    return list.reduce(function (p, k) {
+      return p.then(function () { return api("POST", "/api/sync/keep", { id: k.key, name: k.name, keep: keep }); });
     }, Promise.resolve()).then(function () {
-      rows.forEach(function (k) { delete keptSel[k.id]; });
-      toast(rows.length === 1 ? rows[0].name + " is synced like any other mod again." : count(rows.length, "mod is", "mods are") + " synced like any other mod again.");
+      var one = list.length === 1 ? list[0].name : count(list.length, "mod", "mods");
+      toast(keep ? one + (list.length === 1 ? " stays" : " stay") + " on the server from now on, whatever the sync says."
+        : one + (list.length === 1 ? " is" : " are") + " synced like any other mod again.");
     }, function (e) { toast(e.message); }).then(loadSync);
   }
+  function stopKeeping(rows) { return setKept(rows, false); }
   function askDeleteServerMods(rows) {
     rows = rows.filter(function (k) { return k.file; });
     if (!rows.length) return;
@@ -8155,9 +8193,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     confirmDialog({
       title: "Delete " + (one ? rows[0].name : count(rows.length, "mod", "mods")) + " from the server?",
       items: one ? [] : rows.map(function (k) { return k.name; }),
-      body: (one ? "Its jar moves" : "Their jars move") + " to the Recycle Bin, so you can restore " + (one ? "it" : "them") + " from there, and " + (one ? "it comes" : "they come") + " off the kept list.",
+      body: (one ? "Its jar moves" : "Their jars move") + " to the Recycle Bin, so you can restore " + (one ? "it" : "them") + " from there" +
+        (rows.some(function (k) { return k.kept; }) ? ", and kept ones come off the kept list." : "."),
       ok: "Move to Recycle Bin",
-      onOk: function () { serverModAction(rows, "delete").then(function () { return stopKeeping(rows); }); }
+      onOk: function () { serverModAction(rows, "delete").then(function () { return setKept(rows, false); }); }
     });
   }
 
@@ -8191,22 +8230,27 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     return img;
   }
 
-  function keptRow(k, redraw) {
+  // One jar in the server's mods folder (or a kept mod the folder no longer has).
+  function serverRow(k, redraw) {
     var sel = !!keptSel[k.id], missing = k.state === "missing", off = k.state === "off";
     var row = h("div", { class: "row" + (sel ? " is-selected" : "") + (off ? " is-disabled" : "") + (missing ? " is-missing" : ""), role: "row", "aria-selected": String(sel) },
       h("div", { class: "c-check", role: "cell" }, h("button", { type: "button", class: "check", role: "checkbox", "aria-checked": String(sel), "aria-label": "Select " + k.name })),
       h("div", { class: "c-name", role: "cell" }, h("span", { class: "icon-wrap" }, keptIcon(k), off ? h("span", { class: "off-tag", title: "Turned off on the server" }, "off") : null),
         h("div", { class: "c-name-text" }, h("span", { class: "mod-name" }, k.name),
-          h("div", { class: "file-line" }, h("span", { class: "file" }, k.file || k.id),
+          h("div", { class: "file-line" }, h("span", { class: "file" }, k.file || k.key),
+            k.kept ? h("span", { class: "keep-pill", title: "Kept on the server: the sync never turns it off there" }, "kept") : null,
             missing ? h("span", { class: "badge missing", title: "Kept, but the server's mods folder doesn't have it. Add it again, or stop keeping it." }, "not on the server") : null))),
       h("div", { class: "c-version", role: "cell", title: k.version || "" }, k.version || "—"),
       h("div", { class: "c-actions", role: "cell" },
-        missing ? null : h("button", { type: "button", class: "act sw-btn" + (off ? "" : " on"), role: "switch", "aria-checked": String(!off), "aria-label": k.name + " on the server",
+        h("button", { type: "button", class: "act keep-btn" + (k.kept ? " on" : ""), "aria-pressed": String(!!k.kept), "aria-label": "Keep " + k.name + " on the server",
+          title: k.kept ? "Kept on the server: the sync never turns it off there. Click to sync it like any other mod again"
+            : "Keep it on the server: the sync will never turn it off there, even when your game doesn't have it",
+          onclick: function () { setKept([k], !k.kept); } }, icon("pin")),
+        // A kept mod the folder no longer has: its switch and delete are blank spaces, so the pins stay lined up.
+        missing ? h("span", { class: "act", "aria-hidden": "true", style: "visibility:hidden" }) : h("button", { type: "button", class: "act sw-btn" + (off ? "" : " on"), role: "switch", "aria-checked": String(!off), "aria-label": k.name + " on the server",
           title: off ? "Off on the server. Click to turn it on" : "On on the server. Click to turn it off",
           onclick: function () { serverModAction([k], off ? "on" : "off"); } }, h("span", { class: "sw", "aria-hidden": "true" })),
-        h("button", { type: "button", class: "act", title: "Stop keeping it: the sync treats it like any other mod again", "aria-label": "Stop keeping " + k.name,
-          onclick: function () { stopKeeping([k]); } }, icon("pin")),
-        missing ? null : h("button", { type: "button", class: "act delete", title: "Delete from the server…", "aria-label": "Delete " + k.name + " from the server",
+        missing ? h("span", { class: "act", "aria-hidden": "true", style: "visibility:hidden" }) : h("button", { type: "button", class: "act delete", title: "Delete from the server…", "aria-label": "Delete " + k.name + " from the server",
           onclick: function () { askDeleteServerMods([k]); } }, icon("trash"))));
     row.addEventListener("click", function (e) {
       if (e.target.closest(".c-actions")) return;
@@ -8216,27 +8260,46 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     return row;
   }
 
+  // Every jar in the server's mods folder, like an instance's mod list, with a pin on each to keep it there.
   function keptBox(s) {
-    var kept = s.kept || [];
+    var mods = (s.serverJars || []).map(function (j) {
+      return { id: j.file, key: j.key, name: j.name, file: j.file, version: j.version, logo: j.logo, kept: !!j.kept, state: j.enabled ? "on" : "off" };
+    });
+    // Kept mods the folder doesn't have any more still show, so they can be added again or let go.
+    (s.kept || []).forEach(function (k) {
+      if (k.state === "missing") mods.push({ id: "missing:" + k.id, key: k.id, name: k.name, file: null, version: null, logo: false, kept: true, state: "missing" });
+    });
     var ids = {};
-    kept.forEach(function (k) { ids[k.id] = true; });
+    mods.forEach(function (k) { ids[k.id] = true; });
     Object.keys(keptSel).forEach(function (id) { if (!ids[id]) delete keptSel[id]; });
-    var filter = h("input", { type: "search", placeholder: "Filter kept mods", "aria-label": "Filter kept mods", autocomplete: "off", spellcheck: "false" });
+    var nKept = mods.filter(function (k) { return k.kept; }).length, nOff = mods.filter(function (k) { return k.state === "off"; }).length;
+    var filter = h("input", { type: "search", placeholder: "Filter server mods", "aria-label": "Filter server mods", autocomplete: "off", spellcheck: "false" });
     filter.value = keptQ;
+    var seg = h("div", { class: "seg-control", role: "group", "aria-label": "Show" });
     var bar = h("div", { class: "selection-bar" }), head = h("div", { class: "list-head", role: "row" }), rows = h("div", { role: "rowgroup" });
     var el = h("section", { class: "sg k-kept kept-box", style: "margin-top:14px" },
       h("div", { class: "sg-head" }, h("span"),
-        h("div", null, h("div", { class: "sg-title" }, "Kept on the server", h("span", { class: "n" }, String(kept.length))),
-          h("div", { class: "sg-desc" }, "Server-side mods the sync never turns off on the server, even when your game doesn't have them or has them turned off. " +
-            "If one is off on the server, the sync offers to turn it back on; newer versions from your game still go across.")), h("span")),
-      h("div", { class: "kept-tools" }, keptAddSplit(), filter),
-      bar, h("div", { role: "table", "aria-label": "Mods kept on the server" }, head, rows));
+        h("div", null, h("div", { class: "sg-title" }, "Server mods", h("span", { class: "n" }, String(mods.filter(function (k) { return k.file; }).length))),
+          h("div", { class: "sg-desc" }, "Everything in the server's mods folder. Pin a mod to keep it on the server: the sync never turns a kept mod off there, even when your game doesn't have it " +
+            "or has it turned off, offers to turn it back on if it's off, and still brings newer versions across from your game.")), h("span")),
+      h("div", { class: "kept-tools" }, keptAddSplit(), filter, seg),
+      bar, h("div", { role: "table", "aria-label": "Mods on the server" }, head, rows));
     var shown = function () {
       var q = keptQ.toLowerCase();
-      return kept.filter(function (k) { return !q || [k.name, k.file, k.id].some(function (x) { return String(x || "").toLowerCase().indexOf(q) >= 0; }); });
+      return mods.filter(function (k) {
+        if (keptFilter === "kept" && !k.kept) return false;
+        if (keptFilter === "off" && k.state === "on") return false;
+        return !q || [k.name, k.file, k.key].some(function (x) { return String(x || "").toLowerCase().indexOf(q) >= 0; });
+      });
+    };
+    var drawSeg = function () {
+      seg.replaceChildren();
+      [["all", "All " + mods.length], ["kept", "Kept " + nKept], ["off", "Off " + nOff]].forEach(function (o) {
+        seg.append(h("button", { type: "button", "aria-pressed": String(keptFilter === o[0]), onclick: function () { keptFilter = o[0]; drawSeg(); draw(); } }, o[1]));
+      });
     };
     var draw = function () {
-      var list = shown(), picked = kept.filter(function (k) { return keptSel[k.id]; });
+      var list = shown(), picked = mods.filter(function (k) { return keptSel[k.id]; });
       var nSel = list.filter(function (k) { return keptSel[k.id]; }).length;
       head.replaceChildren(
         h("div", { class: "c-check" }, h("button", { type: "button", class: "check", role: "checkbox", disabled: !list.length,
@@ -8248,8 +8311,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           } })),
         h("div", null, "Mod"), h("div", null, "Version"), h("div", { class: "r" }, "On the server"));
       rows.replaceChildren();
-      list.forEach(function (k) { rows.append(keptRow(k, draw)); });
-      if (!list.length) rows.append(h("p", { class: "search-empty", style: "margin:14px 12px" }, kept.length ? "No kept mods match." : "Nothing is kept yet. Add mods here, or keep one the server already has (below)."));
+      list.forEach(function (k) { rows.append(serverRow(k, draw)); });
+      if (!list.length) rows.append(h("p", { class: "search-empty", style: "margin:14px 12px" },
+        !mods.length ? "The server's mods folder is empty. Add mods here." : keptFilter === "kept" && !nKept ? "Nothing is kept yet: pin a mod to keep it on the server." : "No server mods match."));
       bar.replaceChildren();
       bar.classList.toggle("is-empty", !picked.length);
       if (!picked.length) {
@@ -8257,33 +8321,20 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         return;
       }
       var on = picked.filter(function (k) { return k.state === "on"; }), off = picked.filter(function (k) { return k.state === "off"; });
+      var keptOnes = picked.filter(function (k) { return k.kept; }), loose = picked.filter(function (k) { return !k.kept; });
       var present = picked.filter(function (k) { return k.file; });
       bar.append(h("span", { class: "sel-count" }, count(picked.length, "mod", "mods") + " selected"),
         h("span", { class: "sel-actions" },
+          loose.length ? h("button", { type: "button", class: "btn primary", onclick: function () { setKept(loose, true); } }, "Keep " + loose.length) : null,
+          keptOnes.length ? h("button", { type: "button", class: "btn", onclick: function () { setKept(keptOnes, false); } }, "Stop keeping " + keptOnes.length) : null,
           off.length ? h("button", { type: "button", class: "btn", onclick: function () { serverModAction(off, "on"); } }, "Turn on " + off.length) : null,
           on.length ? h("button", { type: "button", class: "btn", onclick: function () { serverModAction(on, "off"); } }, "Turn off " + on.length) : null,
-          h("button", { type: "button", class: "btn", onclick: function () { stopKeeping(picked); } }, "Stop keeping " + picked.length),
           present.length ? h("button", { type: "button", class: "btn danger-outline", onclick: function () { askDeleteServerMods(present); } }, "Delete " + present.length + "…") : null,
           h("button", { type: "button", class: "linkish", onclick: function () { keptSel = {}; draw(); } }, "Clear")));
     };
     filter.addEventListener("input", function () { keptQ = filter.value.trim(); draw(); });
+    drawSeg();
     draw();
-    // A mod the server already has can be kept too.
-    var choices = (s.serverJars || []).filter(function (j) { return !ids[j.key]; });
-    if (choices.length) {
-      var listId = "keep-choices";
-      var input = h("input", { type: "search", list: listId, placeholder: "Keep a mod the server already has", "aria-label": "Mod to keep on the server", autocomplete: "off", spellcheck: "false" });
-      var dl = h("datalist", { id: listId });
-      choices.forEach(function (j) { dl.append(h("option", { value: j.name }, j.file)); });
-      var keepIt = function () {
-        var v = input.value.trim().toLowerCase();
-        var hit = choices.filter(function (j) { return j.name.toLowerCase() === v || j.file.toLowerCase() === v || j.key === v; })[0];
-        if (!hit) { toast("Pick a mod from the list: it has to be in the server's mods folder."); return; }
-        keepOnServer(hit.key, hit.name, true);
-      };
-      input.addEventListener("keydown", function (e) { if (e.key === "Enter") keepIt(); });
-      el.append(h("div", { class: "kept-tools kept-existing" }, input, dl, btn("Keep it", keepIt)));
-    }
     return el;
   }
 

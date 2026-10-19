@@ -339,7 +339,10 @@ When the game crashes
   writes a "-fml" report and a crash right after it (pressing a key on the error screen, say) is only
   the aftermath: the reader then reads the mod-loading report and says so. Only within one launch:
   a crash from a later launch (latest.log started after the mod-loading report, or the game reached a
-  world) is read on its own. "Made for a different
+  world) is read on its own. When it finds a mod the crashed mods need that isn't loaded, a box at the
+  top offers to fix it: "Turn on ..." when a turned-off jar has it, "Install ..." (found and checked the
+  way "Add all missing" does, with "Search" beside it) when nothing here has it, and "Fix all" for
+  several; afterwards the pre-launch check runs to show anything left. "Made for a different
   version" errors (NoSuchMethodError and friends) point at the library, with "Pick another version". What counts most: NeoForge's own
   "mod loading issue" lines and suspected mods, mixins that really failed ("Attach error ... from mod x"),
   and classes that couldn't be found, traced to the jar that has them (a turned-off one gets "Turn it
@@ -401,14 +404,15 @@ Server (for hosting friends on this PC)
                       "Game -> server" or "Server -> game" for each. Nothing changes until you apply; while
                       the server runs the button is "Stop, apply and start". Replaced jars go to the Recycle
                       Bin; overwritten configs are backed up in %LOCALAPPDATA%\MinecraftModManager\sync-backups.
-                      Kept on the server: server-side mods the sync never turns off there, even when the
-                      game doesn't have them or has them off (Chunky, say). Keep one from its row ("Keep it
-                      on the server") or pick any jar in the server's mods folder; a kept mod that's off on the
-                      server is offered "Turn on", and newer versions from the game still go across. The kept
-                      list looks like the mod list (icon, name, file, version, an on/off switch and delete for
-                      the server's copy, a filter, select-all and bulk actions) and has its own Add mods: search
-                      Modrinth and CurseForge, or add .jar files; they go straight into the server's mods folder
-                      (with the mods they need) and are kept there.
+                      Server mods: every jar in the server's mods folder, listed like an instance's mod list
+                      (icon, name, file, version, a filter for all / kept / off, select-all and bulk actions).
+                      Each row has a pin to keep it on the server, an on/off switch and delete for the server's
+                      copy. A kept mod is one the sync never turns off there, even when the game doesn't have
+                      it or has it off (Chunky, say): a kept mod that's off on the server is offered "Turn on",
+                      newer versions from the game still go across, and one the folder no longer has still
+                      shows ("not on the server"). Sync rows have "Keep it on the server" too. Add mods here
+                      searches Modrinth and CurseForge or takes .jar files; they go straight into the server's
+                      mods folder (with the mods they need) and are kept there.
                       Configs follow your game automatically (on by default): a config whose settings you
                       changed in the game is copied to the server before it starts from here and every few
                       minutes while it's stopped. Client-only configs, configs only the server has and
