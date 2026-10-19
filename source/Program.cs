@@ -890,6 +890,9 @@ namespace MinecraftModManager
                     case "/api/sync/apply":
                         SendJson(ctx, 200, SyncApply(StrList(body, "mods"), StrList(body, "configsToServer"), StrList(body, "configsToGame")));
                         return;
+                    case "/api/sync/keep":
+                        SendJson(ctx, 200, SetKeptOnServer(Str(body, "id"), Str(body, "name"), Bool(body, "keep")));
+                        return;
 
                     case "/api/snapshots/create":
                         SendJson(ctx, 200, CreateSnapshotApi(Str(body, "name")));

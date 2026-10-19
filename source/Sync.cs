@@ -11,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Web.Script.Serialization;
 
 namespace MinecraftModManager
 {
@@ -29,7 +30,66 @@ namespace MinecraftModManager
         {
             public string Id, Kind, Title, Note;
             public SideJar Game, Server;
-            public bool Default;
+            public bool Default, Kept;
+        }
+
+        // ---------- Mods kept on the server ----------
+        // Server-side mods the server keeps whatever the game does (Chunky, say: turned off in the game because it
+        // clashes with Distant Horizons there, still wanted on the server). The sync never offers to turn them off
+        // or flags them as server-only; when one is off on the server it offers to turn it back on, and newer
+        // versions in the game still flow to the server. Keyed by mod id (file name for a jar without one), so
+        // they survive updates. <data>\server-keep.json: { "mods": [ { "id": "chunky", "name": "Chunky" } ] }
+
+        static string ServerKeepPath() { return Path.Combine(dataDir, "server-keep.json"); }
+
+        static Dictionary<string, string> KeptOnServer()
+        {
+            var kept = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                string path = ServerKeepPath();
+                if (!File.Exists(path)) return kept;
+                var doc = new JavaScriptSerializer().DeserializeObject(File.ReadAllText(path, Encoding.UTF8)) as Dictionary<string, object>;
+                foreach (object o in A(Get(doc, "mods")))
+                {
+                    string id = S(D(o), "id");
+                    if (!string.IsNullOrEmpty(id)) kept[id] = S(D(o), "name") ?? id;
+                }
+            }
+            catch (Exception) { }
+            return kept;
+        }
+
+        static Dictionary<string, object> SetKeptOnServer(string id, string name, bool keep)
+        {
+            if (string.IsNullOrWhiteSpace(id)) throw new UserError("Which mod?");
+            lock (FileLock)
+            {
+                Dictionary<string, string> kept = KeptOnServer();
+                if (keep) kept[id.Trim().ToLowerInvariant()] = string.IsNullOrWhiteSpace(name) ? id : name.Trim();
+                else kept.Remove(id.Trim());
+                var list = kept.OrderBy(k => k.Value, StringComparer.OrdinalIgnoreCase).Select(k => (object)Obj("id", k.Key, "name", k.Value)).ToList();
+                string path = ServerKeepPath();
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                File.WriteAllText(path, new JavaScriptSerializer().Serialize(Obj("mods", list)), new UTF8Encoding(false));
+                Log("Keep      " + (keep ? "keeping " : "no longer keeping ") + (name ?? id) + " on the server");
+                return Obj("ok", true, "kept", list);
+            }
+        }
+
+        static string SyncKey(SideJar j) { return j.ModId ?? j.Key.ToLowerInvariant(); }
+
+        // The kept mods with how the server has them: on, off or missing.
+        static List<object> KeptList(string serverMods)
+        {
+            List<SideJar> server = ListSideJars(serverMods, null);
+            return KeptOnServer().OrderBy(k => k.Value, StringComparer.OrdinalIgnoreCase).Select(k =>
+            {
+                List<SideJar> copies = server.Where(s => string.Equals(SyncKey(s), k.Key, StringComparison.OrdinalIgnoreCase)).ToList();
+                SideJar on = copies.FirstOrDefault(s => s.Enabled);
+                return (object)Obj("id", k.Key, "name", k.Value, "state", on != null ? "on" : copies.Count > 0 ? "off" : "missing",
+                    "file", (on ?? copies.FirstOrDefault()) == null ? null : (on ?? copies.First()).File.Name);
+            }).ToList();
         }
 
         static List<SideJar> ListSideJars(string dir, TagsDoc tags)
@@ -84,6 +144,7 @@ namespace MinecraftModManager
             var serverById = server.Where(s => s.ModId != null).GroupBy(s => s.ModId).ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.Enabled).First());
             var matched = new HashSet<SideJar>();
             var items = new List<SyncItem>();
+            Dictionary<string, string> kept = KeptOnServer();
             inSync = 0;
 
             foreach (SideJar g in game.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
@@ -93,6 +154,19 @@ namespace MinecraftModManager
                 if (s != null) matched.Add(s);
                 bool tagServer = g.Tags.Contains("server"), tagClient = g.Tags.Contains("client");
                 string id = "mod:" + (g.ModId ?? g.Key.ToLowerInvariant());
+                // Kept on the server: on there whatever the game does. Only an update from a game copy that's on
+                // and tagged for the server goes through the normal rules below.
+                if (kept.ContainsKey(SyncKey(g)) && !(g.Enabled && tagServer && s != null && !SameJar(g, s)))
+                {
+                    if (s == null)
+                        items.Add(new SyncItem { Id = id, Kind = "add", Title = Label(g), Game = g, Default = true, Kept = true,
+                            Note = "Kept on the server, but the server doesn't have it. Copies it from your game" + (g.Enabled ? "." : " (where it's turned off).") });
+                    else if (!s.Enabled)
+                        items.Add(new SyncItem { Id = id, Kind = "enable", Title = Label(g), Game = g, Server = s, Default = true, Kept = true,
+                            Note = "Kept on the server, but turned off there." });
+                    else inSync++;
+                    continue;
+                }
                 if (!tagServer && !tagClient)
                 {
                     if (g.Enabled && (s == null || !s.Enabled))
@@ -129,6 +203,15 @@ namespace MinecraftModManager
                 foreach (DepInfo dep in GetJarMeta(g.File).Deps.Where(d => d.Type == "required"))
                     if (!gameNeeds.ContainsKey(dep.Id)) gameNeeds[dep.Id] = Label(g);
             var gameHas = new HashSet<string>(game.SelectMany(x => GetJarMeta(x.File).Mods.Concat(GetJarMeta(x.File).Nested)).Select(m => m.Id), StringComparer.OrdinalIgnoreCase);
+
+            // Kept mods only the server has: nothing to do while they're on; turned off, offer to turn them back on.
+            foreach (SideJar s in server.Where(x => !matched.Contains(x) && kept.ContainsKey(SyncKey(x))).OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                matched.Add(s);
+                if (s.Enabled || server.Any(o => o.Enabled && SyncKey(o) == SyncKey(s))) { if (s.Enabled) inSync++; continue; }
+                items.Add(new SyncItem { Id = "srv:" + SyncKey(s), Kind = "enable", Title = Label(s), Server = s, Default = true, Kept = true,
+                    Note = "Kept on the server, but turned off there." });
+            }
 
             foreach (SideJar s in server.Where(x => x.Enabled && !matched.Contains(x)).OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
             {
@@ -283,6 +366,7 @@ namespace MinecraftModManager
             List<SyncItem> mods = ComputeModSync(modsDir, serverMods, out inSync);
             List<ConfigItem> configs = ComputeConfigSync(Path.Combine(GameDir(), "config"), Path.Combine(server, "config"), out ignored, out same);
             var modList = mods.Select(m => (object)Obj("id", m.Id, "kind", m.Kind, "title", m.Title, "note", m.Note, "default", m.Default,
+                "kept", m.Kept, "key", SyncKey(m.Game ?? m.Server),
                 "gameFile", m.Game == null ? null : m.Game.File.Name, "serverFile", m.Server == null ? null : m.Server.File.Name,
                 "gameVersion", m.Game == null ? null : m.Game.Version, "serverVersion", m.Server == null ? null : m.Server.Version)).ToList();
             // How much of the game is switched off: a game mid-test (most mods off) shouldn't be mirrored blindly.
@@ -302,6 +386,8 @@ namespace MinecraftModManager
             return Obj("ok", true, "serverFolder", server, "gameFolder", GameDir(), "running", ServerBusy() || ExternalServerRunning(server, null),
                 "mods", modList, "modsInSync", inSync, "configs", configList, "lastAutoConfigs", lastServerConfigSync, "configsSame", same, "configsIgnored", ignored,
                 "gameOn", gameJars.Count(j => j.Enabled), "gameOff", gameJars.Count(j => !j.Enabled), "serverOn", serverOn,
+                "kept", KeptList(serverMods),
+                "serverJars", ListSideJars(serverMods, null).GroupBy(SyncKey).Select(g => (object)Obj("key", g.Key, "name", Label(g.First()), "file", g.OrderByDescending(j => j.Enabled).First().File.Name)).ToList(),
                 "comparedAt", DateTime.UtcNow.ToString("o"));
         }
 

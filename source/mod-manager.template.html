@@ -865,6 +865,10 @@ html[data-blocky="on"] .set-card h2 { font-family: var(--font-blocky); font-weig
 .k-to-game { --c: var(--c-enchanting); }
 .k-call { --c: var(--c-server); }
 .k-untagged { --c: var(--c-x3); }
+.k-kept { --c: var(--c-server); }
+.sr.kept { grid-template-columns: 22px minmax(0, 1fr) auto auto; }
+.sr .v.warn-text { color: var(--warn); }
+.keep-pill { margin-left: 8px; padding: 1px 6px; font: 600 10.5px/1.4 var(--font-body); letter-spacing: 0.02em; color: var(--c-server); border: 1px solid color-mix(in srgb, var(--c-server) 55%, transparent); border-radius: 9px; vertical-align: 1px; }
 .sync-sum { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 10px; }
 .sum-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; font: 600 13px/1.2 var(--font-body); color: var(--ink); background: color-mix(in srgb, var(--c, var(--muted)) 9%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c, var(--muted)) 38%, var(--line)); border-radius: 5px; cursor: pointer; }
 .sum-chip b { font: 700 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -7881,7 +7885,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   var SYNC_GROUPS = [
     { key: "add", kinds: ["add"], label: "Add to the server", chip: "Add", desc: "On in your game and tagged for the server, but the server doesn't have them yet." },
     { key: "replace", kinds: ["replace"], label: "Update on the server", chip: "Update", desc: "The server has a different version from your game." },
-    { key: "enable", kinds: ["enable"], label: "Turn on on the server", chip: "Turn on", desc: "On in your game, but turned off on the server." },
+    { key: "enable", kinds: ["enable"], label: "Turn on on the server", chip: "Turn on", desc: "On in your game (or kept on the server), but turned off on the server." },
     { key: "disable", kinds: ["disable"], label: "Turn off on the server", chip: "Turn off", desc: "Turned off in your game but still on in the server. For mods needed on both sides, players can't join while the two differ." },
     { key: "to-game", kinds: ["to-game"], label: "Copy into your game", chip: "Copy to game", desc: "A mod in your game needs these and only the server has them. Your game won't start without them." },
     { key: "call", kinds: ["client-only", "server-only"], label: "Your call", chip: "Your call", desc: "Client-only mods that are on the server, and mods only the server has. Usually fine as they are: tick one only to turn it off on the server." },
@@ -7958,6 +7962,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!total && !s.configs.length) {
       p.append(h("div", { class: "okbox", style: "margin-top:12px" }, h("p", { style: "margin:0" },
         "The server matches your game: " + count(s.modsInSync, "mod", "mods") + " and " + count(s.configsSame, "config file", "config files") + " are the same.")));
+      p.append(keptBox(s));
       return;
     }
     if (srv.syncCaution) {
@@ -7980,6 +7985,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       count(s.modsInSync, "mod", "mods") + " and " + count(s.configsSame, "config file", "config files") + " already match. " + s.configsIgnored + " configs aren't compared (client-only mods', backups and caches).")));
     p.append(h("div", { id: "sync-groups" }));
     drawSyncGroups();
+    p.append(keptBox(s));
     p.append(h("div", { class: "sticky-foot" }, h("span", { class: "grow", id: "sync-summary" }), h("span", { class: "row-actions", id: "sync-buttons" })));
     updateSyncFoot();
   }
@@ -8061,11 +8067,55 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       state.q = m.gameFile.toLowerCase();
       render();
     })) : null;
-    var detail = h("div", { class: "detail" }, m.note, h("div", { class: "files" }, files), extra);
+    // Server-side mods can be kept on the server whatever the game does (Sync.cs, server-keep.json).
+    var keep = m.kind === "to-game" || !m.key ? null : h("div", { class: "row-actions", style: "margin-top:6px" },
+      m.kept ? btn("Stop keeping it on the server", function () { keepOnServer(m.key, m.title, false); })
+        : btn("Keep it on the server", function () { keepOnServer(m.key, m.title, true); }, "", { title: "The sync will never turn it off on the server, even when your game doesn't have it" }));
+    var detail = h("div", { class: "detail" }, m.note, h("div", { class: "files" }, files), extra, keep);
     var ex = expander(m.id, m.title, detail);
-    var title = h("span", { class: "t", title: m.title, style: "cursor:pointer" }, m.title);
+    var title = h("span", { class: "t", title: m.title, style: "cursor:pointer" }, m.title, m.kept ? h("span", { class: "keep-pill" }, "kept") : null);
     title.addEventListener("click", ex.toggle);
     return h("div", { class: "sr" }, box, title, v, ex.button, detail);
+  }
+
+  function keepOnServer(key, name, keep) {
+    return api("POST", "/api/sync/keep", { id: key, name: name, keep: keep }).then(function () {
+      toast(keep ? name + " stays on the server from now on." : name + " is synced normally again.");
+      return loadSync();
+    }, function (e) { toast(e.message); });
+  }
+
+  // Mods the server keeps whatever the game does, and a picker to add any jar the server has.
+  function keptBox(s) {
+    var kept = s.kept || [];
+    var STATE = { on: "on", off: "turned off on the server", missing: "not in the server's mods folder" };
+    var el = h("section", { class: "sg k-kept", style: "margin-top:14px" }, h("div", { class: "sg-head" }, h("span"),
+      h("div", null, h("div", { class: "sg-title" }, "Kept on the server", h("span", { class: "n" }, String(kept.length))),
+        h("div", { class: "sg-desc" }, "Server-side mods the sync never turns off on the server, even when your game doesn't have them or has them turned off. " +
+          "If one is off on the server, the sync offers to turn it back on; newer versions from your game still go across.")), h("span")));
+    kept.forEach(function (k) {
+      el.append(h("div", { class: "sr kept" }, h("span"), h("span", { class: "t", title: k.file || k.name }, k.name),
+        h("span", { class: "v" + (k.state === "on" ? "" : " warn-text") }, STATE[k.state] || k.state),
+        btn("Stop keeping", function () { keepOnServer(k.id, k.name, false); })));
+    });
+    var keptIds = {};
+    kept.forEach(function (k) { keptIds[k.id] = true; });
+    var choices = (s.serverJars || []).filter(function (j) { return !keptIds[j.key]; });
+    if (choices.length) {
+      var listId = "keep-choices";
+      var input = h("input", { type: "search", list: listId, placeholder: "Add a mod from the server's mods folder", "aria-label": "Mod to keep on the server", autocomplete: "off", spellcheck: "false", style: "flex:1 1 260px" });
+      var dl = h("datalist", { id: listId });
+      choices.forEach(function (j) { dl.append(h("option", { value: j.name }, j.file)); });
+      var add = function () {
+        var v = input.value.trim().toLowerCase();
+        var hit = choices.filter(function (j) { return j.name.toLowerCase() === v || j.file.toLowerCase() === v || j.key === v; })[0];
+        if (!hit) { toast("Pick a mod from the list: it has to be in the server's mods folder."); return; }
+        keepOnServer(hit.key, hit.name, true);
+      };
+      input.addEventListener("keydown", function (e) { if (e.key === "Enter") add(); });
+      el.append(h("div", { class: "sync-tools", style: "margin-top:8px" }, input, dl, btn("Keep it", add)));
+    }
+    return el;
   }
 
   function configGroup(cfgs) {
