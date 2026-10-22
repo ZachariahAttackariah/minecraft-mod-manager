@@ -451,7 +451,7 @@ namespace MinecraftModManager
             if (file == null) return missing;
             var jar = new FileInfo(Path.Combine(modsDir, file));
             if (!jar.Exists) return missing;
-            foreach (DepInfo dep in GetJarMeta(jar).Deps)
+            foreach (DepInfo dep in GetJarMeta(jar).AllDeps())
                 if (dep.Type == "required" && dep.Id != null && !BuiltInIds.Contains(dep.Id) && !NotSuspects.Contains(dep.Id) && !onIds.Contains(dep.Id) && !missing.Contains(dep.Id))
                     missing.Add(dep.Id);
             return missing;

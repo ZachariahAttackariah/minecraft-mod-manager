@@ -26,7 +26,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Searches and installs mods, together with the mods they require. Filters for category and side, and "more like this".
   - Checks every download against Modrinth's checksum.
 - **Pre-launch check:** on demand (the Check mods button), the app reads every jar's `neoforge.mods.toml` / `mods.toml` / `fabric.mod.json`. It reports what would stop NeoForge from loading, with one-click fixes:
-  - required mods that are missing or turned off, with Install it / Add all missing (found through the requiring mod's own Modrinth or CurseForge listing, then by id or name; each download checked to contain that mod);
+  - required mods that are missing or turned off, with Install it / Add all missing (found through the requiring mod's own Modrinth or CurseForge listing, then by id or name; each download checked to contain that mod). This includes what mods bundled inside a jar require: Create Aeronautics is a shell whose bundled parts need Create, Flywheel and Sable;
   - library versions outside the required range, and mods made for another Minecraft or NeoForge version, with Fix version / Fix all versions (candidate versions are opened and checked against every mod's requirements before anything switches);
   - the same mod twice, on or off. The copy to keep is picked automatically (made for this Minecraft version, then built for the instance's loader, then the version other mods require, then turned on, then newest), and one click moves the rest to the Recycle Bin and carries their tags over;
   - mods made for another Minecraft version;

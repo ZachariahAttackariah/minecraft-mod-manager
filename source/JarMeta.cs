@@ -34,9 +34,18 @@ namespace MinecraftModManager
         public readonly List<ModInfo> Mods = new List<ModInfo>();
         public readonly List<DepInfo> Deps = new List<DepInfo>();
         public readonly List<ModInfo> Nested = new List<ModInfo>(); // mods bundled inside (jar-in-jar)
+        public readonly List<DepInfo> NestedDeps = new List<DepInfo>(); // what those bundled mods require
         public bool Broken;
         public string Side, SideReason; // "client" or "server" when the jar itself says it belongs on one side only
         public bool NoServerNeeded;     // displayTest IGNORE_SERVER_VERSION: a hint at client-only, but server-side mods use it too
+
+        // Everything the game needs for this jar to load: its own requirements and those of the mods bundled inside
+        // it (Create Aeronautics is a shell whose bundled parts need Create, Flywheel and Sable), less what the jar
+        // carries itself.
+        public IEnumerable<DepInfo> AllDeps()
+        {
+            return Deps.Concat(NestedDeps.Where(d => d.Id != null && !Mods.Concat(Nested).Any(m => string.Equals(m.Id, d.Id, StringComparison.OrdinalIgnoreCase))));
+        }
     }
 
     static partial class Program
@@ -293,6 +302,7 @@ namespace MinecraftModManager
                     var inner = new JarMeta();
                     using (var nested = new ZipArchive(copy, ZipArchiveMode.Read)) ReadJar(nested, inner, false);
                     meta.Nested.AddRange(inner.Mods);
+                    meta.NestedDeps.AddRange(inner.Deps);
                 }
                 catch { }
             }
@@ -649,7 +659,7 @@ namespace MinecraftModManager
             foreach (FileInfo jar in enabled)
             {
                 JarMeta meta = metas[jar.Name];
-                string owner = meta.Mods.Count > 0 ? meta.Mods[0].Name : jar.Name;
+                string jarOwner = meta.Mods.Count > 0 ? meta.Mods[0].Name : jar.Name;
                 if (meta.Broken)
                 {
                     issues.Add(Issue("error", "broken", jar.Name + " isn't a readable jar (it may be a broken download).", new[] { jar.Name }, null));
@@ -657,20 +667,32 @@ namespace MinecraftModManager
                 }
                 if ((meta.Kind == "fabric" || meta.Kind == "quilt") && loader == "neoforge" && !connector)
                 {
-                    issues.Add(Issue("error", "wrong-loader", owner + " is a " + (meta.Kind == "fabric" ? "Fabric" : "Quilt") + " mod. NeoForge can only load it through Sinytra Connector, which isn't installed.",
+                    issues.Add(Issue("error", "wrong-loader", jarOwner + " is a " + (meta.Kind == "fabric" ? "Fabric" : "Quilt") + " mod. NeoForge can only load it through Sinytra Connector, which isn't installed.",
                         new[] { jar.Name }, Obj("action", "search", "query", "Sinytra Connector")));
                     continue;
                 }
                 if (meta.Kind == "forge" && loader == "neoforge" && CompareVersions(mc, "1.20.5") >= 0)
                 {
-                    issues.Add(Issue("warning", "wrong-loader", owner + " looks like a Forge mod (it has no neoforge.mods.toml). NeoForge for Minecraft " + mc + " skips it.",
+                    issues.Add(Issue("warning", "wrong-loader", jarOwner + " looks like a Forge mod (it has no neoforge.mods.toml). NeoForge for Minecraft " + mc + " skips it.",
                         new[] { jar.Name }, null));
                     continue;
                 }
                 if (meta.Kind != "neoforge" && meta.Kind != "forge") continue;
 
-                foreach (DepInfo dep in meta.Deps)
+                // A bundled mod that's also installed on its own is checked from its own jar (the newest copy loads).
+                var checks = meta.Deps.Select(d => new KeyValuePair<DepInfo, string>(d, jarOwner)).ToList();
+                foreach (DepInfo d in meta.AllDeps().Skip(meta.Deps.Count))
                 {
+                    List<Provider> standalone;
+                    if (providers.TryGetValue(d.Owner ?? "", out standalone) && standalone.Any(p => !p.Nested)) continue;
+                    ModInfo part = meta.Nested.FirstOrDefault(m => string.Equals(m.Id, d.Owner, StringComparison.OrdinalIgnoreCase));
+                    string partName = part != null ? part.Name ?? part.Id : d.Owner;
+                    checks.Add(new KeyValuePair<DepInfo, string>(d, partName != null && partName != jarOwner ? partName + " (bundled in " + jarOwner + ")" : jarOwner));
+                }
+                foreach (KeyValuePair<DepInfo, string> check in checks)
+                {
+                    DepInfo dep = check.Key;
+                    string owner = check.Value;
                     // A server never runs client code, so client-only needs are skipped there. The other way round
                     // isn't safe: single player runs a server inside the game, so "needed on servers" counts in the game too.
                     if (dep.Side == "CLIENT" && side == "server") continue;
@@ -863,7 +885,7 @@ namespace MinecraftModManager
             while (queue.Count > 0)
             {
                 JarMeta meta = metas[queue.Dequeue()];
-                foreach (DepInfo dep in meta.Deps)
+                foreach (DepInfo dep in meta.AllDeps())
                 {
                     if (dep.Type != "required" || dep.Id == null || provided.Contains(dep.Id)) continue;
                     if (serverFolder && dep.Side == "CLIENT") continue; // single player needs "server" ones in the game too
@@ -891,7 +913,7 @@ namespace MinecraftModManager
             foreach (FileInfo jar in jars)
             {
                 var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (DepInfo dep in metas[jar.Name].Deps)
+                foreach (DepInfo dep in metas[jar.Name].AllDeps())
                 {
                     if (dep.Type != "required" || dep.Side == "CLIENT" && side == "server") continue;
                     List<Provider> found;
@@ -923,7 +945,7 @@ namespace MinecraftModManager
                 foreach (FileInfo other in staying)
                 {
                     JarMeta om = metas[other.Name];
-                    if (om.Deps.Any(d => d.Type == "required" && ids.Contains(d.Id ?? "")))
+                    if (om.AllDeps().Any(d => d.Type == "required" && ids.Contains(d.Id ?? "")))
                     {
                         ModInfo main = MainMod(om);
                         needers.Add((main != null ? main.Name ?? main.Id : null) ?? other.Name);

@@ -232,7 +232,9 @@ Play and the pre-launch check
   server inside the game, so the game needs them too), the wrong version of a library, the same mod twice, mods for another
   Minecraft version, Fabric mods without Sinytra Connector. It reads requirements the way NeoForge does: a
   "mandatory = false" requirement still counts (NeoForge only reads "type", and says why), and a
-  [[dependencies.<id>]] block for a mod that isn't in that jar (a template leftover) doesn't. Anything it finds is listed with one-click
+  [[dependencies.<id>]] block for a mod that isn't in that jar (a template leftover) doesn't. Mods bundled
+  inside a jar count with their own requirements (Create Aeronautics is a shell whose bundled parts need
+  Create, Flywheel and Sable; turning it on turns those on too). Anything it finds is listed with one-click
   fixes (turn it on, copy it from the server, install it, search for it).
   It also reads the mods' code (their class files), because some mods list their requirements wrong:
   - a mod that uses a library it doesn't list at all (Inline Tooltips uses Inline): what its startup
