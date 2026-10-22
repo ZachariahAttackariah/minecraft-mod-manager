@@ -61,6 +61,8 @@ namespace MinecraftModManager
         static readonly HashSet<string> CommonPackageWords = new HashSet<string>(StringComparer.Ordinal) { "com", "net", "org", "dev", "api", "client", "common", "core", "util", "utils", "mixin", "mixins", "impl", "init", "item", "items", "block", "blocks", "entity", "world", "config", "content", "data", "neoforge", "forge", "fabric", "main", "mod", "mods", "lib", "github", "gitlab" };
         static readonly Regex ShadedLibrary = new Regex(@"/(shadow|shaded|repack|repackaged|relocated|relocate|libs|thirdparty|third_party|dependencies|deps)/|/(org|com|io|net)/(apache|google|github|eclipse|jetbrains)/", RegexOptions.IgnoreCase);
         static readonly Regex Intermediary =new Regex(@"(^|[/$])(class|method|field|comp)_\d+");
+        // Text that can be a mod id (ModList.isLoaded("thermoo")): lowercase, starting with a letter.
+        static readonly Regex ModIdText = new Regex(@"^[a-z][a-z0-9_]{1,63}$");
 
         static HashSet<string> libraryRoots;
 
@@ -473,6 +475,10 @@ namespace MinecraftModManager
                 return unknown ? (bool?)null : false;
             };
 
+            // The mod ids the game will load, for "is that mod there?" checks that will say no.
+            var onIds = new HashSet<string>(enabled.Where(f => metas.ContainsKey(f.Name)).SelectMany(f => metas[f.Name].Mods.Concat(metas[f.Name].Nested))
+                .Where(m => m.Id != null).Select(m => m.Id), StringComparer.OrdinalIgnoreCase);
+
             var reported = new HashSet<string>(StringComparer.Ordinal);
             foreach (KeyValuePair<string, JarCode> kv in codes.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
             {
@@ -572,6 +578,10 @@ namespace MinecraftModManager
                     var idWords = segments.Take(segments.Length - 1).Skip(1).Where(s => s.Length >= 3 && !CommonPackageWords.Contains(s)).ToList();
                     // Guarded: the jar mentions that mod's id somewhere (a ModList.isLoaded check, a compat list, its mods.toml).
                     if (idWords.Any(w => code.Mentions.Contains(Squash(w)) || declaredIds.Any(d => Squash(d) == Squash(w)))) continue;
+                    // Guarded: the class itself asks whether a mod is loaded, and names one that isn't. Its code for
+                    // that mod never runs, whatever library the code is written against: blockpace only hooks
+                    // Thermoo's temperature events (built on Fabric API's Event) after ModList.isLoaded("thermoo").
+                    if (from != null && from.ChecksLoaded && from.Strings.Any(s => ModIdText.IsMatch(s) && !onIds.Contains(s) && !BuiltInIds.Contains(s))) continue;
                     // A mixin whose target isn't here is skipped as the game loads, so what it uses doesn't matter.
                     if (mixin && from != null && from.MixinTargets.Any(t => !PlatformPackage.IsMatch(t) && !owner.ContainsKey(t))) continue;
                     // The package is in a jar it declares, but not this class: made for another version of that mod.

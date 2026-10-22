@@ -242,8 +242,9 @@ Play and the pre-launch check
     on"); otherwise "Search for it", with the library's likely name;
   - a mod made for a different version of a mod it depends on (Let Me Despawn 1.5 calls a method that
     Almanac 1.26 no longer has): "Pick another version" opens that mod's Versions tab, or turn the mod off.
-  It stays quiet about anything it can't confirm: code for optional mods (the jar names that mod's id, or
-  it's a compatibility pack touching several absent mods), code that only runs later (event
+  It stays quiet about anything it can't confirm: code for optional mods (the jar names that mod's id, the
+  class first checks whether a mod that isn't on is loaded - the Übermod only hooks Thermoo's Fabric-based
+  events after ModList.isLoaded("thermoo") - or it's a compatibility pack touching several absent mods), code that only runs later (event
   handlers, data generators) or inside a library the jar carries a copy of, mixins whose target isn't installed (the game
   skips those), and code that comes from Minecraft, Java or the game's own libraries. The first check
   reads every mod (a few seconds); later ones only reread jars that changed.

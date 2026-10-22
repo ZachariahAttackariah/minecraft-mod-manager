@@ -288,7 +288,7 @@ namespace MinecraftModManager
             return paths;
         }
 
-        static void ReadNested(ZipArchive zip, JarMeta meta, List<string> paths)
+        static void ReadNested(ZipArchive zip, JarMeta meta, List<string> paths, int level = 1)
         {
             foreach (string path in paths)
             {
@@ -300,9 +300,24 @@ namespace MinecraftModManager
                     using (Stream s = entry.Open()) s.CopyTo(copy);
                     copy.Position = 0;
                     var inner = new JarMeta();
-                    using (var nested = new ZipArchive(copy, ZipArchiveMode.Read)) ReadJar(nested, inner, false);
+                    using (var nested = new ZipArchive(copy, ZipArchiveMode.Read))
+                    {
+                        ReadJar(nested, inner, false);
+                        // Jars inside jars inside jars: LambDynamicLights carries its NeoForge build, which carries its
+                        // API and SpruceUI. What those provide counts, or the build's own requirements look unmet.
+                        if (level < 3)
+                        {
+                            var deeper = JarJarPaths(nested);
+                            foreach (ZipArchiveEntry e in nested.Entries)
+                                if (e.FullName.StartsWith("META-INF/jars/", StringComparison.Ordinal) && e.FullName.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) && !deeper.Contains(e.FullName))
+                                    deeper.Add(e.FullName);
+                            ReadNested(nested, inner, deeper, level + 1);
+                        }
+                    }
                     meta.Nested.AddRange(inner.Mods);
+                    meta.Nested.AddRange(inner.Nested);
                     meta.NestedDeps.AddRange(inner.Deps);
+                    meta.NestedDeps.AddRange(inner.NestedDeps);
                 }
                 catch { }
             }
