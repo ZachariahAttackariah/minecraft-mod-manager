@@ -1991,7 +1991,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function matches(r) {
     if (!inArea(r)) return false;
     // A selected mod stays in the list (turning it off or untagging it doesn't make it vanish); it goes
-    // with the first redraw after it's deselected.
+    // as soon as it's deselected.
     if (selected[r.key]) return true;
     if (state.status === "updates") { if (!r.update) return false; }
     else if (state.status === "all" ? r.status === "missing" : r.status !== state.status) return false;
@@ -2526,11 +2526,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var cb = el.querySelector(".check");
     if (cb) cb.setAttribute("aria-checked", on ? "true" : "false");
   }
-  // Selection changes only touch classes, so focus and scroll position stay put.
+  // Selection changes mostly only touch classes, so focus and scroll position stay put. A deselected mod that
+  // was only kept in the list by being selected leaves it here.
   function updateSelectionUI() {
-    var els = $("rows").children;
-    for (var i = 0; i < els.length; i++) markSelected(els[i], !!selected[els[i].getAttribute("data-key")]);
-    renderSelectAll(visible());
+    var rows = visible();
+    renderList(rows);
+    renderSelectAll(rows);
     renderSelectionBar();
   }
 
