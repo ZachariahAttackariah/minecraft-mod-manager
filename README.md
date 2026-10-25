@@ -37,6 +37,10 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Gallery: the mod's screenshots, full size on click (arrow keys to flip through).
   - Where its updates come from (match what's installed, releases, betas, everything), pin this version, and a note.
 - **Notes, pins and skipped updates:** a note on any mod (shown in a card when the cursor rests on its row, found by search), pinning a mod so Update all leaves it alone, and skipping one update until a newer one comes out. Kept per mods folder in the app's data folder.
+- **Features:** the structures and mobs the installed mods add, read from their data, in two tabs.
+  - Each row shows the mod that adds it, the dimension and the biomes (a mod's own biome tags are opened up to their biomes; shared tags such as `#c:is_forest` show as a group), and how common it is: a structure's spacing from its structure set, a mob's spawn weight and group size.
+  - Search, filter by on / off, dimension and mod (each with counts), sort by name, mod, dimension or how common, and select several rows to turn on or off at once, as in the Mods list.
+  - The switch turns a structure or mob off. The app writes `mod-manager-feature-toggles.jar`, a small data-only mod in the mods folder that loads after the mods it overrides: a turned-off structure gets a copy with no biomes, so it stops generating in new chunks; a turned-off mob gets a `remove_spawns` rule for every biome. A mod's extra spawns of a vanilla mob have their own row, and turning that off replaces just that mod's rule with `none`. The list of what's off is kept inside the jar, so copying it to the server carries it over; with nothing off, the jar is removed. NeoForge and Forge only.
 - **Turning off or deleting a library** that other mods need says which ones first.
 - **World backups:** zip any world (game or server) with restore; optionally the latest world before updates and before removing worldgen mods.
 - **What changed:** on opening, new updates and jars added or gone since the folder was last open (optional).
@@ -156,6 +160,7 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/LinkedTags.cs` | Showing another tool's `.mod-tags.json`, read-only |
 | `source/Snapshots.cs` | Snapshots and finding a problem mod |
 | `source/Cleanup.cs` | Disk cleanup |
+| `source/Features.cs` | The Features tab: structures and mobs from the mods' data, and the toggle jar that turns them off |
 | `source/mod-manager.template.html` | The page shown in the window |
 | `source/build.ps1` | Build script |
 | `source/make-icon.ps1`, `source/icon-source.png` | Builds the icon (`app.ico`) from the source picture: Minecraft's chiseled bookshelf, which belongs to Mojang (see Credits and `icon-source-NOTICE.txt`) |

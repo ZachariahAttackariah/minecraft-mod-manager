@@ -168,6 +168,21 @@ Packs
                       packs into this game, data packs into the default data pack folder. Other .zip files
                       go to Downloads.
 
+Features
+  The structures and mobs your mods add, read from the mods' own data, in two tabs: Structures and Mobs.
+  Each row shows the mod that adds it, the dimension, the biomes it generates or spawns in (shared biome
+  groups such as "Forest biomes" show as one dashed chip), and how common it is: a structure's spacing in
+  chunks, a mob's spawn weight and group size. Search, filter by On / Off, dimension and mod, sort by name,
+  mod, dimension or how common, and select rows (click, Shift+click, Ctrl+A) to turn several on or off.
+  Turning off ...... a structure stops generating in chunks made from then on (ones already built stay); a
+                      mob stops spawning by itself everywhere (spawners, structures and eggs still make it).
+                      A mod's extra spawns of a vanilla mob (say, phantoms in the End) have their own row,
+                      which turns off only those.
+  How it works ...... the app writes mod-manager-feature-toggles.jar, a small data-only mod in the mods
+                      folder that the game loads after the mods it changes. What's off is kept inside it, so
+                      copy it to the server with the other mods. With nothing off it's removed. Close the
+                      game first; changes apply the next time it starts. NeoForge and Forge only.
+
 Configs
   File list ......... every config file in the game's config folder and the server's, grouped by the mod it
                       belongs to. "server differs" and "server only" show where the two copies part ways.

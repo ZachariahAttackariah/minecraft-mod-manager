@@ -488,6 +488,42 @@ button.chip[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 32%, 
 
 .empty { display: grid; justify-items: start; gap: 10px; padding: 28px 12px; color: var(--muted); }
 .empty p { margin: 0; }
+/* Features: the same list as the mods, with its own columns. */
+.feat-list { --cols: 22px minmax(0, 1.25fr) minmax(0, 0.8fr) 100px minmax(0, 1.6fr) 124px 34px; }
+.feat-toolbar { margin-inline: 0; padding-inline: 0; }
+.feat-toolbar .search { flex: 1 1 220px; }
+.feat-lead { margin: 0 0 8px; max-width: 900px; }
+.feat-notes { display: grid; gap: 8px; margin-bottom: 4px; }
+.feat-notes:empty { display: none; }
+.feat-notes > * { margin: 0; }
+.feat-mod-pick { max-width: 220px; }
+.feat-row { cursor: default; }
+.feat-row.is-selected { background: color-mix(in srgb, var(--accent) 11%, transparent); }
+.feat-row.is-selected:hover { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); }
+.feat-row.is-off .f-main, .feat-row.is-off .f-mod, .feat-row.is-off .f-dims, .feat-row.is-off .f-biomes, .feat-row.is-off .f-spread { opacity: 0.5; }
+.f-main { min-width: 0; }
+.f-name { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-weight: 600; overflow-wrap: anywhere; }
+.f-mod, .f-dims { font-size: 13px; overflow-wrap: anywhere; min-width: 0; }
+.f-dims { color: var(--ink-2, var(--ink)); }
+.f-spread { font: 400 12.5px/1.35 var(--font-mono); color: var(--muted); }
+.f-narrow { display: none; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.f-switch { display: flex; justify-content: flex-end; }
+.chip.biome { --c: var(--c-worldgen); font-weight: 500; }
+.chip.biome.group { border-style: dashed; }
+.chip.biome.all { --c: var(--accent-fg); }
+button.chip.more { cursor: pointer; }
+.f-biomes .none { color: var(--muted); font-size: 13px; }
+.off-badge { --c: var(--warn); border-style: solid; }
+@media (max-width: 900px) {
+  .feat-list { --cols: 22px minmax(0, 1fr) 34px; }
+  .feat-list .list-head .h-feat, .f-mod, .f-dims, .f-spread { display: none; }
+  .feat-row .c-check { grid-column: 1; grid-row: 1; }
+  .f-main { grid-column: 2; grid-row: 1; }
+  .f-switch { grid-column: 3; grid-row: 1; }
+  .f-biomes { grid-column: 2 / 4; grid-row: 2; }
+  .f-narrow { display: block; }
+}
+
 .foot { margin: 22px 0 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
 kbd { padding: 1px 5px; font: 500 11.5px/1.4 var(--font-mono); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; }
 
@@ -1248,6 +1284,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     <nav class="view-nav" id="view-nav" aria-label="Sections">
       <button type="button" data-view="mods" aria-current="page">Mods</button>
       <button type="button" data-view="libraries" title="Mods tagged library: the ones other mods need. They're kept out of the Mods list.">Libraries<span class="nav-n" id="lib-count"></span></button>
+      <button type="button" data-view="features" title="The structures and mobs your mods add: where they show up, and switches to turn them off">Features</button>
       <button type="button" data-view="packs">Packs</button>
       <button type="button" data-view="configs" title="Every mod's settings, from the game's and the server's config folders">Configs</button>
       <button type="button" data-view="server">Server</button>
@@ -1404,6 +1441,39 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     <span>Disabling renames a jar to <code>.jar.disabled</code>. Deleting moves it to the Recycle Bin.</span>
     <button class="linkish" type="button" id="quit">Quit Minecraft Mod Manager</button>
   </p>
+  </section>
+
+  <!-- Features: the structures and mobs the mods add, with switches to turn them off (Features.cs). -->
+  <section class="view" id="view-features" aria-label="Features" hidden>
+    <div class="seg-control subnav" id="feat-kinds" role="group" aria-label="Kind of feature">
+      <button type="button" data-kind="structures" aria-pressed="true">Structures<span class="k" id="feat-n-structures"></span></button>
+      <button type="button" data-kind="mobs" aria-pressed="false">Mobs<span class="k" id="feat-n-mobs"></span></button>
+    </div>
+    <p class="lead feat-lead" id="feat-lead"></p>
+    <div class="feat-notes" id="feat-notes"></div>
+    <div class="toolbar feat-toolbar" role="search">
+      <label class="search">
+        <span data-icon="search" data-size="15"></span>
+        <input id="feat-q" type="search" placeholder="Search names, mods, biomes" aria-label="Search features" autocomplete="off" spellcheck="false">
+      </label>
+      <div class="seg-control" id="feat-status" role="group" aria-label="Filter by on or off"></div>
+      <div class="seg-control" id="feat-dims" role="group" aria-label="Filter by dimension"></div>
+      <select id="feat-mod" class="sort-pick feat-mod-pick" aria-label="Filter by mod"></select>
+      <select id="feat-sort" class="sort-pick" aria-label="Sort by" title="Sort the list (the column headings sort too)"></select>
+      <div class="selection-bar" id="feat-selbar" role="region" aria-label="Selected features"></div>
+    </div>
+    <div class="list feat-list" role="table" aria-label="Features" aria-multiselectable="true">
+      <div class="list-head" role="row" id="feat-head"></div>
+      <div id="feat-rows" role="rowgroup"></div>
+      <div class="empty" id="feat-empty" hidden>
+        <p id="feat-empty-text"></p>
+        <button class="btn" type="button" id="feat-clear">Clear filters</button>
+      </div>
+    </div>
+    <p class="foot">
+      <span>Click a row to select it, <kbd>Shift</kbd>+click for a range. The switch turns one on or off.</span>
+      <span>What's off is kept in <code>mod-manager-feature-toggles.jar</code>, a small data-only mod in the mods folder. Changes apply the next time the game starts.</span>
+    </p>
   </section>
 
   <section class="view" id="view-packs" aria-label="Packs" hidden>
@@ -4569,6 +4639,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     startSwitching(res && (res.name || (res.modsDir && folderLabel(res.modsDir))));
     selected = {};
     anchorKey = null;
+    feat.data = null;
+    feat.sel = {};
+    feat.anchor = null;
     // The folder being left keeps its remembered filters: nothing is saved until the new one's are restored.
     restoredFor = null;
     clearAll();
@@ -4727,9 +4800,336 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
   function openTab(url) { window.open(url, "_blank", "noopener"); }
 
+  // ---------- Features: the structures and mobs the mods add (Features.cs) ----------
+  // Read from the mods' own data. Turning one off rewrites a small data-only mod the app keeps in the mods folder,
+  // so each change applies from the next game start. Filters and sorting are kept per kind, like the Mods list's.
+
+  var FEAT_KINDS = {
+    structures: { one: "structure", many: "structures", spread: "Spacing", none: "Nowhere",
+      lead: "The structures your mods add, from their data, with the biomes they generate in. Turning one off stops it generating in chunks made from then on; any already built stay." },
+    mobs: { one: "mob", many: "mobs", spread: "Spawning", none: "Not in its data",
+      lead: "The mobs your mods add and where they spawn by themselves. Turning one off stops its natural spawns everywhere; spawners, structures and spawn eggs still make it. A mod's extra spawns of a vanilla mob have their own row, which turns off only those." }
+  };
+  var DIM_ORDER = ["Overworld", "Nether", "End"];
+  function featDefaults() { return { q: "", status: "all", dim: "all", mod: "", sort: "name", dir: 1 }; }
+  var feat = { kind: "structures", data: null, loading: null, error: null, busy: {}, sel: {}, anchor: null, expanded: {}, shown: [],
+    f: { structures: featDefaults(), mobs: featDefaults() } };
+  (function () {
+    try {
+      var s = JSON.parse(localStorage.getItem("mmm.features") || "null");
+      if (!s) return;
+      if (s.kind === "mobs") feat.kind = "mobs";
+      ["structures", "mobs"].forEach(function (k) {
+        var saved = s.f && s.f[k];
+        if (saved) ["status", "dim", "mod", "sort", "dir"].forEach(function (x) { if (saved[x] != null) feat.f[k][x] = saved[x]; });
+      });
+    } catch (e) {}
+  })();
+  // The search isn't remembered; the rest is.
+  function saveFeatPrefs() {
+    var f = {};
+    Object.keys(feat.f).forEach(function (k) { f[k] = Object.assign({}, feat.f[k], { q: "" }); });
+    try { localStorage.setItem("mmm.features", JSON.stringify({ kind: feat.kind, f: f })); } catch (e) {}
+  }
+
+  function loadFeatures() {
+    if (feat.loading) return feat.loading;
+    var job = feat.data ? null : startJob("Reading the mods' structures and mobs");
+    renderFeatures();
+    feat.loading = api("GET", "/api/features").then(function (d) { feat.data = d; feat.error = null; }, function (e) { feat.error = e.message; })
+      .then(function () {
+        feat.loading = null;
+        if (job) job.end(feat.error ? "failed: " + feat.error : "done");
+        renderFeatures();
+      });
+    return feat.loading;
+  }
+
+  function featRowsOf(kind) { return feat.data ? feat.data[kind] || [] : []; }
+  function featMod(r) { var m = model && model.byKey[r.key]; return (m && m.name) || r.mod || prettify(r.file); }
+  function featDimKey(d) { return DIM_ORDER.indexOf(d) >= 0 ? d : "Other"; }
+  function featHay(r) {
+    if (!r.hay) r.hay = [r.name, r.id, featMod(r), r.file, r.dims.join(" "), r.biomes.map(function (b) { return b.name + " " + b.id; }).join(" "), r.vanilla ? "vanilla extra spawns" : ""].join(" ").toLowerCase();
+    return r.hay;
+  }
+  // skip leaves one filter out, for the counts beside that filter's own buttons. A selected row stays in the list
+  // (turning it off doesn't make it vanish while "On" is picked); it goes as soon as it's deselected.
+  function featMatches(r, f, skip) {
+    if (!skip && feat.sel[r.id]) return true;
+    if (skip !== "status" && f.status !== "all" && (f.status === "off") !== !!r.off) return false;
+    if (skip !== "dim" && f.dim !== "all") {
+      if (f.dim === "none" ? r.dims.length > 0 : !r.dims.some(function (d) { return featDimKey(d) === f.dim; })) return false;
+    }
+    if (skip !== "mod" && f.mod && featMod(r) !== f.mod) return false;
+    if (f.q) {
+      var hay = featHay(r);
+      if (!f.q.toLowerCase().split(/\s+/).every(function (w) { return !w || hay.indexOf(w) >= 0; })) return false;
+    }
+    return true;
+  }
+  function featSpreadValue(r) {
+    if (feat.kind === "structures") return r.spacing == null ? null : r.spacing;
+    if (!r.spawns || !r.spawns.length) return null;
+    return -r.spawns.reduce(function (n, s) { return n + (s.weight || 0); }, 0); // most common first
+  }
+  function featSorted(rows, f) {
+    var dir = f.dir || 1, byName = function (a, b) { return a.name.localeCompare(b.name) || a.id.localeCompare(b.id); };
+    var cmp = byName;
+    if (f.sort === "mod") cmp = function (a, b) { return featMod(a).localeCompare(featMod(b)) || byName(a, b); };
+    else if (f.sort === "dim") cmp = function (a, b) {
+      var rank = function (r) { if (!r.dims.length) return 9; var i = DIM_ORDER.indexOf(r.dims[0]); return i < 0 ? 3 : i; };
+      return rank(a) - rank(b) || byName(a, b);
+    };
+    else if (f.sort === "spread") cmp = function (a, b) {
+      var x = featSpreadValue(a), y = featSpreadValue(b);
+      if (x == null || y == null) return x == null && y == null ? byName(a, b) : x == null ? 1 : -1; // unknown last, either way round
+      return (x - y) * dir || byName(a, b);
+    };
+    return rows.slice().sort(function (a, b) { return f.sort === "spread" ? cmp(a, b) : cmp(a, b) * dir; });
+  }
+  function setFeatSort(key) {
+    var f = feat.f[feat.kind];
+    if (f.sort === key) f.dir = -(f.dir || 1); else { f.sort = key; f.dir = 1; }
+    saveFeatPrefs();
+    renderFeatures();
+  }
+
+  function featSeg(box, options, current, onPick) {
+    box.replaceChildren();
+    options.forEach(function (o) {
+      box.append(h("button", { type: "button", "aria-pressed": String(o[0] === current), title: o[2] || null, onclick: function () { onPick(o[0]); } },
+        o[1], o[3] != null ? h("span", { class: "k" }, String(o[3])) : null));
+    });
+  }
+
+  function renderFeatures() {
+    var kind = feat.kind, K = FEAT_KINDS[kind], f = feat.f[kind], d = feat.data;
+    Array.prototype.forEach.call(document.querySelectorAll("#feat-kinds button"), function (b) {
+      var k = b.getAttribute("data-kind");
+      b.setAttribute("aria-pressed", String(k === kind));
+      $("feat-n-" + k).textContent = d ? String(featRowsOf(k).length) : "";
+    });
+    $("feat-lead").textContent = K.lead;
+    if ($("feat-q").value !== f.q) $("feat-q").value = f.q;
+
+    var notes = $("feat-notes");
+    notes.replaceChildren();
+    if (d && !d.supported) notes.append(h("p", { class: "warnbox" }, "Turning features off needs NeoForge or Forge, and this folder is set to " + d.loader + ". The list still shows what the mods add."));
+    if (d && d.gameRunning) notes.append(h("p", { class: "warnbox" }, "The game is running. Close it before turning features on or off: it keeps the mods' files open."));
+    if (d && d.missingOff && d.missingOff.length) notes.append(h("p", { class: "hint" }, count(d.missingOff.length, "feature is", "features are") + " turned off for mods that aren't here any more (" +
+      d.missingOff.slice(0, 4).join(", ") + (d.missingOff.length > 4 ? ", …" : "") + "). They stay off if the mod comes back."));
+    if (d && d.jarExists && featRowsOf("structures").concat(featRowsOf("mobs")).some(function (r) { return r.off; }))
+      notes.append(h("p", { class: "hint" }, "To leave these out on your server too, copy " + d.jarFile + " to the server's mods folder with the other mods."));
+
+    var rows = featRowsOf(kind);
+    // Filters, each with how many it would show given the others.
+    var countFor = function (skip, test) { return rows.filter(function (r) { return featMatches(r, f, skip) && test(r); }).length; };
+    featSeg($("feat-status"), [["all", "All", null, d ? countFor("status", function () { return true; }) : null],
+      ["on", "On", null, d ? countFor("status", function (r) { return !r.off; }) : null],
+      ["off", "Off", null, d ? countFor("status", function (r) { return r.off; }) : null]], f.status,
+      function (v) { f.status = v; saveFeatPrefs(); renderFeatures(); });
+    var dims = [["all", "Any dimension"]];
+    DIM_ORDER.concat(["Other", "none"]).forEach(function (k) {
+      var n = countFor("dim", function (r) { return k === "none" ? !r.dims.length : r.dims.some(function (x) { return featDimKey(x) === k; }); });
+      if (n || f.dim === k) dims.push([k, k === "none" ? K.none : k, k === "none" ? (kind === "structures" ? "Its biome list only names biomes from mods that aren't installed" : "No natural spawns in its data (it may spawn by its mod's own rules, or not by itself at all)") : k === "Other" ? "Dimensions mods add" : null, n]);
+    });
+    featSeg($("feat-dims"), dims, f.dim, function (v) { f.dim = v; saveFeatPrefs(); renderFeatures(); });
+    var modPick = $("feat-mod"), mods = {};
+    rows.forEach(function (r) { if (featMatches(r, f, "mod")) mods[featMod(r)] = (mods[featMod(r)] || 0) + 1; });
+    if (f.mod && !mods[f.mod]) mods[f.mod] = 0;
+    modPick.replaceChildren(h("option", { value: "" }, "All mods"));
+    Object.keys(mods).sort(function (a, b) { return a.localeCompare(b); }).forEach(function (m) { modPick.append(h("option", { value: m }, m + " (" + mods[m] + ")")); });
+    modPick.value = f.mod;
+    var sortPick = $("feat-sort");
+    sortPick.replaceChildren(h("option", { value: "name" }, "Name"), h("option", { value: "mod" }, "Mod"), h("option", { value: "dim" }, "Dimension"),
+      h("option", { value: "spread" }, kind === "structures" ? "Most common" : "Spawn weight"));
+    sortPick.value = f.sort;
+
+    var shown = featSorted(rows.filter(function (r) { return featMatches(r, f); }), f);
+    feat.shown = shown;
+    renderFeatHead(shown);
+    renderFeatSelBar(shown);
+
+    var box = $("feat-rows");
+    box.replaceChildren();
+    var empty = $("feat-empty");
+    if (!d) {
+      empty.hidden = false;
+      $("feat-empty-text").textContent = feat.error || "Reading the mods…";
+      $("feat-clear").hidden = true;
+      return;
+    }
+    $("feat-clear").hidden = false;
+    empty.hidden = shown.length > 0;
+    $("feat-empty-text").textContent = rows.length ? "No " + K.many + " match these filters." : "None of the mods in this folder add " + K.many + " in their data.";
+    if (!rows.length) $("feat-clear").hidden = true;
+    var frag = document.createDocumentFragment();
+    shown.forEach(function (r) { frag.append(featRow(r, d)); });
+    box.append(frag);
+  }
+
+  function renderFeatHead(shown) {
+    var f = feat.f[feat.kind], picked = shown.filter(function (r) { return feat.sel[r.id]; }).length;
+    var head = function (key, label, cls) {
+      var on = f.sort === key;
+      return h("span", { role: "columnheader", class: cls || null, "aria-sort": on ? (f.dir > 0 ? "ascending" : "descending") : "none" },
+        h("button", { class: "sort-head", type: "button", "aria-pressed": String(on), onclick: function () { setFeatSort(key); } },
+          label, " ", h("span", { class: "arrow", "aria-hidden": "true" }, on ? (f.dir > 0 ? "▲" : "▼") : "")));
+    };
+    $("feat-head").replaceChildren(
+      h("span", { role: "columnheader" }, h("button", { class: "check", type: "button", role: "checkbox", disabled: !shown.length,
+        "aria-checked": !picked ? "false" : picked === shown.length ? "true" : "mixed",
+        "aria-label": "Select all shown", title: picked && picked === shown.length ? "Clear selection" : "Select all " + shown.length + " shown",
+        onclick: function () {
+          if (picked === shown.length) feat.sel = {};
+          else shown.forEach(function (r) { feat.sel[r.id] = true; });
+          renderFeatures();
+        } })),
+      head("name", FEAT_KINDS[feat.kind].one === "mob" ? "Mob" : "Structure"),
+      head("mod", "Mod", "h-feat"),
+      head("dim", "Dimension", "h-feat"),
+      h("span", { role: "columnheader", class: "h-feat" }, "Biomes"),
+      head("spread", FEAT_KINDS[feat.kind].spread, "h-feat"),
+      h("span", { role: "columnheader", class: "r", title: "On or off" }, "On"));
+  }
+
+  function renderFeatSelBar(shown) {
+    var bar = $("feat-selbar"), K = FEAT_KINDS[feat.kind];
+    var picked = featRowsOf(feat.kind).filter(function (r) { return feat.sel[r.id]; });
+    var locked = !connected || !feat.data || !feat.data.supported || feat.data.gameRunning;
+    bar.classList.toggle("is-empty", !picked.length);
+    var tail = h("span", { class: "count-label", style: "margin-left:auto" }, feat.data ? shown.length + " of " + featRowsOf(feat.kind).length + " shown" : "");
+    if (!picked.length) {
+      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click rows to act on several at once")), tail);
+      return;
+    }
+    var on = picked.filter(function (r) { return r.off; }), off = picked.filter(function (r) { return !r.off; });
+    bar.replaceChildren(
+      h("span", { class: "sel-count" }, count(picked.length, K.one, K.many) + " selected"),
+      h("span", { class: "sel-actions" },
+        off.length ? btn("Turn off " + off.length, function () { setFeatures(off, false); }, "", { disabled: locked }) : null,
+        on.length ? btn("Turn on " + on.length, function () { setFeatures(on, true); }, "", { disabled: locked }) : null,
+        h("button", { type: "button", class: "linkish", onclick: function () { feat.sel = {}; feat.anchor = null; renderFeatures(); } }, "Clear")),
+      tail);
+  }
+
+  function featPick(r, range) {
+    var shown = feat.shown, i = shown.indexOf(r);
+    var a = -1;
+    for (var k = 0; k < shown.length; k++) if (shown[k].id === feat.anchor) a = k;
+    if (range && a >= 0 && i >= 0) {
+      // Shift: everything between the last picked row and this one takes this one's new state.
+      var on = !feat.sel[r.id];
+      shown.slice(Math.min(a, i), Math.max(a, i) + 1).forEach(function (x) { if (on) feat.sel[x.id] = true; else delete feat.sel[x.id]; });
+    } else if (feat.sel[r.id]) delete feat.sel[r.id];
+    else feat.sel[r.id] = true;
+    feat.anchor = r.id;
+    renderFeatures();
+  }
+
+  function featSpread(r) {
+    if (feat.kind === "structures") {
+      if (r.spacing == null) return [r.placement === "concentric_rings" ? "in rings" : r.placement || "—",
+        r.placement === "concentric_rings" ? "Placed in rings around the world's centre, like strongholds (structure set " + r.set + ")." : "Structure set " + r.set + "."];
+      var share = r.share != null ? " When it's this set's turn, this one is picked " + Math.round(r.share * 100) + "% of the time." : "";
+      return ["every ~" + r.spacing + " ch" + (r.share != null ? " · " + Math.round(r.share * 100) + "%" : ""),
+        "One try in each " + r.spacing + "×" + r.spacing + " chunk area, at least " + r.separation + " chunks apart (structure set " + r.set + ")." + share];
+    }
+    var s = r.spawns || [];
+    if (!s.length) return ["—", r.ownRules ? "Its mod spawns it by its own rules, usually set in its config." : "No natural spawns in its data."];
+    var tip = s.map(function (x) { return "Weight " + x.weight + ", groups of " + x.min + (x.max !== x.min ? "–" + x.max : "") + (s.length > 1 ? " (" + x.file + ")" : ""); }).join("\n") +
+      "\nHigher weights spawn more often; vanilla zombies are 95, wolves 8.";
+    if (s.length > 1) return [count(s.length, "rule", "rules"), tip];
+    return ["weight " + s[0].weight + " · " + s[0].min + (s[0].max !== s[0].min ? "–" + s[0].max : ""), tip];
+  }
+
+  function featBiomes(r) {
+    var chips = [], LIMIT = 4;
+    if (r.allBiomes) chips.push(h("span", { class: "chip biome all" }, r.except && r.except.length ? "Every biome except" : "Every biome"));
+    var list = r.allBiomes ? (r.except || []) : r.biomes;
+    var open = !!feat.expanded[r.id];
+    (open ? list : list.slice(0, LIMIT)).forEach(function (b) {
+      chips.push(h("span", { class: "chip biome" + (b.group ? " group" : ""), title: b.group ? b.id + ": a shared biome group, so every biome in it (mods add to these too)" : b.id }, b.name));
+    });
+    if (list.length > LIMIT) chips.push(h("button", { type: "button", class: "chip more", title: open ? "Show fewer" : list.slice(LIMIT).map(function (b) { return b.name; }).join(", "),
+      onclick: function (e) { e.stopPropagation(); if (open) delete feat.expanded[r.id]; else feat.expanded[r.id] = true; renderFeatures(); } }, open ? "fewer" : "+" + (list.length - LIMIT)));
+    if (!chips.length) {
+      var why = feat.kind === "structures" ? ["No biome in this pack", "Its biome list only names biomes from mods that aren't installed, so it never generates."]
+        : r.ownRules ? ["Set by the mod itself", "Its mod spawns it by its own rules (usually its config), not from its data, so the biomes aren't listed here. Turning it off still stops those spawns."]
+        : ["No natural spawns", "Nothing in the mods' data spawns it by itself. It may come from spawners, structures, eggs or its mod's code."];
+      chips.push(h("span", { class: "none", title: why[1] }, why[0]));
+    }
+    return chips;
+  }
+
+  function featRow(r, d) {
+    var picked = !!feat.sel[r.id], busyNow = !!feat.busy[r.id];
+    var locked = !connected || busyNow || !d.supported || d.gameRunning;
+    var spread = featSpread(r), mod = featMod(r);
+    var sw = h("button", { type: "button", class: "act sw-btn" + (r.off ? "" : " on"), role: "switch", "aria-checked": String(!r.off), disabled: locked,
+      "aria-label": r.name + (r.vanilla ? " extra spawns" : "") + " on",
+      title: d.gameRunning ? "Close the game first" : r.off ? "Off. Click to turn it on" : "On. Click to turn it off",
+      onclick: function (e) { e.stopPropagation(); setFeatures([r], !!r.off); } }, h("span", { class: "sw", "aria-hidden": "true" }));
+    return h("div", { class: "row feat-row" + (picked ? " is-selected" : "") + (r.off ? " is-off" : ""), role: "row", "aria-selected": String(picked), "aria-busy": busyNow ? "true" : null,
+        onmousedown: function (e) { if (e.shiftKey) e.preventDefault(); },
+        onclick: function (e) { if (!e.target.closest("button, a, select, input")) featPick(r, e.shiftKey); } },
+      h("div", { class: "c-check", role: "cell" }, h("button", { type: "button", class: "check", role: "checkbox", "aria-checked": String(picked), "aria-label": "Select " + r.name,
+        onclick: function (e) { e.stopPropagation(); featPick(r, e.shiftKey); } })),
+      h("div", { class: "f-main", role: "cell" },
+        h("div", { class: "f-name" }, r.name,
+          r.vanilla ? h("span", { class: "badge", title: "Spawns of this vanilla mob that " + mod + " adds. Turning this off removes only these; the game's own spawns stay." }, "extra spawns") : null,
+          r.off ? h("span", { class: "badge off-badge" }, "off") : null),
+        h("div", { class: "file" }, r.vanilla ? r.entity : r.id),
+        h("div", { class: "f-narrow" }, mod + (r.dims.length ? " · " + r.dims.join(", ") : "") + (spread[0] !== "—" ? " · " + spread[0] : ""))),
+      h("div", { class: "f-mod", role: "cell", title: r.file }, mod),
+      h("div", { class: "f-dims", role: "cell" }, r.dims.length ? r.dims.join(", ") : h("span", { class: "hint" }, "—")),
+      h("div", { class: "f-biomes chips", role: "cell" }, featBiomes(r)),
+      h("div", { class: "f-spread", role: "cell", title: spread[1] }, spread[0]),
+      h("div", { class: "f-switch", role: "cell" }, sw));
+  }
+
+  function setFeatures(rows, on) {
+    var K = FEAT_KINDS[feat.kind], kind = feat.kind;
+    var ids = rows.map(function (r) { return r.id; });
+    ids.forEach(function (id) { feat.busy[id] = true; });
+    renderFeatures();
+    var had = feat.data && feat.data.jarExists;
+    return api("POST", "/api/features/set", { kind: kind, ids: ids, on: on }).then(function (res) {
+      rows.forEach(function (r) { r.off = !on; }); // the switches move now; the reload below confirms
+      var what = rows.length === 1 ? rows[0].name + (rows[0].vanilla ? "'s extra spawns" : "") : count(rows.length, K.one, K.many);
+      var when = kind === "structures" ? " It applies from the next game start, in chunks made after that." : " It applies the next time the game starts.";
+      var jar = !had && res.jarExists ? " The app keeps this in " + feat.data.jarFile + " in the mods folder." : had && !res.jarExists ? " Nothing is off now, so " + feat.data.jarFile + " was removed." : "";
+      toast((on ? "Turned on " : "Turned off ") + what + "." + when + jar);
+    }, function (e) { toast(e.message); }).then(function () {
+      ids.forEach(function (id) { delete feat.busy[id]; });
+      return loadFeatures();
+    });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll("#feat-kinds button"), function (b) {
+    b.addEventListener("click", function () {
+      if (feat.kind === b.getAttribute("data-kind")) return;
+      feat.kind = b.getAttribute("data-kind");
+      feat.sel = {};
+      feat.anchor = null;
+      saveFeatPrefs();
+      renderFeatures();
+    });
+  });
+  $("feat-q").addEventListener("input", function () { feat.f[feat.kind].q = this.value.trim(); renderFeatures(); });
+  $("feat-q").addEventListener("keydown", function (e) { if (e.key === "Escape" && this.value) { e.stopPropagation(); this.value = ""; feat.f[feat.kind].q = ""; renderFeatures(); } });
+  $("feat-mod").addEventListener("change", function () { feat.f[feat.kind].mod = this.value; saveFeatPrefs(); renderFeatures(); });
+  $("feat-sort").addEventListener("change", function () { feat.f[feat.kind].sort = this.value; feat.f[feat.kind].dir = 1; saveFeatPrefs(); renderFeatures(); });
+  $("feat-clear").addEventListener("click", function () {
+    var f = feat.f[feat.kind];
+    f.q = ""; f.status = "all"; f.dim = "all"; f.mod = "";
+    saveFeatPrefs();
+    renderFeatures();
+  });
+
   // ---------- Sections (Mods / Server / Snapshots / Cleanup) ----------
 
-  var VIEWS = ["mods", "libraries", "packs", "configs", "server", "snapshots", "cleanup", "settings"];
+  var VIEWS = ["mods", "libraries", "features", "packs", "configs", "server", "snapshots", "cleanup", "settings"];
   var currentView = "mods";
   function setView(name, initial) {
     if (VIEWS.indexOf(name) < 0) name = "mods";
@@ -4737,7 +5137,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     currentView = name;
     // Libraries is the Mods page showing only mods tagged library.
     var section = name === "libraries" ? "mods" : name;
-    ["mods", "packs", "configs", "server", "snapshots", "cleanup", "settings"].forEach(function (v) { $("view-" + v).hidden = v !== section; });
+    ["mods", "features", "packs", "configs", "server", "snapshots", "cleanup", "settings"].forEach(function (v) { $("view-" + v).hidden = v !== section; });
     if (section === "mods") switchListArea(name);
     if (section === "mods" && was !== name && model) {
       Object.keys(selected).forEach(function (k) { delete selected[k]; });
@@ -4759,6 +5159,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (name === "snapshots") { loadSnapshots(); loadWorlds(); loadHistory(); }
     if (name === "cleanup") loadCleanup();
     if (name === "configs") loadConfigList();
+    if (name === "features") loadFeatures();
   }
   Array.prototype.forEach.call(document.querySelectorAll("#view-nav button[data-view]"), function (b) {
     b.addEventListener("click", function () { setView(b.getAttribute("data-view")); });
@@ -5341,7 +5742,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function paletteItems() {
     var items = [];
     var go = function (label, hint, fn, kind) { items.push({ label: label, hint: hint, fn: fn, kind: kind || "action" }); };
-    [["mods", "Mods"], ["libraries", "Libraries"], ["packs", "Packs"], ["server", "Server"], ["snapshots", "Snapshots"], ["cleanup", "Cleanup"], ["settings", "Settings"]]
+    [["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["server", "Server"], ["snapshots", "Snapshots"], ["cleanup", "Cleanup"], ["settings", "Settings"]]
       .forEach(function (v) { go("Go to " + v[1], "page", function () { setView(v[0]); }, "page"); });
     go("Add mods", "search Modrinth" + (server && server.curseforge ? " and CurseForge" : ""), function () { setView("mods"); openSearch(); });
     go("Check mods", "pre-launch check", function () { manualCheck(); });
@@ -5671,7 +6072,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "userCss", label: "Your own styles (user.css)", desc: "", custom: userCssControl, fine: true }
     ] },
     { title: "Mod list", items: [
-      { key: "startPage", label: "Open on", desc: "The page the app shows when it starts.", select: [["last", "Where I left off"], ["mods", "Mods"], ["libraries", "Libraries"], ["packs", "Packs"], ["configs", "Configs"], ["server", "Server"], ["snapshots", "Snapshots"]] },
+      { key: "startPage", label: "Open on", desc: "The page the app shows when it starts.", select: [["last", "Where I left off"], ["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["configs", "Configs"], ["server", "Server"], ["snapshots", "Snapshots"]] },
       { key: "fileNames", label: "Show file names", desc: "The jar's file name under each mod's name." },
       { key: "colVersion", label: "Version column", desc: "Each mod's installed version, from Modrinth or CurseForge when known, else from the jar." },
       { key: "colSide", label: "Side column", desc: "The C and S marks for client and server." },
@@ -9287,6 +9688,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }
     var t = e.target;
     var typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+    if (!typing && currentView === "features") {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) { e.preventDefault(); feat.shown.forEach(function (r) { feat.sel[r.id] = true; }); renderFeatures(); }
+      else if (e.key === "Escape" && Object.keys(feat.sel).length) { feat.sel = {}; feat.anchor = null; renderFeatures(); }
+      else if (e.key === "/") { e.preventDefault(); $("feat-q").focus(); }
+      return;
+    }
     if (typing || (currentView !== "mods" && currentView !== "libraries")) return;
     if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) {
       e.preventDefault();

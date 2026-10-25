@@ -473,6 +473,9 @@ namespace MinecraftModManager
                         case "/api/configs":
                             result = ListConfigFiles();
                             break;
+                        case "/api/features":
+                            result = FeaturesList();
+                            break;
                         case "/api/configs/read":
                             result = ReadConfigFile(req.QueryString["side"] == "server" ? "server" : "game", req.QueryString["path"]);
                             break;
@@ -804,6 +807,9 @@ namespace MinecraftModManager
                         return;
                     case "/api/packs/shader":
                         SendJson(ctx, 200, SetShader(Str(body, "name")));
+                        return;
+                    case "/api/features/set":
+                        SendJson(ctx, 200, SetFeatures(Str(body, "kind"), StrList(body, "ids"), Bool(body, "on")));
                         return;
                     case "/api/sharing/defaults":
                         SendJson(ctx, 200, SetShareByDefault(Bool(body, "on")));
