@@ -169,7 +169,12 @@ Packs
                       go to Downloads.
 
 Features
-  The structures and mobs your mods add, read from the mods' own data, in tabs: Structures, Mobs and Biomes.
+  The structures, mobs, ores and biomes in the world gen, the mods' and Minecraft's own, in tabs: Structures,
+  Mobs, Ores and Biomes. The Mods / Minecraft buttons show only one or the other.
+  Ores .............. each ore with its blocks, height (Y range), veins per chunk and vein size. Turning one
+                      off stops it generating in new chunks.
+  Biome switches .... a biome turns off through its mod's own setting for it, in the game's config and the
+                      server's (backed up first). Minecraft's biomes and mods without such a setting have none.
   Biomes ............ every biome, the mods' and Minecraft's, with how many structures and mobs turn up in
                       each; click a number to see them. The biome list beside Structures and Mobs (and the
                       biome chips in their rows) filter by biome.

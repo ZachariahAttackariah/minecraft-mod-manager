@@ -360,10 +360,12 @@ html[data-actions="always"] .act { opacity: 1; }
 #view-mods .toolbar { column-gap: 8px; }
 /* The blur is a layer behind the bar that reaches a little past its bottom and fades out there, so it eases
    into the list instead of ending on a hard edge. */
-.toolbar::before { content: ""; position: absolute; inset: 0 0 -10px; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 0.15s;
+.toolbar::before, .sticky-bar::before { content: ""; position: absolute; inset: 0 0 -10px; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 0.15s;
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent); }
-.toolbar.stuck::before { opacity: 1; }
+.toolbar.stuck::before, .sticky-bar.stuck::before { opacity: 1; }
+/* The same for the other lists' bars (packs, settings, server sync): they stay on top while the list scrolls under them. */
+.sticky-bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; padding-block: 6px; }
 .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
 .search input { width: 100%; padding: 8px 10px 8px 32px; font-size: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 5px; }
 .search input::placeholder { color: var(--muted); }
@@ -520,7 +522,10 @@ button.chip[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 32%, 
 .bf-item[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
 .bf-item .k { font: 500 12px/1 var(--font-mono); color: var(--muted); }
 .bf-name { min-width: 0; overflow-wrap: anywhere; }
-.feat-list.is-biomes { --cols: minmax(0, 1.4fr) minmax(0, 1fr) 100px 96px 72px 84px; }
+.feat-list.is-biomes { --cols: minmax(0, 1.4fr) minmax(0, 1fr) 100px 92px 64px 64px 40px; }
+.feat-list.is-ores { --cols: 22px minmax(0, 1.1fr) minmax(0, 0.8fr) 96px minmax(0, 1.4fr) 132px 104px 34px; }
+.f-blocks { font-size: 12px; color: var(--muted); margin-top: 1px; overflow-wrap: anywhere; }
+.biome-row.no-switch .f-switch { opacity: 0.55; }
 .f-num { display: flex; justify-content: flex-end; }
 .f-count { padding: 3px 8px; font: 600 13px/1.2 var(--font-mono); color: var(--accent-fg); background: none; border: 1px solid transparent; border-radius: 4px; cursor: pointer; }
 .f-count:hover { border-color: var(--line); background: var(--sunken); }
@@ -544,7 +549,9 @@ button.chip.more { cursor: pointer; }
 @media (max-width: 900px) {
   .feat-list { --cols: 22px minmax(0, 1fr) 34px; }
   .feat-list .list-head .h-feat, .f-mod, .f-dims, .f-spread, .f-mobs, .f-cfg { display: none; }
-  .feat-list.is-biomes { --cols: minmax(0, 1fr) 72px; }
+  .feat-list.is-biomes { --cols: minmax(0, 1fr) 64px 34px; }
+  .feat-list.is-ores { --cols: 22px minmax(0, 1fr) 34px; }
+  .biome-row .f-switch { grid-column: 3; grid-row: 1; }
   .biome-row .f-main { grid-column: 1; grid-row: 1; }
   .biome-row .f-num { grid-column: 2; grid-row: 1; }
   .feat-row .c-check { grid-column: 1; grid-row: 1; }
@@ -1478,6 +1485,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     <div class="seg-control subnav" id="feat-kinds" role="group" aria-label="Kind of feature">
       <button type="button" data-kind="structures" aria-pressed="true">Structures<span class="k" id="feat-n-structures"></span></button>
       <button type="button" data-kind="mobs" aria-pressed="false">Mobs<span class="k" id="feat-n-mobs"></span></button>
+      <button type="button" data-kind="ores" aria-pressed="false">Ores<span class="k" id="feat-n-ores"></span></button>
       <button type="button" data-kind="biomes" aria-pressed="false">Biomes<span class="k" id="feat-n-biomes"></span></button>
     </div>
     <p class="lead feat-lead" id="feat-lead"></p>
@@ -1490,6 +1498,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <input id="feat-q" type="search" placeholder="Search names, mods, biomes" aria-label="Search features" autocomplete="off" spellcheck="false">
       </label>
       <div class="seg-control" id="feat-status" role="group" aria-label="Filter by on or off"></div>
+      <div class="seg-control" id="feat-source" role="group" aria-label="Filter by where it's from"></div>
       <div class="seg-control" id="feat-dims" role="group" aria-label="Filter by dimension"></div>
       <select id="feat-mod" class="sort-pick feat-mod-pick" aria-label="Filter by mod"></select>
       <select id="feat-sort" class="sort-pick" aria-label="Sort by" title="Sort the list (the column headings sort too)"></select>
@@ -3398,7 +3407,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         else rows.forEach(function (p) { sel[p.name] = true; });
         renderPacks();
       } });
-    var bar = h("div", { class: "selection-bar pack-selbar" + (picked.length ? "" : " is-empty"), role: "region", "aria-label": "Selected " + PACK_NOUNS[d.kind] }, all);
+    var bar = h("div", { class: "selection-bar pack-selbar sticky-bar" + (picked.length ? "" : " is-empty"), role: "region", "aria-label": "Selected " + PACK_NOUNS[d.kind] }, all);
     var noun = function (n) { return count(n, PACK_NOUNS[d.kind].replace(/s$/, ""), PACK_NOUNS[d.kind]); };
     if (!picked.length) {
       bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · tick packs to act on several at once")));
@@ -4845,13 +4854,15 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       lead: "The structures your mods add, from their data, with the biomes they generate in. Turning one off stops it generating in chunks made from then on; any already built stay." },
     mobs: { one: "mob", many: "mobs", spread: "Spawning", none: "Not in its data",
       lead: "The mobs your mods add and where they spawn by themselves. Turning one off stops its natural spawns everywhere; spawners, structures and spawn eggs still make it. A mod's extra spawns of a vanilla mob have their own row, which turns off only those." },
+    ores: { one: "ore", many: "ores", spread: "Veins", none: "Nowhere",
+      lead: "The ores in the world gen, the mods' and Minecraft's: which biomes, how high, how many veins per chunk and how big. Turning one off stops it generating in chunks made from then on." },
     biomes: { one: "biome", many: "biomes", none: "—",
-      lead: "Every biome in the game, the mods' and Minecraft's, with how many of the mods' structures and mobs turn up in each: click a number to see them. Biomes have no switch here, since mods place them in the world with their own code. Where a mod's config can turn a biome off or change how often it appears, Config opens that setting." }
+      lead: "Every biome in the game, with how many structures, mobs and ores turn up in each: click a number to see them. Mods place biomes with their own code, so a biome's switch is its mod's own setting for it (when the mod has one), changed in the game's config and the server's. Minecraft's biomes and mods without such a setting have none." }
   };
   var DIM_ORDER = ["Overworld", "Nether", "End"];
-  function featDefaults() { return { q: "", status: "all", dim: "all", mod: "", sort: "name", dir: 1, biomes: [] }; }
+  function featDefaults() { return { q: "", status: "all", source: "all", dim: "all", mod: "", sort: "name", dir: 1, biomes: [] }; }
   var feat = { kind: "structures", data: null, loading: null, error: null, busy: {}, sel: {}, anchor: null, expanded: {}, shown: [], sideQ: "", biomeInfo: {},
-    f: { structures: featDefaults(), mobs: featDefaults(), biomes: featDefaults() } };
+    f: { structures: featDefaults(), mobs: featDefaults(), ores: featDefaults(), biomes: featDefaults() } };
   (function () {
     try {
       var s = JSON.parse(localStorage.getItem("mmm.features") || "null");
@@ -4859,7 +4870,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (FEAT_KINDS[s.kind]) feat.kind = s.kind;
       Object.keys(FEAT_KINDS).forEach(function (k) {
         var saved = s.f && s.f[k];
-        if (saved) ["status", "dim", "mod", "sort", "dir", "biomes"].forEach(function (x) { if (saved[x] != null) feat.f[k][x] = saved[x]; });
+        if (saved) ["status", "source", "dim", "mod", "sort", "dir", "biomes"].forEach(function (x) { if (saved[x] != null) feat.f[k][x] = saved[x]; });
       });
     } catch (e) {}
   })();
@@ -4888,27 +4899,28 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function featDimKey(d) { return DIM_ORDER.indexOf(d) >= 0 ? d : "Other"; }
   function featHay(r) {
     if (!r.hay) r.hay = [r.name, r.id, featMod(r), r.file || "", r.dims.join(" "), (r.biomes || []).map(function (b) { return b.name + " " + b.id; }).join(" "),
-      r.vanilla ? (r.biomes ? "vanilla extra spawns" : "vanilla minecraft") : ""].join(" ").toLowerCase();
+      r.extra ? "extra spawns" : "", r.vanilla ? "vanilla minecraft" : "", r.category || "", (r.blocks || []).map(function (b) { return b.name; }).join(" ")].join(" ").toLowerCase();
     return r.hay;
   }
-  // Each structure's and mob's biomes as a set of ids (shared groups opened up, "every biome but" worked out), for
-  // filtering by biome; and each biome's count of structures and mobs.
+  var FEAT_COUNT = { structures: "nStructures", mobs: "nMobs", ores: "nOres" };
+  // Each structure's, mob's and ore's biomes as a set of ids (shared groups opened up, "every biome but" worked out),
+  // for filtering by biome; and each biome's count of them.
   function featPrep(d) {
     var all = d.biomes.map(function (b) { return b.id; });
     var info = {};
-    d.biomes.forEach(function (b) { info[b.id] = b; b.nStructures = 0; b.nMobs = 0; });
+    d.biomes.forEach(function (b) { info[b.id] = b; b.nStructures = 0; b.nMobs = 0; b.nOres = 0; });
     var open = function (list, into) {
       (list || []).forEach(function (b) { (b.group ? d.groups[b.id] || [] : [b.id]).forEach(function (x) { into[x] = true; }); });
       return into;
     };
-    ["structures", "mobs"].forEach(function (k) {
+    Object.keys(FEAT_COUNT).forEach(function (k) {
       d[k].forEach(function (r) {
         var ids = {};
         if (r.allBiomes) { var except = open(r.except, {}); all.forEach(function (x) { if (!except[x]) ids[x] = true; }); }
         else open(r.biomes, ids);
         r.inSet = ids;
         r.inIds = Object.keys(ids);
-        r.inIds.forEach(function (x) { if (info[x]) info[x][k === "structures" ? "nStructures" : "nMobs"]++; });
+        r.inIds.forEach(function (x) { if (info[x]) info[x][FEAT_COUNT[k]]++; });
       });
     });
     feat.biomeInfo = info;
@@ -4918,9 +4930,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // (turning it off doesn't make it vanish while "On" is picked); it goes as soon as it's deselected.
   function featMatches(r, f, skip) {
     if (!skip && feat.sel[r.id]) return true;
-    if (skip !== "status" && f.status !== "all") {
-      if (feat.kind === "biomes" ? (f.status === "vanilla") !== !!r.vanilla : (f.status === "off") !== !!r.off) return false;
-    }
+    if (skip !== "status" && f.status !== "all" && (f.status === "off") !== !!r.off) return false;
+    if (skip !== "source" && f.source !== "all" && (f.source === "vanilla") !== !!r.vanilla) return false;
     if (skip !== "biome" && f.biomes.length && feat.kind !== "biomes" && !f.biomes.some(function (id) { return r.inSet && r.inSet[id]; })) return false;
     if (skip !== "dim" && f.dim !== "all") {
       if (f.dim === "none" ? r.dims.length > 0 : !r.dims.some(function (d) { return featDimKey(d) === f.dim; })) return false;
@@ -4935,6 +4946,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function featSpreadValue(r) {
     if (feat.kind === "biomes") return -(r.nStructures || 0); // most first
     if (feat.kind === "structures") return r.spacing == null ? null : r.spacing;
+    if (feat.kind === "ores") return r.perChunk == null ? null : -r.perChunk;
     if (!r.spawns || !r.spawns.length) return null;
     return -r.spawns.reduce(function (n, s) { return n + (s.weight || 0); }, 0); // most common first
   }
@@ -4951,7 +4963,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (x == null || y == null) return x == null && y == null ? byName(a, b) : x == null ? 1 : -1; // unknown last, either way round
       return (x - y) * dir || byName(a, b);
     };
-    else if (f.sort === "mobs") cmp = function (a, b) { return (b.nMobs || 0) - (a.nMobs || 0) || byName(a, b); };
+    else if (f.sort === "mobs" || f.sort === "ores") cmp = function (a, b) { var k = f.sort === "mobs" ? "nMobs" : "nOres"; return (b[k] || 0) - (a[k] || 0) || byName(a, b); };
+    else if (f.sort === "height") cmp = function (a, b) {
+      if (a.minY == null || b.minY == null) return a.minY == null && b.minY == null ? byName(a, b) : a.minY == null ? 1 : -1;
+      return a.minY - b.minY || byName(a, b);
+    };
     return rows.slice().sort(function (a, b) { return f.sort === "spread" ? cmp(a, b) : cmp(a, b) * dir; });
   }
   function setFeatSort(key) {
@@ -4985,17 +5001,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (d && d.gameRunning) notes.append(h("p", { class: "warnbox" }, "The game is running. Close it before turning features on or off: it keeps the mods' files open."));
     if (d && d.missingOff && d.missingOff.length) notes.append(h("p", { class: "hint" }, count(d.missingOff.length, "feature is", "features are") + " turned off for mods that aren't here any more (" +
       d.missingOff.slice(0, 4).join(", ") + (d.missingOff.length > 4 ? ", …" : "") + "). They stay off if the mod comes back."));
-    if (d && d.jarExists && featRowsOf("structures").concat(featRowsOf("mobs")).some(function (r) { return r.off; }))
+    if (d && d.jarExists && kind !== "biomes" && featRowsOf("structures").concat(featRowsOf("mobs"), featRowsOf("ores")).some(function (r) { return r.off; }))
       notes.append(h("p", { class: "hint" }, "To leave these out on your server too, copy " + d.jarFile + " to the server's mods folder with the other mods."));
 
     var rows = featRowsOf(kind);
     // Filters, each with how many it would show given the others.
     var countFor = function (skip, test) { return rows.filter(function (r) { return featMatches(r, f, skip) && test(r); }).length; };
-    var statuses = kind === "biomes"
-      ? [["all", "All"], ["mods", "From mods", function (r) { return !r.vanilla; }], ["vanilla", "Minecraft's", function (r) { return r.vanilla; }]]
-      : [["all", "All"], ["on", "On", function (r) { return !r.off; }], ["off", "Off", function (r) { return r.off; }]];
-    featSeg($("feat-status"), statuses.map(function (s) { return [s[0], s[1], null, d ? countFor("status", s[2] || function () { return true; }) : null]; }), f.status,
-      function (v) { f.status = v; saveFeatPrefs(); renderFeatures(); });
+    var segFor = function (box, skip, options, key) {
+      featSeg($(box), options.map(function (s) { return [s[0], s[1], s[3] || null, d ? countFor(skip, s[2] || function () { return true; }) : null]; }), f[key],
+        function (v) { f[key] = v; saveFeatPrefs(); renderFeatures(); });
+    };
+    segFor("feat-status", "status", [["all", "All"], ["on", "On", function (r) { return !r.off; }], ["off", "Off", function (r) { return r.off; }]], "status");
+    segFor("feat-source", "source", [["all", "Everything"], ["mods", "Mods", function (r) { return !r.vanilla; }, "Added by mods"],
+      ["vanilla", "Minecraft", function (r) { return r.vanilla; }, "Minecraft's own"]], "source");
     var dims = [["all", "Any dimension"]];
     DIM_ORDER.concat(["Other", "none"]).forEach(function (k) {
       var n = countFor("dim", function (r) { return k === "none" ? !r.dims.length : r.dims.some(function (x) { return featDimKey(x) === k; }); });
@@ -5010,14 +5028,16 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     modPick.value = f.mod;
     var sortPick = $("feat-sort");
     sortPick.replaceChildren(h("option", { value: "name" }, "Name"), h("option", { value: "mod" }, "Mod"), h("option", { value: "dim" }, "Dimension"),
-      h("option", { value: "spread" }, kind === "structures" ? "Most common" : kind === "mobs" ? "Spawn weight" : "Most structures"),
-      kind === "biomes" ? h("option", { value: "mobs" }, "Most mobs") : null);
-    if (kind !== "biomes" && f.sort === "mobs") f.sort = "name";
+      h("option", { value: "spread" }, kind === "structures" ? "Most common" : kind === "mobs" ? "Spawn weight" : kind === "ores" ? "Most veins" : "Most structures"),
+      kind === "biomes" ? [h("option", { value: "mobs" }, "Most mobs"), h("option", { value: "ores" }, "Most ores")] : null,
+      kind === "ores" ? h("option", { value: "height" }, "Deepest") : null);
+    if ((kind !== "biomes" && (f.sort === "mobs" || f.sort === "ores")) || (kind !== "ores" && f.sort === "height")) f.sort = "name";
     sortPick.value = f.sort;
 
     var shown = featSorted(rows.filter(function (r) { return featMatches(r, f); }), f);
     feat.shown = shown;
     $("feat-list").classList.toggle("is-biomes", kind === "biomes");
+    $("feat-list").classList.toggle("is-ores", kind === "ores");
     $("feat-foot-pick").hidden = kind === "biomes";
     renderFeatSide(rows, f);
     renderFeatHead(shown);
@@ -5095,9 +5115,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     };
     if (feat.kind === "biomes") {
       $("feat-head").replaceChildren(head("name", "Biome"), head("mod", "Mod", "h-feat"), head("dim", "Dimension", "h-feat"),
-        head("spread", "Structures", "r"), head("mobs", "Mobs", "r h-feat"), h("span", { role: "columnheader", class: "r h-feat" }, "Config"));
+        head("spread", "Structures", "r"), head("mobs", "Mobs", "r h-feat"), head("ores", "Ores", "r h-feat"),
+        h("span", { role: "columnheader", class: "r", title: "Its mod's own setting for it, where there is one" }, "On"));
       return;
     }
+    var ores = feat.kind === "ores";
     $("feat-head").replaceChildren(
       h("span", { role: "columnheader" }, h("button", { class: "check", type: "button", role: "checkbox", disabled: !shown.length,
         "aria-checked": !picked ? "false" : picked === shown.length ? "true" : "mixed",
@@ -5107,10 +5129,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           else shown.forEach(function (r) { feat.sel[r.id] = true; });
           renderFeatures();
         } })),
-      head("name", FEAT_KINDS[feat.kind].one === "mob" ? "Mob" : "Structure"),
+      head("name", { mobs: "Mob", ores: "Ore" }[feat.kind] || "Structure"),
       head("mod", "Mod", "h-feat"),
       head("dim", "Dimension", "h-feat"),
       h("span", { role: "columnheader", class: "h-feat" }, "Biomes"),
+      ores ? head("height", "Height", "h-feat") : null,
       head("spread", FEAT_KINDS[feat.kind].spread, "h-feat"),
       h("span", { role: "columnheader", class: "r", title: "On or off" }, "On"));
   }
@@ -5162,11 +5185,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       return ["every ~" + r.spacing + " ch" + (r.share != null ? " · " + Math.round(r.share * 100) + "%" : ""),
         "One try in each " + r.spacing + "×" + r.spacing + " chunk area, at least " + r.separation + " chunks apart (structure set " + r.set + ")." + share];
     }
+    if (feat.kind === "ores") {
+      var many = r.chance ? "1 vein in " + r.chance + " chunks" : r.veins + " per chunk";
+      return [(r.chance ? "1 in " + r.chance + " ch" : r.veins + "/ch") + (r.size ? " · " + r.size : ""),
+        "Veins: " + many + (r.size ? ", up to about " + r.size + " blocks each" : "") + "."];
+    }
     var s = r.spawns || [];
     if (!s.length) return ["—", r.ownRules ? "Its mod spawns it by its own rules, usually set in its config." : "No natural spawns in its data."];
-    var tip = s.map(function (x) { return "Weight " + x.weight + ", groups of " + x.min + (x.max !== x.min ? "–" + x.max : "") + (s.length > 1 ? " (" + x.file + ")" : ""); }).join("\n") +
-      "\nHigher weights spawn more often; vanilla zombies are 95, wolves 8.";
-    if (s.length > 1) return [count(s.length, "rule", "rules"), tip];
+    var tip = s.map(function (x) { return "Weight " + x.weight + ", groups of " + x.min + (x.max !== x.min ? "–" + x.max : "") + (x.where ? " (" + x.where + ")" : ""); }).join("\n") +
+      (r.category ? "\nSpawns as: " + r.category : "") + "\nHigher weights spawn more often; vanilla zombies are 95, wolves 8.";
+    if (s.length > 1) {
+      var ws = s.map(function (x) { return x.weight; }), lo = Math.min.apply(null, ws), hi = Math.max.apply(null, ws);
+      return ["weight " + (lo === hi ? lo : lo + "–" + hi), tip];
+    }
     return ["weight " + s[0].weight + " · " + s[0].min + (s[0].max !== s[0].min ? "–" + s[0].max : ""), tip];
   }
 
@@ -5184,7 +5215,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function featBiomes(r) {
     var chips = [], LIMIT = 4, f = feat.f[feat.kind];
     if (r.allBiomes) chips.push(h("span", { class: "chip biome all" }, r.except && r.except.length ? "Every biome except" : "Every biome"));
-    var list = r.allBiomes ? (r.except || []) : r.biomes;
+    // #minecraft:is_desert and #c:is_desert read the same; the chip shows once (both still count for filtering).
+    var names = {};
+    var list = (r.allBiomes ? (r.except || []) : r.biomes).filter(function (b) { if (names[b.name]) return false; names[b.name] = true; return true; });
     var open = !!feat.expanded[r.id];
     (open ? list : list.slice(0, LIMIT)).forEach(function (b) {
       if (b.group) {
@@ -5214,7 +5247,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var locked = !connected || busyNow || !d.supported || d.gameRunning;
     var spread = featSpread(r), mod = featMod(r);
     var sw = h("button", { type: "button", class: "act sw-btn" + (r.off ? "" : " on"), role: "switch", "aria-checked": String(!r.off), disabled: locked,
-      "aria-label": r.name + (r.vanilla ? " extra spawns" : "") + " on",
+      "aria-label": r.name + (r.extra ? " extra spawns" : "") + " on",
       title: d.gameRunning ? "Close the game first" : r.off ? "Off. Click to turn it on" : "On. Click to turn it off",
       onclick: function (e) { e.stopPropagation(); setFeatures([r], !!r.off); } }, h("span", { class: "sw", "aria-hidden": "true" }));
     return h("div", { class: "row feat-row" + (picked ? " is-selected" : "") + (r.off ? " is-off" : ""), role: "row", "aria-selected": String(picked), "aria-busy": busyNow ? "true" : null,
@@ -5224,15 +5257,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         onclick: function (e) { e.stopPropagation(); featPick(r, e.shiftKey); } })),
       h("div", { class: "f-main", role: "cell" },
         h("div", { class: "f-name" }, r.name,
-          r.vanilla ? h("span", { class: "badge", title: "Spawns of this vanilla mob that " + mod + " adds. Turning this off removes only these; the game's own spawns stay." }, "extra spawns") : null,
+          r.extra ? h("span", { class: "badge", title: "Spawns of this vanilla mob that " + mod + " adds. Turning this off removes only these; the game's own spawns stay." }, "extra spawns") : null,
           r.off ? h("span", { class: "badge off-badge" }, "off") : null,
           // A mob with no biomes listed has its config link in the biomes column instead.
           feat.kind === "mobs" && !r.allBiomes && !r.biomes.length ? null : featConfigLink(r)),
-        h("div", { class: "file" }, r.vanilla ? r.entity : r.id),
-        h("div", { class: "f-narrow" }, mod + (r.dims.length ? " · " + r.dims.join(", ") : "") + (spread[0] !== "—" ? " · " + spread[0] : ""))),
-      h("div", { class: "f-mod", role: "cell", title: r.file }, mod),
+        h("div", { class: "file" }, r.extra ? r.entity : r.id),
+        r.blocks && r.blocks.length > 1 ? h("div", { class: "f-blocks", title: r.blocks.map(function (b) { return b.id; }).join(", ") }, r.blocks.map(function (b) { return b.name; }).join(", ")) : null,
+        h("div", { class: "f-narrow" }, mod + (r.dims.length ? " · " + r.dims.join(", ") : "") + (r.height ? " · " + r.height : "") + (spread[0] !== "—" ? " · " + spread[0] : ""))),
+      h("div", { class: "f-mod", role: "cell", title: r.file || "Minecraft itself" }, mod),
       h("div", { class: "f-dims", role: "cell" }, r.dims.length ? r.dims.join(", ") : h("span", { class: "hint" }, "—")),
       h("div", { class: "f-biomes chips", role: "cell" }, featBiomes(r)),
+      feat.kind === "ores" ? h("div", { class: "f-spread f-height", role: "cell", title: r.height ? "Overworld heights; other dimensions count from their own bottom and top." : "No height range in its data" }, r.height ? r.height.replace(/^Y /, "") : "—") : null,
       h("div", { class: "f-spread", role: "cell", title: spread[1] }, spread[0]),
       h("div", { class: "f-switch", role: "cell" }, sw));
   }
@@ -5244,24 +5279,32 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       return h("button", { type: "button", class: "f-count", title: "Show the " + count(n, FEAT_KINDS[kind].one, FEAT_KINDS[kind].many) + " found in " + r.name,
         onclick: function () {
           var f = feat.f[kind];
-          f.q = ""; f.dim = "all"; f.mod = ""; f.status = "all"; f.biomes = [r.id];
+          f.q = ""; f.dim = "all"; f.mod = ""; f.status = "all"; f.source = "all"; f.biomes = [r.id];
           feat.kind = kind; feat.sel = {}; feat.anchor = null;
           saveFeatPrefs();
           renderFeatures();
           $("view-features").scrollIntoView({ block: "start" });
         } }, String(n));
     };
-    var mod = featMod(r);
-    return h("div", { class: "row feat-row biome-row", role: "row" },
+    var mod = featMod(r), sw = r.setting, d = feat.data;
+    var busyNow = !!feat.busy[r.id];
+    var swTitle = !sw ? (r.vanilla ? "Minecraft's own biomes have no switch: the game places them itself." : mod + " has no setting for this biome in its config, so it can't be switched off here.")
+      : d.gameRunning ? "Close the game first"
+      : (r.off ? "Off" : "On") + " in " + sw.path.replace(/\\/g, "/") + " (" + sw.key + (sw.invert ? ", which is set the other way round" : "") + "). Click to turn it " + (r.off ? "on" : "off") + ".";
+    var toggle = h("button", { type: "button", class: "act sw-btn" + (r.off ? "" : " on"), role: "switch", "aria-checked": String(!r.off), "aria-label": r.name + " on",
+      disabled: !sw || !connected || busyNow || d.gameRunning, title: swTitle,
+      onclick: function () { setFeatures([r], !!r.off); } }, h("span", { class: "sw", "aria-hidden": "true" }));
+    return h("div", { class: "row feat-row biome-row" + (r.off ? " is-off" : "") + (sw ? "" : " no-switch"), role: "row", "aria-busy": busyNow ? "true" : null },
       h("div", { class: "f-main", role: "cell" },
-        h("div", { class: "f-name" }, r.name, r.vanilla ? null : featConfigLink(r)),
+        h("div", { class: "f-name" }, r.name, r.off ? h("span", { class: "badge off-badge" }, "off") : null, featConfigLink(r)),
         h("div", { class: "file" }, r.id),
-        h("div", { class: "f-narrow" }, mod + " · " + r.dims.join(", ") + " · " + count(r.nStructures, "structure", "structures") + ", " + count(r.nMobs, "mob", "mobs"))),
+        h("div", { class: "f-narrow" }, mod + " · " + r.dims.join(", ") + " · " + count(r.nStructures, "structure", "structures") + ", " + count(r.nMobs, "mob", "mobs") + ", " + count(r.nOres, "ore", "ores"))),
       h("div", { class: "f-mod", role: "cell", title: r.file || "Minecraft itself" }, mod),
       h("div", { class: "f-dims", role: "cell" }, r.dims.join(", ")),
       h("div", { class: "f-num", role: "cell" }, jump("structures", r.nStructures)),
       h("div", { class: "f-num f-mobs", role: "cell" }, jump("mobs", r.nMobs)),
-      h("div", { class: "f-num f-cfg", role: "cell" }, r.config ? featConfigLink(r, "Open") : h("span", { class: "hint" }, "—")));
+      h("div", { class: "f-num f-mobs", role: "cell" }, jump("ores", r.nOres)),
+      h("div", { class: "f-switch", role: "cell" }, toggle));
   }
 
   function setFeatures(rows, on) {
@@ -5272,8 +5315,14 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var had = feat.data && feat.data.jarExists;
     return api("POST", "/api/features/set", { kind: kind, ids: ids, on: on }).then(function (res) {
       rows.forEach(function (r) { r.off = !on; }); // the switches move now; the reload below confirms
-      var what = rows.length === 1 ? rows[0].name + (rows[0].vanilla ? "'s extra spawns" : "") : count(rows.length, K.one, K.many);
-      var when = kind === "structures" ? " It applies from the next game start, in chunks made after that." : " It applies the next time the game starts.";
+      var what = rows.length === 1 ? rows[0].name + (rows[0].extra ? "'s extra spawns" : "") : count(rows.length, K.one, K.many);
+      if (kind === "biomes") {
+        // Biomes switch in their mods' configs: new worlds (and new chunks, for most mods) go without them.
+        toast((res.changed ? (on ? "Turned on " : "Turned off ") + what + " in its mod's config (the game's copy, and the server's where it has one). It applies the next time the game starts, to land generated from then on." : "") +
+          (res.notes && res.notes.length ? " " + res.notes.join(" ") : ""));
+        return;
+      }
+      var when = kind === "mobs" ? " It applies the next time the game starts." : " It applies from the next game start, in chunks made after that.";
       var jar = !had && res.jarExists ? " The app keeps this in " + feat.data.jarFile + " in the mods folder." : had && !res.jarExists ? " Nothing is off now, so " + feat.data.jarFile + " was removed." : "";
       toast((on ? "Turned on " : "Turned off ") + what + "." + when + jar);
     }, function (e) { toast(e.message); }).then(function () {
@@ -5298,7 +5347,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   $("feat-sort").addEventListener("change", function () { feat.f[feat.kind].sort = this.value; feat.f[feat.kind].dir = 1; saveFeatPrefs(); renderFeatures(); });
   $("feat-clear").addEventListener("click", function () {
     var f = feat.f[feat.kind];
-    f.q = ""; f.status = "all"; f.dim = "all"; f.mod = ""; f.biomes = [];
+    f.q = ""; f.status = "all"; f.source = "all"; f.dim = "all"; f.mod = ""; f.biomes = [];
     saveFeatPrefs();
     renderFeatures();
   });
@@ -7772,7 +7821,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         if (!shown) list.append(h("p", { class: "search-empty" }, "No setting matches."));
       };
       within.addEventListener("input", function () { cfg.within = within.value.trim(); draw(); });
-      main.append(within, list);
+      main.append(h("div", { class: "sticky-bar" }, within), list);
       draw();
       if (cfg.focus) {
         var want = cfg.focus;
@@ -8646,7 +8695,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       clearTimeout(srv.findTimer);
       srv.findTimer = setTimeout(function () { srv.syncFind = find.value.trim().toLowerCase(); drawSyncGroups(); }, 150);
     });
-    p.append(h("div", { class: "sync-tools" }, find, h("span", { class: "hint" },
+    p.append(h("div", { class: "sync-tools sticky-bar" }, find, h("span", { class: "hint" },
       count(s.modsInSync, "mod", "mods") + " and " + count(s.configsSame, "config file", "config files") + " already match. " + s.configsIgnored + " configs aren't compared (client-only mods', backups and caches).")));
     p.append(h("div", { id: "sync-groups" }));
     drawSyncGroups();
@@ -9789,8 +9838,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function queueFit() {
     // The search bar only needs its backing once it sticks to the top with rows passing under it; with
     // a background picture it's see-through until then.
-    var bar = document.querySelector("#view-mods .toolbar");
-    if (bar) bar.classList.toggle("stuck", window.scrollY > 0 && bar.getBoundingClientRect().top <= 1);
+    // The same for every list's bar on the page showing (Features, Packs, a config's settings, server sync).
+    Array.prototype.forEach.call(document.querySelectorAll(".view:not([hidden]) .toolbar, .view:not([hidden]) .sticky-bar"), function (bar) {
+      bar.classList.toggle("stuck", window.scrollY > 0 && bar.getBoundingClientRect().top <= 1);
+    });
     // Two-column layout: the tags panel shares the side chart's grid area, so it's pushed down by the
     // chart's height and sticks just below it.
     var L = document.querySelector(".side-left"), R = document.querySelector(".side-right");
