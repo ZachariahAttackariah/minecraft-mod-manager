@@ -70,8 +70,10 @@ namespace MinecraftModManager
                 if (untagged.Count == 0) return;
 
                 Dictionary<string, object> result = DetectSides(PrefFlag("serverExtras", true));
-                var guesses = BodyList(Get(result, "mods")).Select(D).Where(m => m != null)
-                    .ToDictionary(m => S(m, "key"), m => m, StringComparer.OrdinalIgnoreCase);
+                // A jar and a .disabled copy of it share a key; the first guess for a key is kept.
+                var guesses = new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase);
+                foreach (Dictionary<string, object> m in BodyList(Get(result, "mods")).Select(D))
+                    if (m != null && S(m, "key") != null && !guesses.ContainsKey(S(m, "key"))) guesses[S(m, "key")] = m;
                 var done = new List<string>();
                 foreach (string key in untagged)
                 {
