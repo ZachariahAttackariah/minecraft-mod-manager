@@ -169,7 +169,12 @@ Packs
                       go to Downloads.
 
 Features
-  The structures and mobs your mods add, read from the mods' own data, in two tabs: Structures and Mobs.
+  The structures and mobs your mods add, read from the mods' own data, in tabs: Structures, Mobs and Biomes.
+  Biomes ............ every biome, the mods' and Minecraft's, with how many structures and mobs turn up in
+                      each; click a number to see them. The biome list beside Structures and Mobs (and the
+                      biome chips in their rows) filter by biome.
+  Config ............ where a mod's config sets a feature (Alex's Mobs' spawn weights, a mod's biome
+                      switches), its row links straight to that setting on the Configs page.
   Each row shows the mod that adds it, the dimension, the biomes it generates or spawns in (shared biome
   groups such as "Forest biomes" show as one dashed chip), and how common it is: a structure's spacing in
   chunks, a mob's spawn weight and group size. Search, filter by On / Off, dimension and mod, sort by name,

@@ -1,7 +1,9 @@
 // Features: the structures and mobs the mods add, where they turn up (dimension and biomes), and a switch to
 // turn each one off. Everything is read from the jars' own data: structures from worldgen/structure and the
 // structure sets that place them, mobs from their loot tables and spawn eggs, spawns from the biome modifiers
-// (add_spawns), biome groups from the biome tags, and modded dimensions from their dimension files.
+// (add_spawns), biome groups from the biome tags, and modded dimensions from their dimension files. The game's own
+// jar and NeoForge's (from Prism's libraries) add the vanilla biomes and the full shared biome groups, so the page
+// can filter by any biome. Where a mod's config names a feature, its row links to that setting (ConfigFor).
 //
 // Turning something off writes one small data-only mod into the mods folder (FeatureJarName). It carries:
 //   - a copy of each turned-off structure with no biomes, so it never generates in new chunks;
@@ -209,6 +211,63 @@ namespace MinecraftModManager
             public readonly Dictionary<string, string> Names = new Dictionary<string, string>(StringComparer.Ordinal);
             public readonly Dictionary<string, string> DimOfBiome = new Dictionary<string, string>(StringComparer.Ordinal);
             public readonly Dictionary<string, BiomeSet> Expanded = new Dictionary<string, BiomeSet>(StringComparer.Ordinal);
+            public readonly Dictionary<string, List<string>> Members = new Dictionary<string, List<string>>(StringComparer.Ordinal); // a shared group's biomes
+            public readonly HashSet<string> UsedGroups = new HashSet<string>(StringComparer.Ordinal);
+            public readonly Dictionary<string, FeatureJar> BiomeOwner = new Dictionary<string, FeatureJar>(StringComparer.Ordinal);
+            public readonly HashSet<string> VanillaBiomes = new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        // The game's own data (vanilla biomes, their names, and the biome groups mods add to) and NeoForge's c: groups,
+        // from Prism's libraries. Without them the shared groups only hold what the mods add.
+        static List<JarFeatures> BaseFeatureJars()
+        {
+            var list = new List<JarFeatures>();
+            string libs = Path.Combine(PrismDataDir(), "libraries");
+            string v = gameVersion ?? "";
+            string vanilla = Path.Combine(libs, "com", "mojang", "minecraft", v, "minecraft-" + v + "-client.jar");
+            if (File.Exists(vanilla)) list.Add(GetJarFeatures(new FileInfo(vanilla)));
+            if (loader == "neoforge")
+            {
+                string neo = NeoForgeUniversalJar(libs);
+                if (neo != null) list.Add(GetJarFeatures(new FileInfo(neo)));
+            }
+            return list;
+        }
+
+        // This instance's NeoForge (from Prism's mmc-pack.json), else the newest one Prism has for this Minecraft version.
+        static string NeoForgeUniversalJar(string libs)
+        {
+            string root = Path.Combine(libs, "net", "neoforged", "neoforge");
+            if (!Directory.Exists(root)) return null;
+            string version = null;
+            try
+            {
+                string pack = Path.Combine(Path.GetDirectoryName(GameDir().TrimEnd('\\')), "mmc-pack.json");
+                if (File.Exists(pack))
+                {
+                    var d = new JavaScriptSerializer().DeserializeObject(File.ReadAllText(pack)) as Dictionary<string, object>;
+                    Dictionary<string, object> neo = A(Get(d, "components")).Select(D).FirstOrDefault(c => S(c, "uid") == "net.neoforged");
+                    version = S(neo, "version");
+                }
+            }
+            catch (Exception) { }
+            Func<string, string> jar = ver => Path.Combine(root, ver, "neoforge-" + ver + "-universal.jar");
+            if (version != null && File.Exists(jar(version))) return jar(version);
+            string mc = gameVersion ?? "";
+            string prefix = mc.StartsWith("1.") ? mc.Substring(2) : mc;
+            if (prefix.Count(ch => ch == '.') == 0) prefix += ".0";
+            return new DirectoryInfo(root).GetDirectories().Select(x => x.Name).Where(n => n.StartsWith(prefix + ".") && File.Exists(jar(n)))
+                .OrderByDescending(n => IntOf(n.Substring(prefix.Length + 1).Split('-')[0])).Select(jar).FirstOrDefault();
+        }
+
+        static List<string> GroupMembers(FeatureWorld w, string tag)
+        {
+            List<string> list;
+            if (w.Members.TryGetValue(tag, out list)) return list;
+            var set = new BiomeSet();
+            ExpandTag(w, tag, set, true, new HashSet<string>());
+            w.Members[tag] = list = set.Ids.OrderBy(x => x, StringComparer.Ordinal).ToList();
+            return list;
         }
 
         static List<FeatureJar> FeatureJars()
@@ -223,18 +282,24 @@ namespace MinecraftModManager
         static FeatureWorld BuildFeatureWorld()
         {
             var w = new FeatureWorld { Jars = FeatureJars() };
-            foreach (FeatureJar j in w.Jars)
+            List<JarFeatures> based = BaseFeatureJars();
+            // The mods first, so their names and dimension files win over the game's.
+            foreach (JarFeatures data in w.Jars.Select(j => j.Data).Concat(based))
             {
-                foreach (KeyValuePair<string, List<object>> t in j.Data.BiomeTags)
+                foreach (KeyValuePair<string, List<object>> t in data.BiomeTags)
                 {
                     List<object> list;
                     if (!w.Tags.TryGetValue(t.Key, out list)) w.Tags[t.Key] = list = new List<object>();
                     list.AddRange(t.Value);
                 }
-                w.Biomes.UnionWith(j.Data.Biomes);
-                foreach (KeyValuePair<string, string> n in j.Data.Names) if (!w.Names.ContainsKey(n.Key)) w.Names[n.Key] = n.Value;
-                foreach (KeyValuePair<string, string> b in j.Data.DimensionOfBiome) if (!w.DimOfBiome.ContainsKey(b.Key)) w.DimOfBiome[b.Key] = b.Value;
+                w.Biomes.UnionWith(data.Biomes);
+                foreach (KeyValuePair<string, string> n in data.Names) if (!w.Names.ContainsKey(n.Key)) w.Names[n.Key] = n.Value;
+                foreach (KeyValuePair<string, string> b in data.DimensionOfBiome) if (!w.DimOfBiome.ContainsKey(b.Key)) w.DimOfBiome[b.Key] = b.Value;
             }
+            foreach (JarFeatures data in based) w.VanillaBiomes.UnionWith(data.Biomes.Where(b => b.StartsWith("minecraft:")));
+            foreach (FeatureJar j in w.Jars)
+                foreach (string b in j.Data.Biomes)
+                    if (!b.StartsWith("minecraft:") && !w.BiomeOwner.ContainsKey(b)) w.BiomeOwner[b] = j;
             // The is_nether / is_end / is_overworld tags tell modded biomes' dimension.
             foreach (var pair in new[] { new[] { "is_nether", Nether }, new[] { "is_end", End }, new[] { "is_overworld", Overworld } })
                 foreach (string space in CommonTagSpaces)
@@ -269,7 +334,8 @@ namespace MinecraftModManager
                     continue;
                 }
                 id = NormId(id);
-                if (!required && !id.StartsWith("minecraft:") && !w.Biomes.Contains(id)) continue; // a biome from a mod that isn't here
+                // A biome from a mod that isn't here, or from a newer Minecraft (once the game's own list is known).
+                if (!required && !w.Biomes.Contains(id) && (!id.StartsWith("minecraft:") || w.VanillaBiomes.Count > 0)) continue;
                 into.Ids.Add(id);
             }
         }
@@ -362,7 +428,14 @@ namespace MinecraftModManager
             var dims = new HashSet<string>();
             if (set.All) { dims.Add(Overworld); dims.Add(Nether); dims.Add(End); }
             foreach (string b in set.Ids) dims.Add(DimOf(w, b));
-            foreach (string g in set.Groups) dims.Add(DimOfGroup(g));
+            foreach (string g in set.Groups.Concat(set.Except != null ? set.Except.Groups : Enumerable.Empty<string>()))
+            {
+                w.UsedGroups.Add(g);
+                if (set.Except != null && set.Except.Groups.Contains(g)) continue;
+                List<string> members = GroupMembers(w, g);
+                if (members.Count == 0) dims.Add(DimOfGroup(g));
+                else foreach (string b in members) dims.Add(DimOf(w, b));
+            }
             Func<BiomeSet, List<object>> biomes = s => s.Ids.Select(b => (object)Obj("id", b, "name", NameOf(w, "biome", b)))
                 .Concat(s.Groups.Select(g => (object)Obj("id", "#" + g, "name", GroupLabel(g), "group", true)))
                 .OrderBy(o => (string)((Dictionary<string, object>)o)["name"], StringComparer.OrdinalIgnoreCase).ToList();
@@ -388,6 +461,89 @@ namespace MinecraftModManager
         {
             return Obj(parts.SelectMany(p => p).ToArray());
         }
+
+        // ---------- The mods' own config settings for a feature ----------
+        // Many mods set spawns, structure spacing or biome weights in their config instead of (or on top of) their data.
+        // A feature's mod's config files (by owner, as on the Configs page, or by the mod id in the file's path) are
+        // searched for a setting naming the feature; failing that, a file with settings of its kind stands in.
+
+        sealed class FeatureConfig
+        {
+            public string Side, Rel, Norm, Owner, Lower, Flat; // Flat: the text squashed to letters and digits
+            public FileInfo File;
+            public List<TomlEntry> Entries;
+            public bool Loaded;
+        }
+
+        static readonly Regex MobConfigWords = new Regex("spawn|weight|enable|disable|groupsize|mincount|maxcount");
+        static readonly Regex StructureConfigWords = new Regex("structure|spacing|separation|generat|spawn|enable|disable|chance|frequency|rarity|weight");
+        static readonly Regex BiomeConfigWords = new Regex("biome|weight|enable|disable|generat|region");
+
+        static string Flatten(string s) { return Regex.Replace((s ?? "").ToLowerInvariant(), "[^a-z0-9]", ""); }
+
+        static List<FeatureConfig> FeatureConfigs(ICollection<string> modIds)
+        {
+            var list = new List<FeatureConfig>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var sides = new List<KeyValuePair<string, string>> { new KeyValuePair<string, string>("game", Path.Combine(GameDir(), "config")) };
+            if (!string.IsNullOrEmpty(serverDir) && Directory.Exists(serverDir)) sides.Add(new KeyValuePair<string, string>("server", Path.Combine(serverDir, "config")));
+            foreach (KeyValuePair<string, string> side in sides)
+                foreach (KeyValuePair<string, FileInfo> f in ShareableConfigs(side.Value))
+                    if (seen.Add(f.Key)) // the game's copy stands for both
+                        list.Add(new FeatureConfig { Side = side.Key, Rel = f.Key, Norm = Flatten(f.Key), Owner = ConfigOwner(f.Key, modIds), File = f.Value });
+            return list;
+        }
+
+        static void LoadConfig(FeatureConfig c)
+        {
+            if (c.Loaded) return;
+            c.Loaded = true;
+            try { c.Lower = File.ReadAllText(c.File.FullName).ToLowerInvariant(); c.Flat = Flatten(c.Lower); } catch (Exception) { return; }
+            if (ConfigFormat(c.Rel) == "toml") try { c.Entries = ReadToml(c.File.FullName).Entries; } catch (Exception) { }
+        }
+
+        static Dictionary<string, object> ConfigFor(List<FeatureConfig> files, Dictionary<string, List<FeatureConfig>> memo, ICollection<string> owners, string name, Regex words, string general)
+        {
+            string ownerKey = string.Join("|", owners.OrderBy(o => o, StringComparer.Ordinal));
+            List<FeatureConfig> mine;
+            if (!memo.TryGetValue(ownerKey, out mine))
+            {
+                List<string> squashed = owners.Where(o => o.Length >= 5).Select(Flatten).ToList();
+                memo[ownerKey] = mine = files.Where(c => (c.Owner != null && owners.Contains(c.Owner)) || squashed.Any(o => c.Norm.Contains(o))).ToList();
+            }
+            if (mine.Count == 0) return null;
+            string token = Flatten(name), plain = (name ?? "").ToLowerInvariant();
+            Dictionary<string, object> best = null;
+            int bestScore = 0;
+            if (token.Length >= 3)
+                foreach (FeatureConfig c in mine)
+                {
+                    LoadConfig(c);
+                    if (c.Lower == null || (!c.Lower.Contains(plain) && !c.Flat.Contains(token))) continue;
+                    if (c.Entries != null)
+                        foreach (TomlEntry e in c.Entries)
+                        {
+                            string hay = Flatten(e.Section + " " + e.Key);
+                            if (!hay.Contains(token)) continue;
+                            int score = 3 + (words.IsMatch(hay) ? 2 : 0) + (Flatten(e.Key).Contains(token) ? 1 : 0);
+                            if (score > bestScore) { bestScore = score; best = Obj("side", c.Side, "path", c.Rel, "section", e.Section, "key", e.Key); }
+                        }
+                    if (bestScore < 1 && c.Lower.Contains(plain)) { bestScore = 1; best = Obj("side", c.Side, "path", c.Rel); }
+                }
+            if (best != null) return best;
+            FeatureConfig any = mine.FirstOrDefault(c => { LoadConfig(c); return c.Flat != null && c.Flat.Contains(general); });
+            return any == null ? null : Obj("side", any.Side, "path", any.Rel, "general", true);
+        }
+
+        static HashSet<string> OwnersOf(FeatureJar j, string id)
+        {
+            var owners = new HashSet<string>(ModIdsOf(j), StringComparer.OrdinalIgnoreCase);
+            string ns = id.Substring(0, id.IndexOf(':'));
+            if (ns != "minecraft") owners.Add(ns);
+            return owners;
+        }
+
+        static string PathTail(string id) { string p = id.Substring(id.IndexOf(':') + 1); return p.Substring(p.LastIndexOf('/') + 1); }
 
         // ---------- What's off ----------
 
@@ -426,6 +582,9 @@ namespace MinecraftModManager
                 FeaturesOff off = ReadFeaturesOff();
                 var structures = new List<object>();
                 var mobs = new List<object>();
+                var biomes = new List<object>();
+                List<FeatureConfig> configs = FeatureConfigs(new HashSet<string>(w.Jars.SelectMany(j => j.Meta.Mods.Concat(j.Meta.Nested)).Select(m => m.Id).Where(id => id != null), StringComparer.OrdinalIgnoreCase));
+                var memo = new Dictionary<string, List<FeatureConfig>>();
 
                 // Where each structure is placed: its structure set's spacing, and its share when the set picks among several.
                 var placed = new Dictionary<string, Dictionary<string, object>>(StringComparer.Ordinal);
@@ -457,7 +616,8 @@ namespace MinecraftModManager
                         string type = S(s.Value, "type") ?? "";
                         structures.Add(Fields(
                             new object[] { "id", s.Key, "name", NameOf(w, "structure", s.Key), "file", j.File.Name, "key", NormalizeKey(j.File.Name), "mod", ModNameOf(j),
-                                "type", type.Substring(type.IndexOf(':') + 1), "off", off.Structures.Contains(s.Key) },
+                                "type", type.Substring(type.IndexOf(':') + 1), "off", off.Structures.Contains(s.Key),
+                                "config", ConfigFor(configs, memo, OwnersOf(j, s.Key), PathTail(s.Key), StructureConfigWords, "structure") },
                             PlaceFields(w, DescribeBiomes(w, Get(s.Value, "biomes"))),
                             place.SelectMany(kv => new[] { kv.Key, kv.Value }).ToArray()));
                     }
@@ -492,7 +652,8 @@ namespace MinecraftModManager
                     string ns = e.Key.Substring(0, e.Key.IndexOf(':'));
                     mobs.Add(Fields(
                         new object[] { "id", e.Key, "name", NameOf(w, "entity", e.Key), "file", e.Value.File.Name, "key", NormalizeKey(e.Value.File.Name), "mod", ModNameOf(e.Value),
-                            "off", off.Mobs.Contains(e.Key), "spawns", SpawnFields(mine), "ownRules", mine.Count == 0 && w.Jars.Any(j => j.Data.OwnSpawnTypes.Contains(ns)) },
+                            "off", off.Mobs.Contains(e.Key), "spawns", SpawnFields(mine), "ownRules", mine.Count == 0 && w.Jars.Any(j => j.Data.OwnSpawnTypes.Contains(ns)),
+                            "config", ConfigFor(configs, memo, OwnersOf(e.Value, e.Key), PathTail(e.Key), MobConfigWords, "spawn") },
                         mine.Count > 0 ? PlaceFields(w, set) : new object[] { "dims", new List<string>(), "biomes", new List<object>(), "allBiomes", false, "except", null }));
                 }
                 // A mod's extra spawns of a vanilla mob: one row per mob and mod, turned off rule by rule.
@@ -505,15 +666,29 @@ namespace MinecraftModManager
                         string id = r.Key + "@" + byMod.Key;
                         mobs.Add(Fields(
                             new object[] { "id", id, "entity", r.Key, "name", NameOf(w, "entity", r.Key), "file", list[0].Key.File.Name, "key", NormalizeKey(list[0].Key.File.Name),
-                                "mod", ModNameOf(list[0].Key), "vanilla", true, "off", off.Mobs.Contains(id), "spawns", SpawnFields(list) },
+                                "mod", ModNameOf(list[0].Key), "vanilla", true, "off", off.Mobs.Contains(id), "spawns", SpawnFields(list),
+                                "config", ConfigFor(configs, memo, new HashSet<string>(ModIdsOf(list[0].Key).Concat(new[] { byMod.Key }), StringComparer.OrdinalIgnoreCase), PathTail(r.Key), MobConfigWords, "spawn") },
                             PlaceFields(w, set)));
                     }
+
+                // Biomes: the mods' own and the game's. They can't be switched off from data (mods place them with
+                // code, TerraBlender and the like), so they carry their config instead, where a mod has one.
+                foreach (KeyValuePair<string, FeatureJar> b in w.BiomeOwner.OrderBy(x => x.Key, StringComparer.Ordinal))
+                    biomes.Add(Obj("id", b.Key, "name", NameOf(w, "biome", b.Key), "file", b.Value.File.Name, "key", NormalizeKey(b.Value.File.Name), "mod", ModNameOf(b.Value),
+                        "dims", new List<string> { DimName(w, DimOf(w, b.Key)) },
+                        "config", ConfigFor(configs, memo, OwnersOf(b.Value, b.Key), PathTail(b.Key), BiomeConfigWords, "biome")));
+                foreach (string b in w.VanillaBiomes.OrderBy(x => x, StringComparer.Ordinal))
+                    biomes.Add(Obj("id", b, "name", NameOf(w, "biome", b), "mod", "Minecraft", "vanilla", true, "dims", new List<string> { DimName(w, DimOf(w, b)) }));
+
+                // Which biomes each shared group holds, for filtering by biome.
+                var groups = new Dictionary<string, object>(StringComparer.Ordinal);
+                foreach (string g in w.UsedGroups) groups["#" + g] = GroupMembers(w, g);
 
                 var known = new HashSet<string>(structures.Concat(mobs).Select(o => (string)((Dictionary<string, object>)o)["id"]), StringComparer.Ordinal);
                 string style = FeatureStyle();
                 return Obj("ok", true, "supported", style != null, "loader", LoaderName(), "gameRunning", GameRunning(GameDir()),
                     "jarFile", FeatureJarName, "jarExists", File.Exists(Path.Combine(modsDir, FeatureJarName)),
-                    "structures", structures, "mobs", mobs,
+                    "structures", structures, "mobs", mobs, "biomes", biomes, "groups", groups, "vanillaData", w.VanillaBiomes.Count > 0,
                     "missingOff", off.Structures.Concat(off.Mobs).Where(id => !known.Contains(id)).ToList());
             }
         }

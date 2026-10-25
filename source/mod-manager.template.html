@@ -508,6 +508,33 @@ button.chip[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 32%, 
 .f-spread { font: 400 12.5px/1.35 var(--font-mono); color: var(--muted); }
 .f-narrow { display: none; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
 .f-switch { display: flex; justify-content: flex-end; }
+.feat-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(210px, 250px); gap: 16px; align-items: start; }
+.feat-layout.no-side { grid-template-columns: minmax(0, 1fr); }
+.feat-main { min-width: 0; }
+.feat-side { position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow: auto; margin-top: 10px; }
+.bf-list { display: grid; gap: 1px; margin-top: 8px; }
+.bf-dim { margin: 10px 0 4px; font: 600 11px/1 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.bf-dim:first-child { margin-top: 2px; }
+.bf-item { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 5px 7px; font-size: 13px; text-align: left; color: var(--ink); background: none; border: 0; border-radius: 4px; cursor: pointer; }
+.bf-item:hover { background: var(--sunken); }
+.bf-item[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+.bf-item .k { font: 500 12px/1 var(--font-mono); color: var(--muted); }
+.bf-name { min-width: 0; overflow-wrap: anywhere; }
+.feat-list.is-biomes { --cols: minmax(0, 1.4fr) minmax(0, 1fr) 100px 96px 72px 84px; }
+.f-num { display: flex; justify-content: flex-end; }
+.f-count { padding: 3px 8px; font: 600 13px/1.2 var(--font-mono); color: var(--accent-fg); background: none; border: 1px solid transparent; border-radius: 4px; cursor: pointer; }
+.f-count:hover { border-color: var(--line); background: var(--sunken); }
+.f-count.none { color: var(--muted); font-weight: 400; cursor: default; }
+.chip.cfg-link { --c: var(--accent-fg); display: inline-flex; align-items: center; gap: 4px; font-weight: 500; cursor: pointer; }
+.chip.cfg-link:hover { background: color-mix(in srgb, var(--c) 22%, transparent); }
+button.chip.biome { cursor: pointer; }
+button.chip.biome:hover { background: color-mix(in srgb, var(--c) 22%, transparent); }
+.chip.biome.group.hit { border-style: solid; border-width: 1.5px; }
+button.chip.biome[aria-pressed="true"] { border-style: solid; border-width: 1.5px; background: color-mix(in srgb, var(--c) 28%, transparent); }
+@media (max-width: 1100px) {
+  .feat-layout { grid-template-columns: minmax(0, 1fr); }
+  .feat-side { position: static; order: -1; max-height: 260px; margin-top: 0; }
+}
 .chip.biome { --c: var(--c-worldgen); font-weight: 500; }
 .chip.biome.group { border-style: dashed; }
 .chip.biome.all { --c: var(--accent-fg); }
@@ -516,7 +543,10 @@ button.chip.more { cursor: pointer; }
 .off-badge { --c: var(--warn); border-style: solid; }
 @media (max-width: 900px) {
   .feat-list { --cols: 22px minmax(0, 1fr) 34px; }
-  .feat-list .list-head .h-feat, .f-mod, .f-dims, .f-spread { display: none; }
+  .feat-list .list-head .h-feat, .f-mod, .f-dims, .f-spread, .f-mobs, .f-cfg { display: none; }
+  .feat-list.is-biomes { --cols: minmax(0, 1fr) 72px; }
+  .biome-row .f-main { grid-column: 1; grid-row: 1; }
+  .biome-row .f-num { grid-column: 2; grid-row: 1; }
   .feat-row .c-check { grid-column: 1; grid-row: 1; }
   .f-main { grid-column: 2; grid-row: 1; }
   .f-switch { grid-column: 3; grid-row: 1; }
@@ -1448,9 +1478,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     <div class="seg-control subnav" id="feat-kinds" role="group" aria-label="Kind of feature">
       <button type="button" data-kind="structures" aria-pressed="true">Structures<span class="k" id="feat-n-structures"></span></button>
       <button type="button" data-kind="mobs" aria-pressed="false">Mobs<span class="k" id="feat-n-mobs"></span></button>
+      <button type="button" data-kind="biomes" aria-pressed="false">Biomes<span class="k" id="feat-n-biomes"></span></button>
     </div>
     <p class="lead feat-lead" id="feat-lead"></p>
     <div class="feat-notes" id="feat-notes"></div>
+    <div class="feat-layout" id="feat-layout">
+    <div class="feat-main">
     <div class="toolbar feat-toolbar" role="search">
       <label class="search">
         <span data-icon="search" data-size="15"></span>
@@ -1462,7 +1495,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <select id="feat-sort" class="sort-pick" aria-label="Sort by" title="Sort the list (the column headings sort too)"></select>
       <div class="selection-bar" id="feat-selbar" role="region" aria-label="Selected features"></div>
     </div>
-    <div class="list feat-list" role="table" aria-label="Features" aria-multiselectable="true">
+    <div class="list feat-list" id="feat-list" role="table" aria-label="Features" aria-multiselectable="true">
       <div class="list-head" role="row" id="feat-head"></div>
       <div id="feat-rows" role="rowgroup"></div>
       <div class="empty" id="feat-empty" hidden>
@@ -1470,8 +1503,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <button class="btn" type="button" id="feat-clear">Clear filters</button>
       </div>
     </div>
+    </div>
+    <aside class="panel feat-side" id="feat-side" aria-label="Filter by biome" hidden></aside>
+    </div>
     <p class="foot">
-      <span>Click a row to select it, <kbd>Shift</kbd>+click for a range. The switch turns one on or off.</span>
+      <span id="feat-foot-pick">Click a row to select it, <kbd>Shift</kbd>+click for a range. The switch turns one on or off.</span>
       <span>What's off is kept in <code>mod-manager-feature-toggles.jar</code>, a small data-only mod in the mods folder. Changes apply the next time the game starts.</span>
     </p>
   </section>
@@ -4808,20 +4844,22 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     structures: { one: "structure", many: "structures", spread: "Spacing", none: "Nowhere",
       lead: "The structures your mods add, from their data, with the biomes they generate in. Turning one off stops it generating in chunks made from then on; any already built stay." },
     mobs: { one: "mob", many: "mobs", spread: "Spawning", none: "Not in its data",
-      lead: "The mobs your mods add and where they spawn by themselves. Turning one off stops its natural spawns everywhere; spawners, structures and spawn eggs still make it. A mod's extra spawns of a vanilla mob have their own row, which turns off only those." }
+      lead: "The mobs your mods add and where they spawn by themselves. Turning one off stops its natural spawns everywhere; spawners, structures and spawn eggs still make it. A mod's extra spawns of a vanilla mob have their own row, which turns off only those." },
+    biomes: { one: "biome", many: "biomes", none: "—",
+      lead: "Every biome in the game, the mods' and Minecraft's, with how many of the mods' structures and mobs turn up in each: click a number to see them. Biomes have no switch here, since mods place them in the world with their own code. Where a mod's config can turn a biome off or change how often it appears, Config opens that setting." }
   };
   var DIM_ORDER = ["Overworld", "Nether", "End"];
-  function featDefaults() { return { q: "", status: "all", dim: "all", mod: "", sort: "name", dir: 1 }; }
-  var feat = { kind: "structures", data: null, loading: null, error: null, busy: {}, sel: {}, anchor: null, expanded: {}, shown: [],
-    f: { structures: featDefaults(), mobs: featDefaults() } };
+  function featDefaults() { return { q: "", status: "all", dim: "all", mod: "", sort: "name", dir: 1, biomes: [] }; }
+  var feat = { kind: "structures", data: null, loading: null, error: null, busy: {}, sel: {}, anchor: null, expanded: {}, shown: [], sideQ: "", biomeInfo: {},
+    f: { structures: featDefaults(), mobs: featDefaults(), biomes: featDefaults() } };
   (function () {
     try {
       var s = JSON.parse(localStorage.getItem("mmm.features") || "null");
       if (!s) return;
-      if (s.kind === "mobs") feat.kind = "mobs";
-      ["structures", "mobs"].forEach(function (k) {
+      if (FEAT_KINDS[s.kind]) feat.kind = s.kind;
+      Object.keys(FEAT_KINDS).forEach(function (k) {
         var saved = s.f && s.f[k];
-        if (saved) ["status", "dim", "mod", "sort", "dir"].forEach(function (x) { if (saved[x] != null) feat.f[k][x] = saved[x]; });
+        if (saved) ["status", "dim", "mod", "sort", "dir", "biomes"].forEach(function (x) { if (saved[x] != null) feat.f[k][x] = saved[x]; });
       });
     } catch (e) {}
   })();
@@ -4836,7 +4874,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (feat.loading) return feat.loading;
     var job = feat.data ? null : startJob("Reading the mods' structures and mobs");
     renderFeatures();
-    feat.loading = api("GET", "/api/features").then(function (d) { feat.data = d; feat.error = null; }, function (e) { feat.error = e.message; })
+    feat.loading = api("GET", "/api/features").then(function (d) { featPrep(d); feat.data = d; feat.error = null; }, function (e) { feat.error = e.message; })
       .then(function () {
         feat.loading = null;
         if (job) job.end(feat.error ? "failed: " + feat.error : "done");
@@ -4849,14 +4887,41 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function featMod(r) { var m = model && model.byKey[r.key]; return (m && m.name) || r.mod || prettify(r.file); }
   function featDimKey(d) { return DIM_ORDER.indexOf(d) >= 0 ? d : "Other"; }
   function featHay(r) {
-    if (!r.hay) r.hay = [r.name, r.id, featMod(r), r.file, r.dims.join(" "), r.biomes.map(function (b) { return b.name + " " + b.id; }).join(" "), r.vanilla ? "vanilla extra spawns" : ""].join(" ").toLowerCase();
+    if (!r.hay) r.hay = [r.name, r.id, featMod(r), r.file || "", r.dims.join(" "), (r.biomes || []).map(function (b) { return b.name + " " + b.id; }).join(" "),
+      r.vanilla ? (r.biomes ? "vanilla extra spawns" : "vanilla minecraft") : ""].join(" ").toLowerCase();
     return r.hay;
   }
+  // Each structure's and mob's biomes as a set of ids (shared groups opened up, "every biome but" worked out), for
+  // filtering by biome; and each biome's count of structures and mobs.
+  function featPrep(d) {
+    var all = d.biomes.map(function (b) { return b.id; });
+    var info = {};
+    d.biomes.forEach(function (b) { info[b.id] = b; b.nStructures = 0; b.nMobs = 0; });
+    var open = function (list, into) {
+      (list || []).forEach(function (b) { (b.group ? d.groups[b.id] || [] : [b.id]).forEach(function (x) { into[x] = true; }); });
+      return into;
+    };
+    ["structures", "mobs"].forEach(function (k) {
+      d[k].forEach(function (r) {
+        var ids = {};
+        if (r.allBiomes) { var except = open(r.except, {}); all.forEach(function (x) { if (!except[x]) ids[x] = true; }); }
+        else open(r.biomes, ids);
+        r.inSet = ids;
+        r.inIds = Object.keys(ids);
+        r.inIds.forEach(function (x) { if (info[x]) info[x][k === "structures" ? "nStructures" : "nMobs"]++; });
+      });
+    });
+    feat.biomeInfo = info;
+  }
+  function featBiomeName(id) { var b = feat.biomeInfo[id]; return b ? b.name : prettify(id.replace(/^[^:]*:/, "")); }
   // skip leaves one filter out, for the counts beside that filter's own buttons. A selected row stays in the list
   // (turning it off doesn't make it vanish while "On" is picked); it goes as soon as it's deselected.
   function featMatches(r, f, skip) {
     if (!skip && feat.sel[r.id]) return true;
-    if (skip !== "status" && f.status !== "all" && (f.status === "off") !== !!r.off) return false;
+    if (skip !== "status" && f.status !== "all") {
+      if (feat.kind === "biomes" ? (f.status === "vanilla") !== !!r.vanilla : (f.status === "off") !== !!r.off) return false;
+    }
+    if (skip !== "biome" && f.biomes.length && feat.kind !== "biomes" && !f.biomes.some(function (id) { return r.inSet && r.inSet[id]; })) return false;
     if (skip !== "dim" && f.dim !== "all") {
       if (f.dim === "none" ? r.dims.length > 0 : !r.dims.some(function (d) { return featDimKey(d) === f.dim; })) return false;
     }
@@ -4868,6 +4933,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     return true;
   }
   function featSpreadValue(r) {
+    if (feat.kind === "biomes") return -(r.nStructures || 0); // most first
     if (feat.kind === "structures") return r.spacing == null ? null : r.spacing;
     if (!r.spawns || !r.spawns.length) return null;
     return -r.spawns.reduce(function (n, s) { return n + (s.weight || 0); }, 0); // most common first
@@ -4885,6 +4951,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (x == null || y == null) return x == null && y == null ? byName(a, b) : x == null ? 1 : -1; // unknown last, either way round
       return (x - y) * dir || byName(a, b);
     };
+    else if (f.sort === "mobs") cmp = function (a, b) { return (b.nMobs || 0) - (a.nMobs || 0) || byName(a, b); };
     return rows.slice().sort(function (a, b) { return f.sort === "spread" ? cmp(a, b) : cmp(a, b) * dir; });
   }
   function setFeatSort(key) {
@@ -4924,9 +4991,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var rows = featRowsOf(kind);
     // Filters, each with how many it would show given the others.
     var countFor = function (skip, test) { return rows.filter(function (r) { return featMatches(r, f, skip) && test(r); }).length; };
-    featSeg($("feat-status"), [["all", "All", null, d ? countFor("status", function () { return true; }) : null],
-      ["on", "On", null, d ? countFor("status", function (r) { return !r.off; }) : null],
-      ["off", "Off", null, d ? countFor("status", function (r) { return r.off; }) : null]], f.status,
+    var statuses = kind === "biomes"
+      ? [["all", "All"], ["mods", "From mods", function (r) { return !r.vanilla; }], ["vanilla", "Minecraft's", function (r) { return r.vanilla; }]]
+      : [["all", "All"], ["on", "On", function (r) { return !r.off; }], ["off", "Off", function (r) { return r.off; }]];
+    featSeg($("feat-status"), statuses.map(function (s) { return [s[0], s[1], null, d ? countFor("status", s[2] || function () { return true; }) : null]; }), f.status,
       function (v) { f.status = v; saveFeatPrefs(); renderFeatures(); });
     var dims = [["all", "Any dimension"]];
     DIM_ORDER.concat(["Other", "none"]).forEach(function (k) {
@@ -4942,11 +5010,16 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     modPick.value = f.mod;
     var sortPick = $("feat-sort");
     sortPick.replaceChildren(h("option", { value: "name" }, "Name"), h("option", { value: "mod" }, "Mod"), h("option", { value: "dim" }, "Dimension"),
-      h("option", { value: "spread" }, kind === "structures" ? "Most common" : "Spawn weight"));
+      h("option", { value: "spread" }, kind === "structures" ? "Most common" : kind === "mobs" ? "Spawn weight" : "Most structures"),
+      kind === "biomes" ? h("option", { value: "mobs" }, "Most mobs") : null);
+    if (kind !== "biomes" && f.sort === "mobs") f.sort = "name";
     sortPick.value = f.sort;
 
     var shown = featSorted(rows.filter(function (r) { return featMatches(r, f); }), f);
     feat.shown = shown;
+    $("feat-list").classList.toggle("is-biomes", kind === "biomes");
+    $("feat-foot-pick").hidden = kind === "biomes";
+    renderFeatSide(rows, f);
     renderFeatHead(shown);
     renderFeatSelBar(shown);
 
@@ -4964,8 +5037,52 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     $("feat-empty-text").textContent = rows.length ? "No " + K.many + " match these filters." : "None of the mods in this folder add " + K.many + " in their data.";
     if (!rows.length) $("feat-clear").hidden = true;
     var frag = document.createDocumentFragment();
-    shown.forEach(function (r) { frag.append(featRow(r, d)); });
+    shown.forEach(function (r) { frag.append(kind === "biomes" ? biomeRow(r) : featRow(r, d)); });
     box.append(frag);
+  }
+
+  // The biome list beside Structures and Mobs: click biomes to show only what turns up in them (any of those picked).
+  function renderFeatSide(rows, f) {
+    var side = $("feat-side"), d = feat.data, on = !!d && feat.kind !== "biomes";
+    $("feat-layout").classList.toggle("no-side", !on);
+    side.hidden = !on;
+    if (!on) return;
+    var counts = {};
+    rows.forEach(function (r) { if (featMatches(r, f, "biome")) r.inIds.forEach(function (id) { counts[id] = (counts[id] || 0) + 1; }); });
+    var q = feat.sideQ.toLowerCase();
+    var ids = Object.keys(counts).concat(f.biomes.filter(function (id) { return !counts[id]; }))
+      .filter(function (id) { return !q || (featBiomeName(id) + " " + id).toLowerCase().indexOf(q) >= 0 || f.biomes.indexOf(id) >= 0; });
+    var byDim = {};
+    ids.forEach(function (id) {
+      var b = feat.biomeInfo[id], dim = b && b.dims[0] ? featDimKey(b.dims[0]) : "Other";
+      (byDim[dim] = byDim[dim] || []).push(id);
+    });
+    var input = h("input", { type: "search", class: "tag-filter", placeholder: "Filter biomes", "aria-label": "Filter biomes", value: feat.sideQ, autocomplete: "off", spellcheck: "false",
+      oninput: function () { feat.sideQ = input.value; renderFeatSide(rows, f); var again = $("feat-side").querySelector("input"); again.focus(); again.setSelectionRange(again.value.length, again.value.length); } });
+    var list = h("div", { class: "bf-list" });
+    DIM_ORDER.concat(["Other"]).forEach(function (dim) {
+      var group = byDim[dim];
+      if (!group) return;
+      group.sort(function (a, b) { return (counts[b] || 0) - (counts[a] || 0) || featBiomeName(a).localeCompare(featBiomeName(b)); });
+      list.append(h("div", { class: "bf-dim" }, dim));
+      group.forEach(function (id) {
+        var picked = f.biomes.indexOf(id) >= 0;
+        list.append(h("button", { type: "button", class: "bf-item", "aria-pressed": String(picked), title: id,
+          onclick: function () { toggleFeatBiome(id); } }, h("span", { class: "bf-name" }, featBiomeName(id)), h("span", { class: "k" }, String(counts[id] || 0))));
+      });
+    });
+    if (!ids.length) list.append(h("p", { class: "hint" }, q ? "No biome matches." : "None of these name a biome."));
+    side.replaceChildren(
+      h("h2", { class: "section-label" }, h("span", null, "Biomes"),
+        f.biomes.length ? h("button", { type: "button", class: "btn", onclick: function () { f.biomes = []; saveFeatPrefs(); renderFeatures(); } }, "Clear " + f.biomes.length) : null),
+      input, list,
+      h("p", { class: "hint", style: "margin:10px 0 0" }, "Click to show only the " + FEAT_KINDS[feat.kind].many + " found in a biome; pick several for any of them. Numbers count what the other filters leave."));
+  }
+  function toggleFeatBiome(id) {
+    var f = feat.f[feat.kind], i = f.biomes.indexOf(id);
+    if (i >= 0) f.biomes.splice(i, 1); else f.biomes.push(id);
+    saveFeatPrefs();
+    renderFeatures();
   }
 
   function renderFeatHead(shown) {
@@ -4976,6 +5093,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         h("button", { class: "sort-head", type: "button", "aria-pressed": String(on), onclick: function () { setFeatSort(key); } },
           label, " ", h("span", { class: "arrow", "aria-hidden": "true" }, on ? (f.dir > 0 ? "▲" : "▼") : "")));
     };
+    if (feat.kind === "biomes") {
+      $("feat-head").replaceChildren(head("name", "Biome"), head("mod", "Mod", "h-feat"), head("dim", "Dimension", "h-feat"),
+        head("spread", "Structures", "r"), head("mobs", "Mobs", "r h-feat"), h("span", { role: "columnheader", class: "r h-feat" }, "Config"));
+      return;
+    }
     $("feat-head").replaceChildren(
       h("span", { role: "columnheader" }, h("button", { class: "check", type: "button", role: "checkbox", disabled: !shown.length,
         "aria-checked": !picked ? "false" : picked === shown.length ? "true" : "mixed",
@@ -4999,6 +5121,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var locked = !connected || !feat.data || !feat.data.supported || feat.data.gameRunning;
     bar.classList.toggle("is-empty", !picked.length);
     var tail = h("span", { class: "count-label", style: "margin-left:auto" }, feat.data ? shown.length + " of " + featRowsOf(feat.kind).length + " shown" : "");
+    if (feat.kind === "biomes") {
+      bar.classList.add("is-empty");
+      bar.replaceChildren(h("span", { class: "sel-count" }, "Biomes", h("span", { class: "note" }, " · click a number to see the structures or mobs found there")), tail);
+      return;
+    }
     if (!picked.length) {
       bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click rows to act on several at once")), tail);
       return;
@@ -5043,21 +5170,41 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     return ["weight " + s[0].weight + " · " + s[0].min + (s[0].max !== s[0].min ? "–" + s[0].max : ""), tip];
   }
 
+  // A mod's config setting for this feature (or, failing that, its config file with settings of this kind).
+  function featConfigLink(r, label) {
+    var c = r.config;
+    if (!c) return null;
+    var where = c.path.replace(/\\/g, "/") + (c.key ? " at " + (c.section ? c.section + "." : "") + c.key : "");
+    return h("button", { type: "button", class: "chip cfg-link",
+      title: (c.general ? "Its mod's config has settings for its " + FEAT_KINDS[feat.kind].many + ": " : "Set in its mod's config: ") + where + (c.side === "server" ? " (the server's copy)" : "") + ". Click to open it.",
+      onclick: function (e) { e.stopPropagation(); openConfig(c.side, c.path, c.key != null ? cfgKey(c.section || "", c.key) : null); } },
+      smallIcon("gear"), label || "Config");
+  }
+
   function featBiomes(r) {
-    var chips = [], LIMIT = 4;
+    var chips = [], LIMIT = 4, f = feat.f[feat.kind];
     if (r.allBiomes) chips.push(h("span", { class: "chip biome all" }, r.except && r.except.length ? "Every biome except" : "Every biome"));
     var list = r.allBiomes ? (r.except || []) : r.biomes;
     var open = !!feat.expanded[r.id];
     (open ? list : list.slice(0, LIMIT)).forEach(function (b) {
-      chips.push(h("span", { class: "chip biome" + (b.group ? " group" : ""), title: b.group ? b.id + ": a shared biome group, so every biome in it (mods add to these too)" : b.id }, b.name));
+      if (b.group) {
+        var ids = feat.data.groups[b.id] || [], members = ids.map(featBiomeName);
+        var hit = f.biomes.some(function (id) { return ids.indexOf(id) >= 0; }); // holds a biome the list is filtered by
+        chips.push(h("span", { class: "chip biome group" + (hit ? " hit" : ""), title: b.id + ", a shared biome group" + (members.length ? ": " + members.slice(0, 30).join(", ") + (members.length > 30 ? ", …" : "") : " (no biomes in it here)") }, b.name));
+        return;
+      }
+      var picked = f.biomes.indexOf(b.id) >= 0;
+      chips.push(h("button", { type: "button", class: "chip biome", "aria-pressed": String(picked), title: b.id + (picked ? ". Click to stop filtering by it" : ". Click to show only what's found here"),
+        onclick: function (e) { e.stopPropagation(); toggleFeatBiome(b.id); } }, b.name));
     });
     if (list.length > LIMIT) chips.push(h("button", { type: "button", class: "chip more", title: open ? "Show fewer" : list.slice(LIMIT).map(function (b) { return b.name; }).join(", "),
       onclick: function (e) { e.stopPropagation(); if (open) delete feat.expanded[r.id]; else feat.expanded[r.id] = true; renderFeatures(); } }, open ? "fewer" : "+" + (list.length - LIMIT)));
     if (!chips.length) {
       var why = feat.kind === "structures" ? ["No biome in this pack", "Its biome list only names biomes from mods that aren't installed, so it never generates."]
-        : r.ownRules ? ["Set by the mod itself", "Its mod spawns it by its own rules (usually its config), not from its data, so the biomes aren't listed here. Turning it off still stops those spawns."]
+        : r.ownRules || (r.config && !r.config.general) ? ["Set by the mod itself", "Its mod spawns it by its own rules (usually its config), not from its data, so the biomes aren't listed here. Turning it off still stops those spawns."]
         : ["No natural spawns", "Nothing in the mods' data spawns it by itself. It may come from spawners, structures, eggs or its mod's code."];
       chips.push(h("span", { class: "none", title: why[1] }, why[0]));
+      if (feat.kind === "mobs" && r.config) chips.push(featConfigLink(r, "its config"));
     }
     return chips;
   }
@@ -5078,7 +5225,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       h("div", { class: "f-main", role: "cell" },
         h("div", { class: "f-name" }, r.name,
           r.vanilla ? h("span", { class: "badge", title: "Spawns of this vanilla mob that " + mod + " adds. Turning this off removes only these; the game's own spawns stay." }, "extra spawns") : null,
-          r.off ? h("span", { class: "badge off-badge" }, "off") : null),
+          r.off ? h("span", { class: "badge off-badge" }, "off") : null,
+          // A mob with no biomes listed has its config link in the biomes column instead.
+          feat.kind === "mobs" && !r.allBiomes && !r.biomes.length ? null : featConfigLink(r)),
         h("div", { class: "file" }, r.vanilla ? r.entity : r.id),
         h("div", { class: "f-narrow" }, mod + (r.dims.length ? " · " + r.dims.join(", ") : "") + (spread[0] !== "—" ? " · " + spread[0] : ""))),
       h("div", { class: "f-mod", role: "cell", title: r.file }, mod),
@@ -5086,6 +5235,33 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       h("div", { class: "f-biomes chips", role: "cell" }, featBiomes(r)),
       h("div", { class: "f-spread", role: "cell", title: spread[1] }, spread[0]),
       h("div", { class: "f-switch", role: "cell" }, sw));
+  }
+
+  // A biome: where it's from, and the numbers that open Structures or Mobs filtered to it.
+  function biomeRow(r) {
+    var jump = function (kind, n) {
+      if (!n) return h("span", { class: "f-count none" }, "0");
+      return h("button", { type: "button", class: "f-count", title: "Show the " + count(n, FEAT_KINDS[kind].one, FEAT_KINDS[kind].many) + " found in " + r.name,
+        onclick: function () {
+          var f = feat.f[kind];
+          f.q = ""; f.dim = "all"; f.mod = ""; f.status = "all"; f.biomes = [r.id];
+          feat.kind = kind; feat.sel = {}; feat.anchor = null;
+          saveFeatPrefs();
+          renderFeatures();
+          $("view-features").scrollIntoView({ block: "start" });
+        } }, String(n));
+    };
+    var mod = featMod(r);
+    return h("div", { class: "row feat-row biome-row", role: "row" },
+      h("div", { class: "f-main", role: "cell" },
+        h("div", { class: "f-name" }, r.name, r.vanilla ? null : featConfigLink(r)),
+        h("div", { class: "file" }, r.id),
+        h("div", { class: "f-narrow" }, mod + " · " + r.dims.join(", ") + " · " + count(r.nStructures, "structure", "structures") + ", " + count(r.nMobs, "mob", "mobs"))),
+      h("div", { class: "f-mod", role: "cell", title: r.file || "Minecraft itself" }, mod),
+      h("div", { class: "f-dims", role: "cell" }, r.dims.join(", ")),
+      h("div", { class: "f-num", role: "cell" }, jump("structures", r.nStructures)),
+      h("div", { class: "f-num f-mobs", role: "cell" }, jump("mobs", r.nMobs)),
+      h("div", { class: "f-num f-cfg", role: "cell" }, r.config ? featConfigLink(r, "Open") : h("span", { class: "hint" }, "—")));
   }
 
   function setFeatures(rows, on) {
@@ -5122,7 +5298,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   $("feat-sort").addEventListener("change", function () { feat.f[feat.kind].sort = this.value; feat.f[feat.kind].dir = 1; saveFeatPrefs(); renderFeatures(); });
   $("feat-clear").addEventListener("click", function () {
     var f = feat.f[feat.kind];
-    f.q = ""; f.status = "all"; f.dim = "all"; f.mod = "";
+    f.q = ""; f.status = "all"; f.dim = "all"; f.mod = ""; f.biomes = [];
     saveFeatPrefs();
     renderFeatures();
   });
@@ -9689,7 +9865,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var t = e.target;
     var typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
     if (!typing && currentView === "features") {
-      if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) { e.preventDefault(); feat.shown.forEach(function (r) { feat.sel[r.id] = true; }); renderFeatures(); }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) { if (feat.kind === "biomes") return; e.preventDefault(); feat.shown.forEach(function (r) { feat.sel[r.id] = true; }); renderFeatures(); }
       else if (e.key === "Escape" && Object.keys(feat.sel).length) { feat.sel = {}; feat.anchor = null; renderFeatures(); }
       else if (e.key === "/") { e.preventDefault(); $("feat-q").focus(); }
       return;
