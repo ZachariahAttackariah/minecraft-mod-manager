@@ -199,7 +199,7 @@ namespace MinecraftModManager
 
         // Modrinth's flags are required / optional / unsupported / unknown. Tags mean "must be installed
         // there", so a required side is in, and an optional one only when neither side is required
-        // (works on either, so both). Checked against ~770 of Roma's hand-tagged mods: 98% the same,
+        // (works on either, so both). Checked against ~770 hand-tagged mods: 98% the same,
         // where counting every optional side agreed 92%. New installs are tagged by the same rule.
         // serverExtras: a client mod whose server copy is optional (it adds features there: multiplayer
         // sync, server-side data) goes on both. The user's choice in the Detect dialog, on by default.

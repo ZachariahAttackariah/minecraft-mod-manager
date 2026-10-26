@@ -983,6 +983,8 @@ html[data-blocky="on"] .set-card h2 { font-family: var(--font-blocky); font-weig
 .pop button { display: block; width: 100%; padding: 7px 10px; font: 500 13.5px/1.2 var(--font-body); text-align: left; color: var(--ink); background: none; border: 0; border-radius: 4px; cursor: pointer; }
 .pop button:hover, .pop button:focus-visible { background: color-mix(in srgb, var(--ink) 8%, transparent); outline: none; }
 .pop button:disabled { opacity: 0.45; cursor: default; background: none; }
+.pop button.danger { color: var(--danger-fg); }
+.pop .menu-head { max-width: 320px; }
 .pop hr { margin: 4px 2px; border: 0; border-top: 1px solid var(--line); }
 .sg-more { padding: 7px 10px; border-top: 1px solid var(--line); }
 .sg-more .btn { padding: 4px 9px; font-size: 12.5px; }
@@ -1272,7 +1274,9 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
 .packs-status .warnbox { margin: 0; }
 .pack-row { display: grid; grid-template-columns: 20px 40px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--line); cursor: default; }
 .pack-row.is-selected { background: color-mix(in srgb, var(--accent) 9%, transparent); }
-.pack-selbar { margin: 4px 0 6px; user-select: none; }
+.pack-selbar { user-select: none; }
+.pack-toolbar { margin-top: 4px; }
+.pack-selslot { flex: 1 1 100%; min-width: 0; }
 .pack-row:last-child { border-bottom: 0; }
 .pack-row.is-off .pack-icon, .pack-row.is-off .pack-name { opacity: 0.55; }
 .pack-icon { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; image-rendering: pixelated; background: var(--sunken); }
@@ -1516,7 +1520,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     <aside class="panel feat-side" id="feat-side" aria-label="Filter by biome" hidden></aside>
     </div>
     <p class="foot">
-      <span id="feat-foot-pick">Click a row to select it, <kbd>Shift</kbd>+click for a range. The switch turns one on or off.</span>
+      <span id="feat-foot-pick">Click a row to select it, <kbd>Shift</kbd>+click for a range, <kbd>Ctrl</kbd>+<kbd>A</kbd> for everything shown. The switch turns one on or off; <kbd>Space</kbd> turns the selected ones. Right-click for more.</span>
       <span>What's off is kept in <code>mod-manager-feature-toggles.jar</code>, a small data-only mod in the mods folder. Changes apply the next time the game starts.</span>
     </p>
   </section>
@@ -1538,7 +1542,21 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <button class="btn primary" type="button" id="packs-update-all" hidden>Update all</button>
       </div>
       <div class="packs-status" id="packs-status"></div>
+      <!-- Like the Features list: search, on/off, sort, then the selection bar, all sticking to the top. -->
+      <div class="toolbar feat-toolbar pack-toolbar" id="packs-tools" role="search" hidden>
+        <label class="search">
+          <span data-icon="search" data-size="15"></span>
+          <input id="packs-q" type="search" placeholder="Filter packs  ( / )" aria-label="Filter packs" autocomplete="off" spellcheck="false">
+        </label>
+        <div class="seg-control" id="packs-show" role="group" aria-label="Filter by on or off"></div>
+        <select id="packs-sort" class="sort-pick" aria-label="Sort by" title="Sort the list"></select>
+        <div class="pack-selslot" id="packs-selbar"></div>
+      </div>
       <div id="packs-list"></div>
+      <div class="empty" id="packs-nomatch" hidden>
+        <p>No packs match these filters.</p>
+        <button class="btn" type="button" id="packs-clear">Clear filters</button>
+      </div>
     </div>
   </section>
 
@@ -2088,7 +2106,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     };
   }
 
-  // Mods tagged library (Roma's files call it "libraries") live in the Libraries tab; the Mods tab hides
+  // Mods tagged library (some tag files call it "libraries") live in the Libraries tab; the Mods tab hides
   // them. Everything on the page (list, counts, side chart, tag counts) works on the current tab's mods.
   var LIBRARY_TAGS = ["library", "libraries"];
   function isLibrary(r) { return r.tags.some(function (t) { return LIBRARY_TAGS.indexOf(t) >= 0; }); }
@@ -3315,6 +3333,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     ["packs-search", "packs-add", "packs-open", "packs-check"].forEach(function (id) { $(id).disabled = !connected || !d; });
     $("packs-update-all").hidden = true;
     if (!d) {
+      $("packs-tools").hidden = true;
+      $("packs-nomatch").hidden = true;
       list.append(h("p", { class: "packs-empty" }, packs.error || "Loading…"));
       return;
     }
@@ -3358,14 +3378,89 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       $("packs-update-all").disabled = !connected || d.gameRunning || d.serverRunning;
     }
 
-    var rows = d.packs.slice();
-    if (d.kind === "resourcepacks") rows.sort(function (a, b) { return (b.on >= 0) - (a.on >= 0) || (b.on - a.on) || packTitle(a).localeCompare(packTitle(b)); });
-    else if (d.kind === "shaderpacks") rows.sort(function (a, b) { return (b.on === true) - (a.on === true) || packTitle(a).localeCompare(packTitle(b)); });
-    else rows.sort(function (a, b) { return packTitle(a).localeCompare(packTitle(b)); });
-    if (!rows.length) list.append(h("p", { class: "packs-empty" }, "No " + PACK_NOUNS[d.kind] + " here yet. Search for some, add .zip files, or download one in a tab (it lands here by itself)."));
-    else list.append(packSelectionBar(d, rows));
+    // The search, the on/off filter and the sort, like the Features list's (the sort and filter are kept per kind).
+    var all = d.packs, f = packFilter(d.kind);
+    var tools = $("packs-tools");
+    tools.hidden = !all.length;
+    if ($("packs-q").value !== packs.q) $("packs-q").value = packs.q;
+    var show = $("packs-show");
+    show.replaceChildren();
+    var shows = [["all", "All"]];
+    if (d.kind !== "datapacks") shows.push(["on", d.kind === "shaderpacks" ? "In use" : "On"], ["off", d.kind === "shaderpacks" ? "Not in use" : "Off"]);
+    if (updates.length || f.show === "updates") shows.push(["updates", "Updates"]);
+    if (!shows.some(function (s) { return s[0] === f.show; })) f.show = "all";
+    shows.forEach(function (s) {
+      var n = all.filter(function (p) { return packMatches(p, d, "show") && packShowTest(p, d, s[0]); }).length;
+      show.append(h("button", { type: "button", "aria-pressed": String(f.show === s[0]), onclick: function () { f.show = s[0]; savePackPrefs(); renderPacks(); } },
+        s[1], h("span", { class: "k" }, String(n))));
+    });
+    show.hidden = shows.length < 2;
+    var sortPick = $("packs-sort");
+    var sorts = PACK_SORTS[d.kind];
+    if (!sorts.some(function (s) { return s[0] === f.sort; })) f.sort = sorts[0][0];
+    sortPick.replaceChildren.apply(sortPick, sorts.map(function (s) { return h("option", { value: s[0] }, s[1]); }));
+    sortPick.value = f.sort;
+
+    var rows = packSorted(all.filter(function (p) { return packMatches(p, d); }), d.kind, f.sort);
     packs.rows = rows;
+    var slot = $("packs-selbar");
+    slot.replaceChildren();
+    if (!all.length) list.append(h("p", { class: "packs-empty" }, "No " + PACK_NOUNS[d.kind] + " here yet. Search for some, add .zip files, or download one in a tab (it lands here by itself)."));
+    else slot.append(packSelectionBar(d, rows));
+    $("packs-nomatch").hidden = !all.length || rows.length > 0;
     rows.forEach(function (p) { list.append(packRow(d, p)); });
+  }
+
+  // Filters and sort per kind, remembered like the Features list's (the search isn't).
+  var PACK_SORTS = {
+    resourcepacks: [["auto", "Load order"], ["name", "Name"], ["added", "Newest"], ["size", "Largest"]],
+    shaderpacks: [["auto", "In use first"], ["name", "Name"], ["added", "Newest"], ["size", "Largest"]],
+    datapacks: [["name", "Name"], ["added", "Newest"], ["size", "Largest"]]
+  };
+  packs.q = "";
+  packs.f = {};
+  (function () {
+    try {
+      var s = JSON.parse(localStorage.getItem("mmm.packs") || "null");
+      if (!s) return;
+      if (PACK_NOUNS[s.kind]) packs.kind = s.kind;
+      if (s.f && typeof s.f === "object") Object.keys(PACK_NOUNS).forEach(function (k) {
+        var x = s.f[k];
+        if (x && typeof x.show === "string" && typeof x.sort === "string") packs.f[k] = { show: x.show, sort: x.sort };
+      });
+    } catch (e) {}
+  })();
+  function packFilter(kind) { return packs.f[kind] || (packs.f[kind] = { show: "all", sort: PACK_SORTS[kind][0][0] }); }
+  function savePackPrefs() {
+    try { localStorage.setItem("mmm.packs", JSON.stringify({ kind: packs.kind, f: packs.f })); } catch (e) {}
+  }
+  function packIsOn(p, d) { return d.kind === "resourcepacks" ? p.on >= 0 : d.kind === "shaderpacks" ? p.on === true : true; }
+  function packShowTest(p, d, show) {
+    if (show === "on") return packIsOn(p, d);
+    if (show === "off") return !packIsOn(p, d);
+    if (show === "updates") return !!(p.modrinth && p.modrinth.update);
+    return true;
+  }
+  // skip leaves the on/off filter out, for the counts beside its buttons. A selected pack stays in the list
+  // (turning it off doesn't make it vanish while "On" is picked), as in Features.
+  function packMatches(p, d, skip) {
+    var f = packFilter(d.kind);
+    if (!skip && packSel(d)[p.name]) return true;
+    if (skip !== "show" && !packShowTest(p, d, f.show)) return false;
+    if (packs.q) {
+      var hay = (packTitle(p) + " " + p.name + " " + (p.description || "") + " " + (p.modrinth && p.modrinth.slug || "")).toLowerCase();
+      if (!packs.q.toLowerCase().split(/\s+/).every(function (w) { return !w || hay.indexOf(w) >= 0; })) return false;
+    }
+    return true;
+  }
+  function packSorted(rows, kind, sort) {
+    var byName = function (a, b) { return packTitle(a).localeCompare(packTitle(b)); };
+    var cmp = byName;
+    if (sort === "auto" && kind === "resourcepacks") cmp = function (a, b) { return (b.on >= 0) - (a.on >= 0) || (b.on - a.on) || byName(a, b); };
+    else if (sort === "auto" && kind === "shaderpacks") cmp = function (a, b) { return (b.on === true) - (a.on === true) || byName(a, b); };
+    else if (sort === "added") cmp = function (a, b) { return String(b.modified || "").localeCompare(String(a.modified || "")) || byName(a, b); };
+    else if (sort === "size") cmp = function (a, b) { return (b.size || 0) - (a.size || 0) || byName(a, b); };
+    return rows.slice().sort(cmp);
   }
 
   // ---- Selecting packs, like mods: a box on each row, one in the bar for all, and actions for the picked ones ----
@@ -3407,10 +3502,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         else rows.forEach(function (p) { sel[p.name] = true; });
         renderPacks();
       } });
-    var bar = h("div", { class: "selection-bar pack-selbar sticky-bar" + (picked.length ? "" : " is-empty"), role: "region", "aria-label": "Selected " + PACK_NOUNS[d.kind] }, all);
+    var bar = h("div", { class: "selection-bar pack-selbar" + (picked.length ? "" : " is-empty"), role: "region", "aria-label": "Selected " + PACK_NOUNS[d.kind] }, all);
     var noun = function (n) { return count(n, PACK_NOUNS[d.kind].replace(/s$/, ""), PACK_NOUNS[d.kind]); };
+    var tail = h("span", { class: "count-label", style: "margin-left:auto" }, rows.length + " of " + d.packs.length + " shown");
     if (!picked.length) {
-      bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · tick packs to act on several at once")));
+      bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click packs to act on several at once")), tail);
       return bar;
     }
     var turnOn = d.kind === "resourcepacks" ? picked.filter(function (p) { return p.on < 0; }) : [];
@@ -3423,7 +3519,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         turnOn.length ? btn("Turn on " + turnOn.length, function () { setResourcePacks(turnOn, true); }, "", { disabled: locked }) : null,
         turnOff.length ? btn("Turn off " + turnOff.length, function () { setResourcePacks(turnOff, false); }, "", { disabled: locked }) : null,
         btn("Delete " + picked.length + "…", function () { askDeletePacks(d, picked); }, "danger-outline", { disabled: locked }),
-        h("button", { type: "button", class: "linkish", title: "Clear selection", onclick: function () { packs.sel = {}; renderPacks(); } }, "Clear")));
+        h("button", { type: "button", class: "linkish", title: "Clear selection", onclick: function () { packs.sel = {}; renderPacks(); } }, "Clear")), tail);
     return bar;
   }
 
@@ -3437,8 +3533,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       });
     });
     packAction(names, chain, function () {
-      toast((done ? (on ? "Turned on " : "Turned off ") + count(done, "resource pack", "resource packs") + ". It applies the next time the game starts." : "") +
-        (failed.length ? " " + failed.join(" ") : ""));
+      var msg = (done ? (on ? "Turned on " : "Turned off ") + count(done, "resource pack", "resource packs") + ". It applies the next time the game starts." : "") +
+        (failed.length ? " " + failed.join(" ") : "");
+      // Undo, as in the Mods list, where it's exact: turning packs on again would put them on top of the others.
+      if (on && done && !failed.length) toast(msg, "Undo", function () { setResourcePacks(list, false); });
+      else toast(msg);
     });
   }
 
@@ -3483,7 +3582,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var picked = !!packSel(d)[p.name];
     var check = h("button", { type: "button", class: "check", role: "checkbox", "aria-checked": String(picked), "aria-label": "Select " + packTitle(p),
       onclick: function (e) { e.stopPropagation(); togglePack(d, p, e.shiftKey); } });
-    return h("div", { class: "pack-row" + (off ? " is-off" : "") + (picked ? " is-selected" : ""), "aria-busy": busyNow ? "true" : null,
+    return h("div", { class: "pack-row" + (off ? " is-off" : "") + (picked ? " is-selected" : ""), "data-name": p.name, "aria-busy": busyNow ? "true" : null,
       // A click on the row (not on its buttons or links) picks it too; Shift picks a range.
       onmousedown: function (e) { if (e.shiftKey) e.preventDefault(); },
       onclick: function (e) { if (!e.target.closest("button, a, select, input")) togglePack(d, p, e.shiftKey); } },
@@ -3519,12 +3618,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
   function setResourcePack(p, on) {
     packAction([p.name], api("POST", "/api/packs/resource", { name: p.name, on: on }), function () {
-      toast((on ? "Turned on " : "Turned off ") + packTitle(p) + ". It applies the next time the game starts.");
+      var msg = (on ? "Turned on " : "Turned off ") + packTitle(p) + ". It applies the next time the game starts.";
+      // Undo only where it's exact: turning a pack back on would put it on top of the others, not where it was.
+      if (on) toast(msg, "Undo", function () { setResourcePack(p, false); }); else toast(msg);
     });
   }
   function setShader(name) {
+    var d = packs.data, was = d && d.kind === "shaderpacks" ? d.packs.filter(function (p) { return p.on === true; })[0] : null;
+    var before = was ? was.name : null;
     packAction(name ? [name] : [], api("POST", "/api/packs/shader", { name: name }), function () {
-      toast(name ? "The game will use " + name.replace(/\.zip$/i, "") + " next time it starts." : "Shaders are off from the next start.");
+      var msg = name ? "The game will use " + name.replace(/\.zip$/i, "") + " next time it starts." : "Shaders are off from the next start.";
+      if (d && d.kind === "shaderpacks" && before !== name) toast(msg, "Undo", function () { setShader(before); }); else toast(msg);
     });
   }
   function updatePacks(names) {
@@ -3589,9 +3693,57 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (packs.kind === b.getAttribute("data-kind")) return;
       packs.kind = b.getAttribute("data-kind");
       packs.data = null;
+      packs.q = "";
+      savePackPrefs();
       loadPacks(false);
     });
   });
+  $("packs-q").addEventListener("input", function () { packs.q = this.value.trim(); renderPacks(); });
+  $("packs-q").addEventListener("keydown", function (e) { if (e.key === "Escape" && this.value) { e.stopPropagation(); this.value = ""; packs.q = ""; renderPacks(); } });
+  $("packs-sort").addEventListener("change", function () { packFilter(packs.kind).sort = this.value; savePackPrefs(); renderPacks(); });
+  $("packs-clear").addEventListener("click", function () { packs.q = ""; packFilter(packs.kind).show = "all"; savePackPrefs(); renderPacks(); });
+
+  // Right-click a pack for what can be done with it (or with all the selected ones, when it's one of them).
+  function packMenu(p, x, y, focusEl) {
+    var d = packs.data;
+    if (!d || d.kind !== packs.kind) return;
+    var sel = packSel(d);
+    if (!sel[p.name]) {
+      packs.sel = {}; packs.sel[p.name] = true; packs.anchor = p.name;
+      renderPacks();
+      focusEl = document.querySelector('#packs-list .pack-row[data-name="' + cssEscape(p.name) + '"] .check') || focusEl;
+    }
+    var picked = selectedPacks(d), single = picked.length === 1, one = picked[0];
+    var locked = !connected || d.gameRunning || d.serverRunning;
+    var noun = function (n) { return count(n, PACK_NOUNS[d.kind].replace(/s$/, ""), PACK_NOUNS[d.kind]); };
+    var updatable = picked.filter(function (x) { return x.modrinth && x.modrinth.update; });
+    var items = [];
+    if (updatable.length) items.push([single ? "Update to " + one.modrinth.update.versionNumber : "Update " + updatable.length, function () { updatePacks(updatable.map(function (x) { return x.name; })); }, locked]);
+    if (d.kind === "resourcepacks") {
+      var turnOn = picked.filter(function (x) { return x.on < 0; }), turnOff = picked.filter(function (x) { return x.on >= 0; });
+      if (turnOn.length) items.push([single ? "Turn on" : "Turn on " + turnOn.length, function () { if (single) setResourcePack(one, true); else setResourcePacks(turnOn, true); }, locked]);
+      if (turnOff.length) items.push([single ? "Turn off" : "Turn off " + turnOff.length, function () { if (single) setResourcePack(one, false); else setResourcePacks(turnOff, false); }, locked]);
+    }
+    if (d.kind === "shaderpacks" && single && d.shaderMod && !d.shaderModOff) {
+      if (one.on === true) items.push(["Turn shaders off", function () { setShader(null); }, locked]);
+      else items.push(["Use this shader pack", function () { setShader(one.name); }, locked]);
+    }
+    items.push(null);
+    if (single && one.modrinth && one.modrinth.slug) items.push(["Open on Modrinth", function () { openTab("https://modrinth.com/" + MODRINTH_PATH[d.kind] + "/" + encodeURIComponent(one.modrinth.slug)); }]);
+    items.push([single ? "Copy file name" : "Copy " + picked.length + " file names", function () {
+      copyText(picked.map(function (x) { return x.name; }).join("\n"), single ? "Copied " + one.name : "Copied " + picked.length + " file names");
+    }]);
+    items.push(["Open folder", function () { $("packs-open").click(); }]);
+    items.push(null);
+    items.push([single ? "Delete…" : "Delete " + picked.length + "…", function () { askDeletePacks(d, picked); }, locked, "danger"]);
+    if (!single) items.push(["Clear selection", function () { packs.sel = {}; renderPacks(); }]);
+    popMenu(null, items, { at: { x: x, y: y }, head: single ? packTitle(one) : noun(picked.length) + " selected", returnFocus: focusEl });
+  }
+  rowMenus($("packs-list"), function (t) {
+    var el = t.closest && t.closest(".pack-row");
+    var d = packs.data;
+    return el && d ? d.packs.filter(function (p) { return p.name === el.getAttribute("data-name"); })[0] || null : null;
+  }, packMenu);
   $("packs-search").addEventListener("click", function () { openSearch(packs.kind); });
   $("packs-open").addEventListener("click", function () {
     api("POST", "/api/packs/open", { kind: packs.kind, place: packs.places[packs.kind] || "" }).catch(function (e) { toast(e.message); });
@@ -4035,6 +4187,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var g = groupTargets(rows);
     var actions = h("div", { class: "menu-col menu-actions" }, h("div", { class: "menu-head" }, single ? rows[0].name : count(rows.length, "mod", "mods") + " selected"));
     if (single && rows[0].status !== "missing") actions.append(menuItem("Details…", "info", function () { openDetails(rows[0]); }));
+    // What it adds to the world, on the Features page (offered until the mods' data says it adds nothing).
+    if (single && rows[0].status !== "missing" && (!feat.data || ["structures", "mobs", "ores", "biomes"].some(function (k) {
+      return featRowsOf(k).some(function (x) { return x.key === rows[0].key; });
+    }))) actions.append(menuItem("Its structures, mobs and ores", "search", function () { showModFeatures(rows[0]); }));
     if (connected) {
       if (g.updatable.length) actions.append(menuItem(single ? "Update to " + rows[0].update.versionNumber : "Update " + g.updatable.length, "up", function () { updateMods(g.updatable); }));
       if (single && rows[0].update) actions.append(menuItem("Skip this update", "skip", function () { skipUpdate(rows[0], rows[0].update.versionId, rows[0].update.versionNumber); }));
@@ -4298,7 +4454,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         if (follow) pre.scrollTop = pre.scrollHeight;
       }, function () {}).then(function () { if (open) setTimeout(tick, gameBusy() ? 1000 : 3000); });
     };
-    var body = h("div", { class: "game-log-wrap" }, h("div", { class: "sync-tools" }, seg, find), pre);
+    // Copy, like the server console's: the lines the filters leave.
+    var copy = btn("Copy", function () {
+      var shown = lines.filter(keep);
+      copyText(shown.join("\n"), "Copied " + count(shown.length, "log line", "log lines"));
+    }, "", { title: "Copy the lines shown" });
+    var body = h("div", { class: "game-log-wrap" }, h("div", { class: "sync-tools" }, seg, find, copy), pre);
     openBig("Game log", (gameInfo.instance || "The game") + (gameBusy() ? " · " + (gameInfo.state === "starting" ? "starting" : "running") : "") + " · logs\\latest.log",
       body, [btn("Open the file", function () { api("POST", "/api/crash/open", { name: "latest.log" }).catch(function (e) { toast(e.message); }); }), btn("Close", closeBig)]);
     tick();
@@ -5134,7 +5295,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       return;
     }
     var ores = feat.kind === "ores";
-    $("feat-head").replaceChildren(
+    // (replaceChildren would write a left-out column as the text "null", so those are dropped first.)
+    var cols = [
       h("span", { role: "columnheader" }, h("button", { class: "check", type: "button", role: "checkbox", disabled: !shown.length,
         "aria-checked": !picked ? "false" : picked === shown.length ? "true" : "mixed",
         "aria-label": "Select all shown", title: picked && picked === shown.length ? "Clear selection" : "Select all " + shown.length + " shown",
@@ -5149,7 +5311,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       h("span", { role: "columnheader", class: "h-feat" }, "Biomes"),
       ores ? head("height", "Height", "h-feat") : null,
       head("spread", FEAT_KINDS[feat.kind].spread, "h-feat"),
-      h("span", { role: "columnheader", class: "r", title: "On or off" }, "On"));
+      h("span", { role: "columnheader", class: "r", title: "On or off" }, "On")];
+    $("feat-head").replaceChildren.apply($("feat-head"), cols.filter(Boolean));
   }
 
   function renderFeatSelBar(shown) {
@@ -5264,7 +5427,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       "aria-label": r.name + (r.extra ? " extra spawns" : "") + " on",
       title: d.gameRunning ? "Close the game first" : r.off ? "Off. Click to turn it on" : "On. Click to turn it off",
       onclick: function (e) { e.stopPropagation(); setFeatures([r], !!r.off); } }, h("span", { class: "sw", "aria-hidden": "true" }));
-    return h("div", { class: "row feat-row" + (picked ? " is-selected" : "") + (r.off ? " is-off" : ""), role: "row", "aria-selected": String(picked), "aria-busy": busyNow ? "true" : null,
+    return h("div", { class: "row feat-row" + (picked ? " is-selected" : "") + (r.off ? " is-off" : ""), role: "row", "data-id": r.id, "aria-selected": String(picked), "aria-busy": busyNow ? "true" : null,
         onmousedown: function (e) { if (e.shiftKey) e.preventDefault(); },
         onclick: function (e) { if (!e.target.closest("button, a, select, input")) featPick(r, e.shiftKey); } },
       h("div", { class: "c-check", role: "cell" }, h("button", { type: "button", class: "check", role: "checkbox", "aria-checked": String(picked), "aria-label": "Select " + r.name,
@@ -5291,14 +5454,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var jump = function (kind, n) {
       if (!n) return h("span", { class: "f-count none" }, "0");
       return h("button", { type: "button", class: "f-count", title: "Show the " + count(n, FEAT_KINDS[kind].one, FEAT_KINDS[kind].many) + " found in " + r.name,
-        onclick: function () {
-          var f = feat.f[kind];
-          f.q = ""; f.dim = "all"; f.mod = ""; f.status = "all"; f.source = "all"; f.biomes = [r.id];
-          feat.kind = kind; feat.sel = {}; feat.anchor = null;
-          saveFeatPrefs();
-          renderFeatures();
-          $("view-features").scrollIntoView({ block: "start" });
-        } }, String(n));
+        onclick: function () { featJumpBiome(kind, r.id); } }, String(n));
     };
     var mod = featMod(r), sw = r.setting, d = feat.data;
     var busyNow = !!feat.busy[r.id];
@@ -5308,7 +5464,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var toggle = h("button", { type: "button", class: "act sw-btn" + (r.off ? "" : " on"), role: "switch", "aria-checked": String(!r.off), "aria-label": r.name + " on",
       disabled: !sw || !connected || busyNow || d.gameRunning, title: swTitle,
       onclick: function () { setFeatures([r], !!r.off); } }, h("span", { class: "sw", "aria-hidden": "true" }));
-    return h("div", { class: "row feat-row biome-row" + (r.off ? " is-off" : "") + (sw ? "" : " no-switch"), role: "row", "aria-busy": busyNow ? "true" : null },
+    return h("div", { class: "row feat-row biome-row" + (r.off ? " is-off" : "") + (sw ? "" : " no-switch"), role: "row", "data-id": r.id, "aria-busy": busyNow ? "true" : null },
       h("div", { class: "f-main", role: "cell" },
         h("div", { class: "f-name" }, r.name, r.off ? h("span", { class: "badge off-badge" }, "off") : null, featConfigLink(r)),
         h("div", { class: "file" }, r.id),
@@ -5321,9 +5477,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       h("div", { class: "f-switch", role: "cell" }, toggle));
   }
 
-  function setFeatures(rows, on) {
-    var K = FEAT_KINDS[feat.kind], kind = feat.kind;
+  // kindArg: the kind the rows are (Undo may run after another kind is picked).
+  function setFeatures(rows, on, kindArg) {
+    var kind = kindArg || feat.kind, K = FEAT_KINDS[kind];
     var ids = rows.map(function (r) { return r.id; });
+    var undo = function () { setFeatures(rows, !on, kind); };
     ids.forEach(function (id) { feat.busy[id] = true; });
     renderFeatures();
     var had = feat.data && feat.data.jarExists;
@@ -5332,13 +5490,14 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var what = rows.length === 1 ? rows[0].name + (rows[0].extra ? "'s extra spawns" : "") : count(rows.length, K.one, K.many);
       if (kind === "biomes") {
         // Biomes switch in their mods' configs: new worlds (and new chunks, for most mods) go without them.
-        toast((res.changed ? (on ? "Turned on " : "Turned off ") + what + " in its mod's config (the game's copy, and the server's where it has one). It applies the next time the game starts, to land generated from then on." : "") +
-          (res.notes && res.notes.length ? " " + res.notes.join(" ") : ""));
+        var bmsg = (res.changed ? (on ? "Turned on " : "Turned off ") + what + " in its mod's config (the game's copy, and the server's where it has one). It applies the next time the game starts, to land generated from then on." : "") +
+          (res.notes && res.notes.length ? " " + res.notes.join(" ") : "");
+        if (res.changed) toast(bmsg, "Undo", undo); else toast(bmsg);
         return;
       }
       var when = kind === "mobs" ? " It applies the next time the game starts." : " It applies from the next game start, in chunks made after that.";
       var jar = !had && res.jarExists ? " The app keeps this in " + feat.data.jarFile + " in the mods folder." : had && !res.jarExists ? " Nothing is off now, so " + feat.data.jarFile + " was removed." : "";
-      toast((on ? "Turned on " : "Turned off ") + what + "." + when + jar);
+      toast((on ? "Turned on " : "Turned off ") + what + "." + when + jar, "Undo", undo);
     }, function (e) { toast(e.message); }).then(function () {
       ids.forEach(function (id) { delete feat.busy[id]; });
       return loadFeatures();
@@ -5365,6 +5524,88 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     saveFeatPrefs();
     renderFeatures();
   });
+
+  // Structures, mobs or ores found in one biome (a biome's numbers, and its right-click menu).
+  function featJumpBiome(kind, id) {
+    var f = feat.f[kind];
+    f.q = ""; f.dim = "all"; f.mod = ""; f.status = "all"; f.source = "all"; f.biomes = [id];
+    feat.kind = kind; feat.sel = {}; feat.anchor = null;
+    saveFeatPrefs();
+    renderFeatures();
+    $("view-features").scrollIntoView({ block: "start" });
+  }
+
+  // Right-click a row for what can be done with it, like a mod's (on the whole selection when it's part of it).
+  function featMenu(r, x, y, focusEl) {
+    var d = feat.data, kind = feat.kind, K = FEAT_KINDS[kind], f = feat.f[kind];
+    if (!d) return;
+    var rows = [r];
+    if (kind !== "biomes") {
+      if (!feat.sel[r.id]) {
+        feat.sel = {}; feat.sel[r.id] = true; feat.anchor = r.id;
+        renderFeatures();
+        focusEl = document.querySelector('#feat-rows .row[data-id="' + cssEscape(r.id) + '"] .check') || focusEl;
+      }
+      rows = featRowsOf(kind).filter(function (x) { return feat.sel[x.id]; });
+    }
+    var single = rows.length === 1, one = rows[0], items = [];
+    var locked = !connected || d.gameRunning;
+    if (kind === "biomes") {
+      if (one.setting) items.push([one.off ? "Turn on" : "Turn off", function () { setFeatures([one], !!one.off); }, locked]);
+      [["structures", "nStructures"], ["mobs", "nMobs"], ["ores", "nOres"]].forEach(function (k) {
+        if (one[k[1]]) items.push(["Show its " + count(one[k[1]], FEAT_KINDS[k[0]].one, FEAT_KINDS[k[0]].many), function () { featJumpBiome(k[0], one.id); }]);
+      });
+    } else {
+      var turnOn = rows.filter(function (x) { return x.off; }), turnOff = rows.filter(function (x) { return !x.off; });
+      locked = locked || !d.supported;
+      if (turnOff.length) items.push([single ? "Turn off" : "Turn off " + turnOff.length, function () { setFeatures(turnOff, false); }, locked]);
+      if (turnOn.length) items.push([single ? "Turn on" : "Turn on " + turnOn.length, function () { setFeatures(turnOn, true); }, locked]);
+    }
+    items.push(null);
+    if (single && one.config) items.push([one.config.general ? "Open its mod's config" : "Open its config setting", function () {
+      var c = one.config;
+      openConfig(c.side, c.path, c.key != null ? cfgKey(c.section || "", c.key) : null);
+    }]);
+    var m = single && one.key && model ? model.byKey[one.key] : null;
+    if (m && m.status !== "missing") items.push([m.name + " details…", function () { openDetails(m); }]);
+    if (single && f.mod !== featMod(one)) items.push(["Only " + K.many + " from " + featMod(one), function () {
+      f.mod = featMod(one); feat.sel = {}; feat.anchor = null; saveFeatPrefs(); renderFeatures();
+    }]);
+    items.push(null);
+    items.push([single ? "Copy name" : "Copy " + rows.length + " names", function () {
+      copyText(rows.map(function (x) { return x.name; }).join("\n"), single ? "Copied " + one.name : "Copied " + rows.length + " names");
+    }]);
+    items.push([single ? "Copy ID" : "Copy " + rows.length + " IDs", function () {
+      copyText(rows.map(function (x) { return x.extra ? x.entity : x.id; }).join("\n"), single ? "Copied " + (one.extra ? one.entity : one.id) : "Copied " + rows.length + " IDs");
+    }]);
+    if (!single) items.push(["Clear selection", function () { feat.sel = {}; feat.anchor = null; renderFeatures(); }]);
+    popMenu(null, items, { at: { x: x, y: y }, head: single ? one.name : count(rows.length, K.one, K.many) + " selected", returnFocus: focusEl });
+  }
+  rowMenus($("feat-rows"), function (t) {
+    var el = t.closest && t.closest(".row");
+    return el ? featRowsOf(feat.kind).filter(function (x) { return x.id === el.getAttribute("data-id"); })[0] || null : null;
+  }, featMenu);
+
+  // From a mod (its right-click menu): the Features page showing only what that mod adds, on the first
+  // kind that has any. Reads the mods' data first if it hasn't been yet.
+  function showModFeatures(m) {
+    var kinds = ["structures", "mobs", "ores", "biomes"];
+    var go = function () {
+      if (!feat.data) { toast(feat.error || "The mods' data couldn't be read."); return; }
+      var has = kinds.filter(function (k) { return featRowsOf(k).some(function (x) { return x.key === m.key; }); });
+      if (!has.length) { toast(m.name + " adds no structures, mobs, ores or biomes in its data."); return; }
+      has.forEach(function (k) {
+        var f = feat.f[k];
+        f.q = ""; f.status = "all"; f.source = "all"; f.dim = "all"; f.biomes = []; f.mod = m.name;
+      });
+      if (has.indexOf(feat.kind) < 0) feat.kind = has[0];
+      feat.sel = {}; feat.anchor = null;
+      saveFeatPrefs();
+      setView("features");
+      renderFeatures();
+    };
+    if (feat.data) go(); else loadFeatures().then(go);
+  }
 
   // ---------- Sections (Mods / Server / Snapshots / Cleanup) ----------
 
@@ -5981,8 +6222,22 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function paletteItems() {
     var items = [];
     var go = function (label, hint, fn, kind) { items.push({ label: label, hint: hint, fn: fn, kind: kind || "action" }); };
-    [["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["server", "Server"], ["snapshots", "Snapshots"], ["cleanup", "Cleanup"], ["settings", "Settings"]]
+    [["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["configs", "Configs"], ["server", "Server"], ["snapshots", "Snapshots"], ["cleanup", "Cleanup"], ["settings", "Settings"]]
       .forEach(function (v) { go("Go to " + v[1], "page", function () { setView(v[0]); }, "page"); });
+    // The pages within pages: Features' kinds, Packs' kinds and the Server's tabs.
+    Object.keys(FEAT_KINDS).forEach(function (k) {
+      var label = FEAT_KINDS[k].many.charAt(0).toUpperCase() + FEAT_KINDS[k].many.slice(1);
+      go("Go to " + label, "Features", function () { if (feat.kind !== k) { feat.kind = k; feat.sel = {}; feat.anchor = null; saveFeatPrefs(); } setView("features"); renderFeatures(); }, "page");
+    });
+    Object.keys(PACK_NOUNS).forEach(function (k) {
+      go("Go to " + PACK_NOUNS[k].charAt(0).toUpperCase() + PACK_NOUNS[k].slice(1), "Packs", function () {
+        if (packs.kind !== k) { packs.kind = k; packs.data = null; packs.q = ""; savePackPrefs(); }
+        setView("packs");
+      }, "page");
+    });
+    [["overview", "Overview"], ["console", "Console"], ["sync", "Mods & configs"], ["players", "Players"], ["settings", "Settings"], ["backups", "Backups"]].forEach(function (s) {
+      go("Go to Server " + s[1], "Server", function () { setView("server"); setSub(s[0]); }, "page");
+    });
     go("Add mods", "search Modrinth" + (server && server.curseforge ? " and CurseForge" : ""), function () { setView("mods"); openSearch(); });
     go("Check mods", "pre-launch check", function () { manualCheck(); });
     go("Check for updates", "", function () { runScan(true); });
@@ -6007,6 +6262,22 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         if (r.status !== "missing") go(r.name, r.file, function () { openDetails(r); }, "mod");
       });
     }
+    // Config files, once the Configs page has read them, and the features, once the Features page has.
+    if (cfg.files) cfg.files.files.forEach(function (f) {
+      go(f.path, "config" + (f.ownerName ? " · " + f.ownerName : ""), function () { openConfig(f.game ? "game" : "server", f.path); }, "config");
+    });
+    if (feat.data) ["structures", "mobs", "ores", "biomes"].forEach(function (k) {
+      featRowsOf(k).forEach(function (r) {
+        go(r.name, FEAT_KINDS[k].one + " · " + featMod(r), function () {
+          var f = feat.f[k];
+          f.q = r.name; f.status = "all"; f.source = "all"; f.dim = "all"; f.mod = ""; f.biomes = [];
+          feat.kind = k; feat.sel = {}; feat.anchor = null;
+          saveFeatPrefs();
+          setView("features");
+          renderFeatures();
+        }, "feature");
+      });
+    });
     return items;
   }
   function openPalette() {
@@ -6020,7 +6291,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var words = q.split(/\s+/).filter(Boolean);
       shown = all.filter(function (it) { var s = (it.label + " " + it.hint).toLowerCase(); return words.every(function (w) { return s.indexOf(w) >= 0; }); });
       // Exact starts first, then pages and actions before tags and mods.
-      var rank = { page: 0, action: 1, tag: 2, mod: 3 };
+      var rank = { page: 0, action: 1, tag: 2, mod: 3, config: 4, feature: 5 };
       shown.sort(function (a, b) {
         var sa = a.label.toLowerCase().indexOf(q) === 0 ? 0 : 1, sb = b.label.toLowerCase().indexOf(q) === 0 ? 0 : 1;
         return sa - sb || rank[a.kind] - rank[b.kind];
@@ -6031,7 +6302,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       shown.forEach(function (it, i) {
         list.append(h("button", { type: "button", class: "pal-item", role: "option", "aria-selected": String(i === at), tabindex: "-1",
             onmousemove: function () { if (at !== i) { at = i; draw(); } }, onclick: function () { run(it); } },
-          h("span", { class: "pal-kind " + it.kind }, it.kind === "mod" ? "mod" : it.kind === "tag" ? "tag" : it.kind === "page" ? "go" : "do"),
+          h("span", { class: "pal-kind " + it.kind }, it.kind === "mod" ? "mod" : it.kind === "tag" ? "tag" : it.kind === "page" ? "go" : it.kind === "config" ? "cfg" : it.kind === "feature" ? "feat" : "do"),
           h("span", { class: "pal-label" }, it.label), it.hint ? h("span", { class: "pal-hint" }, it.hint) : null));
       });
       if (!shown.length) list.append(h("p", { class: "search-empty" }, "Nothing matches."));
@@ -6056,19 +6327,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function closePalette() { if (palette) { palette.remove(); palette = null; } }
 
   var SHORTCUTS = [
-    ["Ctrl+K", "Command palette: jump to any mod, tag, page or action"],
-    ["/", "Search the mod list"],
+    ["Ctrl+K", "Command palette: jump to any mod, tag, page, config file, feature or action"],
+    ["/", "Search the page's list (Mods, Features, Packs, Configs, Snapshots)"],
     ["?", "This list"],
-    ["Click, Ctrl+click, Shift+click", "Select one mod, add or remove one, select a range"],
-    ["Ctrl+A", "Select every mod shown"],
-    ["↑ / ↓", "Move through the list (Shift extends the selection)"],
+    ["Click, Ctrl+click, Shift+click", "Select one mod, add or remove one, select a range (in Features, Packs and the server's mods a click adds or removes one)"],
+    ["Ctrl+A", "Select everything shown (Mods, Features, Packs)"],
+    ["↑ / ↓", "Move through the mod list (Shift extends the selection)"],
     ["Enter", "Details of the selected mod (double-click works too)"],
-    ["Space", "Turn the selected mods off, or on when they're all off"],
-    ["Delete", "Delete the selected mods"],
+    ["Space", "Turn the selected mods, features or resource packs off, or on when they're all off"],
+    ["Delete", "Delete the selected mods or packs"],
     ["Ctrl+click a tag", "Hide mods with that tag"],
-    ["Right-click", "A mod's actions and tags (selects it first)"],
+    ["Right-click", "Actions for a mod (and its tags), a feature, a pack or a server mod; selects it first"],
     ["#tag  -#tag", "In the search box: with / without a tag. Also is:off, is:update, is:new, is:pinned, is:noted, is:unneeded, side:client"],
-    ["Esc", "Close a dialog, or clear the selection"],
+    ["Esc", "Close a dialog or menu, or clear the selection"],
     ["Ctrl+Enter", "Save a note"],
     ["Ctrl+T / Ctrl+W", "New tab / close tab"],
     ["Ctrl+Tab, Ctrl+1…9", "Next tab, jump to a tab"],
@@ -7791,6 +8062,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (canSettings) head.append(btn(cfg.mode === "text" ? "Show as settings" : "Edit as text", function () {
       cfgLeave(function () { cfg.edits = {}; cfg.textDirty = false; cfg.text = d.text; cfg.mode = cfg.mode === "text" ? "settings" : "text"; renderConfigMain(); });
     }));
+    // Back to the mod it belongs to (a mod's details have its config files; this is the other way round).
+    var owner = !embed && f && f.owner && model ? model.rows.filter(function (r) { return r.modId === f.owner && r.status !== "missing"; })[0] : null;
+    if (owner) head.append(btn(owner.name + " details", function () { cfgLeave(function () { openDetails(owner); }); }, "", { title: "The mod this config belongs to" }));
     head.append(btn("Open in Notepad", function () { api("POST", "/api/open-file", { side: o.side, path: o.path, reveal: false }).catch(function (e) { toast(e.message); }); }),
       btn("Show in folder", function () { api("POST", "/api/open-file", { side: o.side, path: o.path, reveal: true }).catch(function (e) { toast(e.message); }); }));
     main.append(head);
@@ -8242,28 +8516,81 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     ]);
   }
 
-  // A small drop-down under a button: [label, fn, disabled] items, null for a divider.
-  var popEl = null;
-  function closePop() { if (popEl) { popEl.remove(); popEl = null; } }
-  function popMenu(anchor, items) {
+  // A small drop-down under a button: [label, fn, disabled, class] items, null for a divider. opts.at ({ x, y })
+  // opens it at a point instead (a right-click menu), and opts.head puts a heading on top, like the mods' menu.
+  var popEl = null, popReturn = null;
+  function closePop() {
+    if (!popEl) return;
+    var back = popReturn;
+    popEl.remove();
+    popEl = null;
+    popReturn = null;
+    if (back && document.contains(back)) back.focus({ preventScroll: true });
+  }
+  function popMenu(anchor, items, opts) {
     closePop();
-    var el = h("div", { class: "pop", role: "menu" });
+    opts = opts || {};
+    var el = h("div", { class: "pop", role: "menu", "aria-label": opts.head || null });
+    if (opts.head) el.append(h("div", { class: "menu-head" }, opts.head));
     items.forEach(function (it) {
-      if (!it) { el.append(h("hr")); return; }
-      el.append(h("button", { type: "button", role: "menuitem", disabled: !!it[2], onclick: function () { closePop(); it[1](); } }, it[0]));
+      if (!it) { if (el.lastChild && el.lastChild.tagName === "BUTTON") el.append(h("hr")); return; }
+      el.append(h("button", { type: "button", role: "menuitem", class: it[3] || null, disabled: !!it[2], onclick: function () { popReturn = null; closePop(); it[1](); } }, it[0]));
     });
+    if (el.lastChild && el.lastChild.tagName === "HR") el.lastChild.remove();
     document.body.append(el);
-    var r = anchor.getBoundingClientRect(), w = el.offsetWidth;
-    el.style.top = Math.max(8, Math.min(r.bottom + 4, window.innerHeight - el.offsetHeight - 8)) + "px";
-    el.style.left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)) + "px";
+    var w = el.offsetWidth, ht = el.offsetHeight;
+    if (opts.at) {
+      el.style.top = Math.max(8, Math.min(opts.at.y, window.innerHeight - ht - 8)) + "px";
+      el.style.left = Math.max(8, Math.min(opts.at.x, window.innerWidth - w - 8)) + "px";
+    } else {
+      var r = anchor.getBoundingClientRect();
+      el.style.top = Math.max(8, Math.min(r.bottom + 4, window.innerHeight - ht - 8)) + "px";
+      el.style.left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)) + "px";
+    }
     popEl = el;
+    popReturn = opts.returnFocus || null;
+    // Arrow keys move through it, like the mods' menu.
+    el.addEventListener("keydown", function (e) {
+      // Esc closes only the menu (not the selection behind it too).
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closePop(); return; }
+      var buttons = Array.prototype.slice.call(el.querySelectorAll("button:not([disabled])"));
+      var i = buttons.indexOf(document.activeElement);
+      if (!buttons.length) return;
+      if (e.key === "ArrowDown") { e.preventDefault(); buttons[(i + 1) % buttons.length].focus(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); buttons[(i - 1 + buttons.length) % buttons.length].focus(); }
+      else if (e.key === "Home") { e.preventDefault(); buttons[0].focus(); }
+      else if (e.key === "End") { e.preventDefault(); buttons[buttons.length - 1].focus(); }
+      else if (e.key === "Tab") { e.preventDefault(); buttons[(i + (e.shiftKey ? -1 : 1) + buttons.length) % buttons.length].focus(); }
+    });
     var first = el.querySelector("button:not([disabled])");
     if (first) first.focus();
   }
   document.addEventListener("mousedown", function (e) {
-    if (popEl && !popEl.contains(e.target) && !(e.target.closest && e.target.closest("[aria-haspopup=menu]"))) closePop();
+    if (popEl && !popEl.contains(e.target) && !(e.target.closest && e.target.closest("[aria-haspopup=menu]"))) { popReturn = null; closePop(); }
   }, true);
-  document.addEventListener("keydown", function (e) { if (popEl && e.key === "Escape") closePop(); });
+  document.addEventListener("keydown", function (e) { if (popEl && e.key === "Escape") { e.preventDefault(); closePop(); } });
+  window.addEventListener("resize", function () { popReturn = null; closePop(); });
+  window.addEventListener("blur", function () { popReturn = null; closePop(); });
+
+  // Right-click (or the menu key, or Shift+F10) on a list's rows opens its menu, the way the mods' rows do.
+  // rowOf(target) gives the row the event is on (or null); open(row, x, y, focusEl) builds the menu.
+  function rowMenus(container, rowOf, open) {
+    container.addEventListener("contextmenu", function (e) {
+      if (e.shiftKey) return; // Shift+right-click keeps the browser's own menu
+      var r = rowOf(e.target);
+      if (!r) return;
+      e.preventDefault();
+      open(r, e.clientX, e.clientY, e.target.closest(".row, .pack-row") && e.target.closest(".row, .pack-row").querySelector(".check"));
+    });
+    container.addEventListener("keydown", function (e) {
+      if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
+      var r = rowOf(e.target);
+      if (!r) return;
+      e.preventDefault();
+      var rect = e.target.getBoundingClientRect();
+      open(r, rect.left, rect.bottom + 4, e.target);
+    });
+  }
 
   // The server list in the header bar.
   function serverPicker(i) {
@@ -8490,9 +8817,14 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function startConsole() {
     if (srv.polling || !hasToken) return;
     srv.polling = true;
+    // Only the first ask comes straight back (with what's there); the rest wait for new lines. (Waiting on
+    // srv.seq alone asked ~16 times a second while a server had never printed anything.)
+    var first = true;
     (function loop() {
       if (currentView !== "server") { srv.polling = false; return; }
-      api("GET", "/api/server/console?after=" + srv.seq + "&wait=" + (srv.seq ? 1 : 0)).then(function (res) {
+      var wait = first ? 0 : 1;
+      first = false;
+      api("GET", "/api/server/console?after=" + srv.seq + "&wait=" + wait).then(function (res) {
         if (res.seq < srv.seq) { srv.lines = []; srv.seq = 0; $("console-out").replaceChildren(); }
         appendConsole(res.lines);
         srv.seq = res.seq;
@@ -8818,7 +9150,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // to keep it on the server whatever the sync says (Sync.cs), an on/off switch and delete for the server's copy;
   // a filter (all, kept, off); a selection with bulk actions; and Add mods (search, or .jar files) that installs
   // straight into the server's mods folder and keeps them.
-  var keptSel = {}, keptQ = "", keptFilter = "all", keptMenu = null;
+  var keptSel = {}, keptQ = "", keptFilter = "all", keptMenu = null, keptAnchor = null, keptShown = [], keptRedraw = null;
   var serverFileInput = h("input", { type: "file", multiple: true, accept: ".jar", hidden: true });
   document.body.append(serverFileInput);
   serverFileInput.addEventListener("change", function () {
@@ -8896,7 +9228,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // One jar in the server's mods folder (or a kept mod the folder no longer has).
   function serverRow(k, redraw) {
     var sel = !!keptSel[k.id], missing = k.state === "missing", off = k.state === "off";
-    var row = h("div", { class: "row" + (sel ? " is-selected" : "") + (off ? " is-disabled" : "") + (missing ? " is-missing" : ""), role: "row", "aria-selected": String(sel) },
+    var row = h("div", { class: "row" + (sel ? " is-selected" : "") + (off ? " is-disabled" : "") + (missing ? " is-missing" : ""), role: "row", "aria-selected": String(sel), "data-id": k.id,
+        onmousedown: function (e) { if (e.shiftKey) e.preventDefault(); } },
       h("div", { class: "c-check", role: "cell" }, h("button", { type: "button", class: "check", role: "checkbox", "aria-checked": String(sel), "aria-label": "Select " + k.name })),
       h("div", { class: "c-name", role: "cell" }, h("span", { class: "icon-wrap" }, keptIcon(k), off ? h("span", { class: "off-tag", title: "Turned off on the server" }, "off") : null),
         h("div", { class: "c-name-text" }, h("span", { class: "mod-name" }, k.name),
@@ -8917,10 +9250,49 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           onclick: function () { askDeleteServerMods([k]); } }, icon("trash"))));
     row.addEventListener("click", function (e) {
       if (e.target.closest(".c-actions")) return;
-      if (keptSel[k.id]) delete keptSel[k.id]; else keptSel[k.id] = true;
+      var i = keptShown.indexOf(k), a = -1;
+      for (var x = 0; x < keptShown.length; x++) if (keptShown[x].id === keptAnchor) a = x;
+      if (e.shiftKey && a >= 0 && i >= 0) {
+        // Shift: everything between the last picked mod and this one takes this one's new state, as in Features and Packs.
+        var on = !keptSel[k.id];
+        keptShown.slice(Math.min(a, i), Math.max(a, i) + 1).forEach(function (m) { if (on) keptSel[m.id] = true; else delete keptSel[m.id]; });
+      } else if (keptSel[k.id]) delete keptSel[k.id];
+      else keptSel[k.id] = true;
+      keptAnchor = k.id;
       redraw();
     });
     return row;
+  }
+
+  // Right-click a server mod for its actions (on the whole selection when it's part of it), like the mods' menu.
+  function keptRowMenu(k, x, y, focusEl) {
+    if (!keptSel[k.id]) {
+      keptSel = {}; keptSel[k.id] = true; keptAnchor = k.id;
+      if (keptRedraw) keptRedraw();
+      focusEl = document.querySelector('.kept-box .row[data-id="' + cssEscape(k.id) + '"] .check') || focusEl;
+    }
+    var picked = keptShown.filter(function (m) { return keptSel[m.id]; });
+    if (!picked.length) picked = [k];
+    var single = picked.length === 1, one = picked[0];
+    var on = picked.filter(function (m) { return m.state === "on"; }), off = picked.filter(function (m) { return m.state === "off"; });
+    var keptOnes = picked.filter(function (m) { return m.kept; }), loose = picked.filter(function (m) { return !m.kept; });
+    var present = picked.filter(function (m) { return m.file; });
+    var mine = single && one.key && model ? model.rows.filter(function (r) { return r.modId === one.key && r.status !== "missing"; })[0] : null;
+    var items = [
+      loose.length ? [single ? "Keep it on the server" : "Keep " + loose.length, function () { setKept(loose, true); }, !connected] : false,
+      keptOnes.length ? [single ? "Stop keeping it" : "Stop keeping " + keptOnes.length, function () { setKept(keptOnes, false); }, !connected] : false,
+      off.length ? [single ? "Turn on on the server" : "Turn on " + off.length, function () { serverModAction(off, "on"); }, !connected] : false,
+      on.length ? [single ? "Turn off on the server" : "Turn off " + on.length, function () { serverModAction(on, "off"); }, !connected] : false,
+      null,
+      mine ? ["Find it in my mod list", function () { setView("mods"); $("q").value = mine.file; state.q = mine.file.toLowerCase(); render(); }] : false,
+      present.length ? [single ? "Copy file name" : "Copy " + present.length + " file names", function () {
+        copyText(present.map(function (m) { return m.file; }).join("\n"), single ? "Copied " + one.file : "Copied " + present.length + " file names");
+      }] : false,
+      null,
+      present.length ? [single ? "Delete from the server…" : "Delete " + present.length + "…", function () { askDeleteServerMods(present); }, !connected, "danger"] : false,
+      single ? false : ["Clear selection", function () { keptSel = {}; if (keptRedraw) keptRedraw(); }]
+    ].filter(function (it) { return it !== false; }); // false: left out; null: a divider
+    popMenu(null, items, { at: { x: x, y: y }, head: single ? one.name : count(picked.length, "mod", "mods") + " selected", returnFocus: focusEl });
   }
 
   // Every jar in the server's mods folder, like an instance's mod list, with a pin on each to keep it there.
@@ -8964,6 +9336,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var draw = function () {
       var list = shown(), picked = mods.filter(function (k) { return keptSel[k.id]; });
       var nSel = list.filter(function (k) { return keptSel[k.id]; }).length;
+      keptShown = list;
+      keptRedraw = draw;
       head.replaceChildren(
         h("div", { class: "c-check" }, h("button", { type: "button", class: "check", role: "checkbox", disabled: !list.length,
           "aria-checked": nSel === 0 ? "false" : nSel === list.length ? "true" : "mixed", "aria-label": "Select all shown",
@@ -8979,8 +9353,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         !mods.length ? "The server's mods folder is empty. Add mods here." : keptFilter === "kept" && !nKept ? "Nothing is kept yet: pin a mod to keep it on the server." : "No server mods match."));
       bar.replaceChildren();
       bar.classList.toggle("is-empty", !picked.length);
+      var tail = h("span", { class: "count-label", style: "margin-left:auto" }, list.length + " of " + mods.length + " shown");
       if (!picked.length) {
-        bar.append(h("span", { class: "sel-count" }, "No mods selected", h("span", { class: "note" }, " · click a row to select it")));
+        bar.append(h("span", { class: "sel-count" }, "No mods selected", h("span", { class: "note" }, " · click a row to select it, Shift+click for a range")), tail);
         return;
       }
       var on = picked.filter(function (k) { return k.state === "on"; }), off = picked.filter(function (k) { return k.state === "off"; });
@@ -8993,9 +9368,14 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           off.length ? h("button", { type: "button", class: "btn", onclick: function () { serverModAction(off, "on"); } }, "Turn on " + off.length) : null,
           on.length ? h("button", { type: "button", class: "btn", onclick: function () { serverModAction(on, "off"); } }, "Turn off " + on.length) : null,
           present.length ? h("button", { type: "button", class: "btn danger-outline", onclick: function () { askDeleteServerMods(present); } }, "Delete " + present.length + "…") : null,
-          h("button", { type: "button", class: "linkish", onclick: function () { keptSel = {}; draw(); } }, "Clear")));
+          h("button", { type: "button", class: "linkish", onclick: function () { keptSel = {}; draw(); } }, "Clear")), tail);
     };
     filter.addEventListener("input", function () { keptQ = filter.value.trim(); draw(); });
+    filter.addEventListener("keydown", function (e) { if (e.key === "Escape" && filter.value) { e.stopPropagation(); filter.value = ""; keptQ = ""; draw(); } });
+    rowMenus(rows, function (t) {
+      var el = t.closest && t.closest(".row");
+      return el ? keptShown.filter(function (k) { return k.id === el.getAttribute("data-id"); })[0] || null : null;
+    }, keptRowMenu);
     drawSeg();
     draw();
     return el;
@@ -9779,25 +10159,38 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   $("rows").addEventListener("mousedown", function (e) {
     if (e.shiftKey && e.button === 0) e.preventDefault(); // Shift+click shouldn't highlight text
   });
-  // Clicking off the mods (empty space, plain text, the gaps between rows) clears the selection, like a
-  // file manager. Controls keep it, so filters and buttons still act on it. A click that only closes an
-  // open menu or popup, ends a text drag, or carries Ctrl/Shift doesn't count. The popup check runs on
-  // window in the capture phase, ahead of the document handlers that close those popups.
+  // Clicking off a list (empty space, plain text, the gaps between rows) clears its selection, like a
+  // file manager: the mods (and libraries), features, packs and the server's mods. Controls keep it, so
+  // filters and buttons still act on it. A click that only closes an open menu or popup, ends a text drag,
+  // or carries Ctrl/Shift doesn't count. The popup check runs on window in the capture phase, ahead of the
+  // document handlers that close those popups.
   var popupAtPress = false;
   window.addEventListener("mousedown", function () {
     popupAtPress = !!document.querySelector(".menu:not([hidden]), .pop-menu:not([hidden]), .pop, .inst-pop:not([hidden])");
   }, true);
+  function selectionToClear() {
+    if (currentView === "mods" || currentView === "libraries") return Object.keys(selected).length ? clearSelection : null;
+    if (currentView === "features") return Object.keys(feat.sel).length ? function () { feat.sel = {}; feat.anchor = null; renderFeatures(); } : null;
+    if (currentView === "packs") {
+      var d = packs.data && packs.data.kind === packs.kind ? packs.data : null;
+      return d && selectedPacks(d).length ? function () { packs.sel = {}; renderPacks(); } : null;
+    }
+    if (currentView === "server" && srv.sub === "sync" && keptRedraw && Object.keys(keptSel).length) return function () { keptSel = {}; keptRedraw(); };
+    return null;
+  }
   document.addEventListener("click", function (e) {
-    if (currentView !== "mods" || popupAtPress || !Object.keys(selected).length) return;
+    if (popupAtPress) return;
+    var clear = selectionToClear();
+    if (!clear) return;
     if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
     var t = e.target;
     if (!t.closest || !document.contains(t)) return; // re-rendered away by the click itself
-    if (t.closest(".row, button, a, input, select, textarea, label, summary, [contenteditable], [tabindex]:not([tabindex='-1'])," +
+    if (t.closest(".row, .pack-row, button, a, input, select, textarea, label, summary, [contenteditable], [tabindex]:not([tabindex='-1'])," +
       " [role=button], [role=checkbox], [role=switch], [role=tab], [role=menuitem], [role=option], [role=slider], [role=dialog], [role=menu]," +
-      " #selection-bar, .drawer-scrim")) return;
+      " .selection-bar, .drawer-scrim, .scrim, .pal-scrim, .toast")) return;
     var sel = window.getSelection && window.getSelection();
     if (sel && !sel.isCollapsed) return;
-    clearSelection();
+    clear();
   });
   $("rows").addEventListener("click", function (e) {
     var hit = rowFor(e.target);
@@ -9947,12 +10340,53 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       }
       return;
     }
+    if (popEl || palette) return;
     var t = e.target;
     var typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+    var plain = !e.ctrlKey && !e.metaKey && !e.altKey;
+    var onControl = !!(t && t.closest && t.closest("button, a, select"));
     if (!typing && currentView === "features") {
       if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) { if (feat.kind === "biomes") return; e.preventDefault(); feat.shown.forEach(function (r) { feat.sel[r.id] = true; }); renderFeatures(); }
       else if (e.key === "Escape" && Object.keys(feat.sel).length) { feat.sel = {}; feat.anchor = null; renderFeatures(); }
-      else if (e.key === "/") { e.preventDefault(); $("feat-q").focus(); }
+      else if (e.key === "/" && plain) { e.preventDefault(); $("feat-q").focus(); }
+      else if (e.key === " " && plain && !onControl && feat.kind !== "biomes" && feat.data && feat.data.supported && !feat.data.gameRunning && connected) {
+        // Space, as in the Mods list: turn the selected ones off, or on when they're all off.
+        var fsel = featRowsOf(feat.kind).filter(function (r) { return feat.sel[r.id]; });
+        if (!fsel.length) return;
+        e.preventDefault();
+        var fon = fsel.filter(function (r) { return !r.off; });
+        setFeatures(fon.length ? fon : fsel, !fon.length);
+      }
+      return;
+    }
+    if (!typing && currentView === "packs") {
+      var pd = packs.data && packs.data.kind === packs.kind ? packs.data : null;
+      if (!pd) return;
+      var psel = selectedPacks(pd), plocked = !connected || pd.gameRunning || pd.serverRunning;
+      if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) {
+        e.preventDefault();
+        var ps = packSel(pd);
+        (packs.rows || []).forEach(function (p) { ps[p.name] = true; });
+        renderPacks();
+      } else if (e.key === "Escape" && psel.length) { packs.sel = {}; renderPacks(); }
+      else if (e.key === "/" && plain && !$("packs-tools").hidden) { e.preventDefault(); $("packs-q").focus(); }
+      else if (e.key === "Delete" && psel.length && !plocked) { e.preventDefault(); askDeletePacks(pd, psel); }
+      else if (e.key === " " && plain && !onControl && psel.length && !plocked && pd.kind === "resourcepacks") {
+        e.preventDefault();
+        var pon = psel.filter(function (p) { return p.on >= 0; });
+        if (pon.length) setResourcePacks(pon, false); else setResourcePacks(psel, true);
+      }
+      return;
+    }
+    if (!typing && currentView === "server" && e.key === "Escape" && srv.sub === "sync" && keptRedraw && Object.keys(keptSel).length) {
+      keptSel = {};
+      keptRedraw();
+      return;
+    }
+    // "/" finds on the other pages with a search box too.
+    if (!typing && e.key === "/" && plain && (currentView === "configs" || currentView === "snapshots")) {
+      e.preventDefault();
+      $(currentView === "configs" ? "cfg-find" : "hist-filter").focus();
       return;
     }
     if (typing || (currentView !== "mods" && currentView !== "libraries")) return;
