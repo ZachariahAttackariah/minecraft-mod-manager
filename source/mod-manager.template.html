@@ -4072,12 +4072,24 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (wasOpen) placeMenu();
   }
 
+  // The tags the selected mods have go first. Which ones those are is fixed when the menu opens (a tag
+  // made here joins them), so ticking a box doesn't move it out from under the pointer.
+  var tagsOnTop = { at: -1, on: {}, seen: {} };
   function renderTagPanel(rows) {
     var single = rows.length === 1;
     var panel = h("div", { class: "menu-col menu-tags" }, h("div", { class: "menu-head" }, single ? "Tags" : "Tags · " + rows.length + " mods"));
     var list = h("div", { class: "tag-options", role: "group", "aria-label": "Tags" });
-    var side = model.order.filter(function (t) { return SIDE_TAGS.indexOf(t) >= 0; });
-    var topics = model.order.filter(function (t) { return SIDE_TAGS.indexOf(t) < 0; });
+    var hasTag = function (t) { return rows.some(function (r) { return r.tags.indexOf(t) >= 0; }); };
+    if (tagsOnTop.at !== menuOpenedAt) tagsOnTop = { at: menuOpenedAt, on: {}, seen: {} };
+    model.order.forEach(function (t) {
+      if (tagsOnTop.seen[t]) return;
+      tagsOnTop.seen[t] = true;
+      if (hasTag(t)) tagsOnTop.on[t] = true;
+    });
+    var onTop = model.order.filter(function (t) { return tagsOnTop.on[t]; });
+    var rest = model.order.filter(function (t) { return !tagsOnTop.on[t]; });
+    var side = rest.filter(function (t) { return SIDE_TAGS.indexOf(t) >= 0; });
+    var topics = rest.filter(function (t) { return SIDE_TAGS.indexOf(t) < 0; });
     var addOption = function (t) {
       var n = rows.filter(function (r) { return r.tags.indexOf(t) >= 0; }).length;
       var checked = n === 0 ? "false" : n === rows.length ? "true" : "mixed";
@@ -4088,10 +4100,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         h("span", { class: "box", "aria-hidden": "true" }), h("span", null, t),
         checked === "mixed" ? h("span", { class: "ct" }, n + "/" + rows.length) : null));
     };
+    onTop.forEach(addOption);
+    if (onTop.length && (side.length || topics.length)) list.append(h("hr"));
     side.forEach(addOption);
     if (side.length && topics.length) list.append(h("hr"));
     topics.forEach(addOption);
-    if (!side.length && !topics.length) list.append(h("p", { class: "tag-note" }, "No tags yet. Add the first one below."));
+    if (!model.order.length) list.append(h("p", { class: "tag-note" }, "No tags yet. Add the first one below."));
     panel.append(list);
 
     var input = h("input", { type: "text", id: "new-tag", placeholder: "New tag", maxlength: "32", autocomplete: "off", spellcheck: "false",
