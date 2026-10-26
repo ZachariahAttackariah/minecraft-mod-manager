@@ -11,7 +11,8 @@
 //   - a copy of each turned-off structure with no biomes, so it never generates in new chunks;
 //   - a remove_spawns rule for each turned-off modded mob, covering every biome;
 //   - a "none" modifier in place of a mod's extra spawn rule for a vanilla mob (a mod adding End phantoms);
-//   - a remove_features rule for each turned-off ore, covering every biome.
+//   - a remove_features rule for each turned-off ore, covering every biome;
+//   - a never-loading copy of each turned-off recipe (Items.cs).
 // Biomes are the exception: they switch in their mods' configs (SetBiomes), not in this jar.
 // Its mods.toml loads it after the mods it overrides, so its copies win. The list of what's off is stored inside
 // it, so it travels with the jar (to the server too). With nothing off, the jar is removed.
@@ -507,9 +508,11 @@ namespace MinecraftModManager
             return j.Meta.Mods.Count > 0 && !string.IsNullOrEmpty(j.Meta.Mods[0].Name) ? j.Meta.Mods[0].Name : null;
         }
 
-        static IEnumerable<string> ModIdsOf(FeatureJar j)
+        static IEnumerable<string> ModIdsOf(FeatureJar j) { return ModIdsOfMeta(j.Meta); }
+
+        static IEnumerable<string> ModIdsOfMeta(JarMeta meta)
         {
-            return j.Meta.Mods.Concat(j.Meta.Nested).Select(m => m.Id).Where(id => id != null && ModIdOk.IsMatch(id) && id != "minecraft" && id != "neoforge" && id != "forge" && id != FeatureModId);
+            return meta.Mods.Concat(meta.Nested).Select(m => m.Id).Where(id => id != null && ModIdOk.IsMatch(id) && id != "minecraft" && id != "neoforge" && id != "forge" && id != FeatureModId);
         }
 
         static Dictionary<string, object> Fields(params object[][] parts)
@@ -795,6 +798,7 @@ namespace MinecraftModManager
             public readonly SortedSet<string> Structures = new SortedSet<string>(StringComparer.Ordinal);
             public readonly SortedSet<string> Mobs = new SortedSet<string>(StringComparer.Ordinal);
             public readonly SortedSet<string> Ores = new SortedSet<string>(StringComparer.Ordinal);
+            public readonly SortedSet<string> Recipes = new SortedSet<string>(StringComparer.Ordinal);
         }
 
         static FeaturesOff ReadFeaturesOff()
@@ -811,6 +815,7 @@ namespace MinecraftModManager
                     foreach (object s in A(Get(d, "structures"))) if (s is string) off.Structures.Add((string)s);
                     foreach (object s in A(Get(d, "mobs"))) if (s is string) off.Mobs.Add((string)s);
                     foreach (object s in A(Get(d, "ores"))) if (s is string) off.Ores.Add((string)s);
+                    foreach (object s in A(Get(d, "recipes"))) if (s is string) off.Recipes.Add((string)s);
                 }
             }
             catch (Exception) { }
@@ -1068,14 +1073,15 @@ namespace MinecraftModManager
         static Dictionary<string, object> SetFeatures(string kind, List<string> ids, bool on)
         {
             if (kind == "biomes") return SetBiomes(ids, on);
-            if (kind != "structures" && kind != "mobs" && kind != "ores") throw new UserError("Unknown kind of feature: " + kind);
+            if (kind == "items") return SetJeiHidden(ids, !on);
+            if (kind != "structures" && kind != "mobs" && kind != "ores" && kind != "recipes") throw new UserError("Unknown kind of feature: " + kind);
             if (ids == null || ids.Count == 0) throw new UserError("Nothing was selected.");
             if (FeatureStyle() == null) throw new UserError("Turning features off needs NeoForge or Forge. " + LoaderName() + " has no data-only way to do it.");
             if (GameRunning(GameDir())) throw new UserError("Close the game first. It keeps the mods' files open, and the change only applies when it starts.");
             lock (FeatureLock)
             {
                 FeaturesOff off = ReadFeaturesOff();
-                SortedSet<string> list = kind == "structures" ? off.Structures : kind == "ores" ? off.Ores : off.Mobs;
+                SortedSet<string> list = kind == "structures" ? off.Structures : kind == "ores" ? off.Ores : kind == "recipes" ? off.Recipes : off.Mobs;
                 int changed = ids.Count(id => on ? list.Remove(id) : list.Add(id));
                 if (changed > 0) WriteFeatureJar(off, BuildFeatureWorld());
                 if (changed > 0)
@@ -1091,7 +1097,7 @@ namespace MinecraftModManager
         static void WriteFeatureJar(FeaturesOff off, FeatureWorld w)
         {
             string path = Path.Combine(modsDir, FeatureJarName);
-            if (off.Structures.Count == 0 && off.Mobs.Count == 0 && off.Ores.Count == 0)
+            if (off.Structures.Count == 0 && off.Mobs.Count == 0 && off.Ores.Count == 0 && off.Recipes.Count == 0)
             {
                 try { if (File.Exists(path)) File.Delete(path); }
                 catch (IOException) { throw new UserError("Couldn't remove " + FeatureJarName + ". Close the game, then try again."); }
@@ -1140,7 +1146,8 @@ namespace MinecraftModManager
                 files["data/" + FeatureModId + "/" + modifierDir + "off/ores/" + id.Substring(0, c) + "/" + id.Substring(c + 1) + ".json"] = json.Serialize(Obj(
                     "type", style + ":remove_features", "biomes", Obj("type", style + ":any"), "features", id));
             }
-            files[FeatureListEntry] = json.Serialize(Obj("structures", off.Structures.ToList(), "mobs", off.Mobs.ToList(), "ores", off.Ores.ToList()));
+            AddRecipeOverrides(off, files, after, style);
+            files[FeatureListEntry] = json.Serialize(Obj("structures", off.Structures.ToList(), "mobs", off.Mobs.ToList(), "ores", off.Ores.ToList(), "recipes", off.Recipes.ToList()));
             files["pack.mcmeta"] = json.Serialize(Obj("pack", Obj("description", "Features turned off in Minecraft Mod Manager", "pack_format", DataPackFormat())));
             files["META-INF/neoforge.mods.toml"] = FeatureModsToml(after, true);
             files["META-INF/mods.toml"] = FeatureModsToml(after, false);
@@ -1167,7 +1174,7 @@ namespace MinecraftModManager
             var sb = new StringBuilder();
             sb.Append("modLoader=\"lowcodefml\"\nloaderVersion=\"[1,)\"\nlicense=\"CC0-1.0\"\n\n[[mods]]\nmodId=\"" + FeatureModId + "\"\nversion=\"1.0.0\"\n");
             sb.Append("displayName=\"Feature toggles\"\nauthors=\"Minecraft Mod Manager\"\n");
-            sb.Append("description='''Structures and mob spawns turned off in Minecraft Mod Manager's Features tab. Written by the app; turn them back on there.'''\n");
+            sb.Append("description='''Structures, mob spawns, ores and recipes turned off in Minecraft Mod Manager's Features tab. Written by the app; turn them back on there.'''\n");
             foreach (string id in after)
             {
                 sb.Append("\n[[dependencies." + FeatureModId + "]]\nmodId=\"" + id + "\"\n");

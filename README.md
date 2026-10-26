@@ -37,7 +37,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Gallery: the mod's screenshots, full size on click (arrow keys to flip through).
   - Where its updates come from (match what's installed, releases, betas, everything), pin this version, and a note.
 - **Notes, pins and skipped updates:** a note on any mod (shown in a card when the cursor rests on its row, found by search), pinning a mod so Update all leaves it alone, and skipping one update until a newer one comes out. Kept per mods folder in the app's data folder.
-- **Features:** the structures, mobs, ores and biomes in the world gen, the mods' and Minecraft's own, read from their data (vanilla's from the game's jar in Prism's libraries), in four tabs with a Mods / Minecraft filter.
+- **Features:** the structures, mobs, ores and biomes in the world gen, the mods' and Minecraft's own, read from their data (vanilla's from the game's jar in Prism's libraries), in tabs with a Mods / Minecraft filter, plus the items and recipes.
   - Ores: placed features whose configured feature is an ore, whether a mod adds them to biomes (`add_features`) or a biome lists them itself; with their blocks, height range, veins per chunk and vein size. Turning one off adds a `remove_features` rule for every biome to the toggle jar.
   - Biome switches: a biome is switched off through its mod's own config setting for it (a true/false setting named after it, or `"id": true` in a JSON list), changed in the game's config and the server's copy, with a backup. Minecraft's biomes, and mods without such a setting, have no switch.
   - Vanilla structures, mobs and ores turn off the same way as modded ones: a no-biomes copy of the structure, `remove_spawns` and `remove_features`.
@@ -46,6 +46,9 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
   - Each row shows the mod that adds it, the dimension and the biomes (a mod's own biome tags are opened up to their biomes; shared tags such as `#c:is_forest` show as a group), and how common it is: a structure's spacing from its structure set, a mob's spawn weight and group size.
   - Search, filter by on / off, dimension and mod (each with counts), sort by name, mod, dimension or how common, and select several rows to turn on or off at once, as in the Mods list.
   - The switch turns a structure or mob off. The app writes `mod-manager-feature-toggles.jar`, a small data-only mod in the mods folder that loads after the mods it overrides: a turned-off structure gets a copy with no biomes, so it stops generating in new chunks; a turned-off mob gets a `remove_spawns` rule for every biome. A mod's extra spawns of a vanilla mob have their own row, and turning that off replaces just that mod's rule with `none`. The list of what's off is kept inside the jar, so copying it to the server carries it over; with nothing off, the jar is removed. NeoForge and Forge only.
+  - Items: every item and block from the mods' item models and language files (and the game's own), with its icon from its own texture, whether it's a block, and how many recipes make and use it (a count opens Recipes filtered to them). The switch shows or hides it in JEI's item list, written to JEI's own `config/jei/blacklist.json` (the file its edit mode keeps), so the item stays in the game.
+  - Recipes: every recipe the game loads, with its result, kind (crafting, smelting, a mod's machine), ingredients and the mod that changed it, if another mod overrides it. Compat recipes whose `mod_loaded` conditions fail are left out. Turning one off puts a never-loading copy (a `false` condition) in the toggle jar, so the game skips it, and JEI with it.
+- **Key binds:** every control in `options.txt`, Minecraft's and the mods', named from the jars' language files. A keyboard and mouse map shows which keys are free, taken or clashing, and a click on a key lists its binds. Filter by clashes, unbound or changed; click a bind's key and press a new key or mouse button (with Shift, Ctrl or Alt for NeoForge's modifiers) to change it; unbind or reset Minecraft's own to their defaults, several at once, with Undo. `options.txt` is backed up first, and the change is shared with other instances that share game settings.
 - **Turning off or deleting a library** that other mods need says which ones first.
 - **World backups:** zip any world (game or server) with restore; optionally the latest world before updates and before removing worldgen mods.
 - **What changed:** on opening, new updates and jars added or gone since the folder was last open (optional).
@@ -166,6 +169,8 @@ The script uses the C# compiler that ships with Windows (no SDK needed). It synt
 | `source/Snapshots.cs` | Snapshots and finding a problem mod |
 | `source/Cleanup.cs` | Disk cleanup |
 | `source/Features.cs` | The Features tab: structures and mobs from the mods' data, and the toggle jar that turns them off |
+| `source/Items.cs` | The Features tab's Items and Recipes: reading them from the jars, item icons, JEI's hidden list, and turned-off recipes in the toggle jar |
+| `source/KeyBinds.cs` | The Key binds page: the controls in `options.txt`, their names and mods, and changing them |
 | `source/mod-manager.template.html` | The page shown in the window |
 | `source/build.ps1` | Build script |
 | `source/make-icon.ps1`, `source/icon-source.png` | Builds the icon (`app.ico`) from the source picture: Minecraft's chiseled bookshelf, which belongs to Mojang (see Credits and `icon-source-NOTICE.txt`) |

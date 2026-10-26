@@ -355,6 +355,12 @@ namespace MinecraftModManager
                     if (path == "/api/user-css") SendUserCss(ctx); else SendBackground(ctx);
                     return;
                 }
+                if (method == "GET" && path == "/api/item-icon")
+                {
+                    if (req.QueryString["t"] != Token) { SendText(ctx, 403, "text/plain; charset=utf-8", "Forbidden"); return; }
+                    SendItemIcon(ctx, req.QueryString["id"]);
+                    return;
+                }
                 if (method == "GET" && path == "/api/mod-icon")
                 {
                     if (req.QueryString["t"] != Token) { SendText(ctx, 403, "text/plain; charset=utf-8", "Forbidden"); return; }
@@ -475,6 +481,12 @@ namespace MinecraftModManager
                             break;
                         case "/api/features":
                             result = FeaturesList();
+                            break;
+                        case "/api/features/items":
+                            result = ItemsList();
+                            break;
+                        case "/api/keybinds":
+                            result = KeyBinds();
                             break;
                         case "/api/configs/read":
                             result = ReadConfigFile(req.QueryString["side"] == "server" ? "server" : "game", req.QueryString["path"]);
@@ -810,6 +822,10 @@ namespace MinecraftModManager
                         return;
                     case "/api/features/set":
                         SendJson(ctx, 200, SetFeatures(Str(body, "kind"), StrList(body, "ids"), Bool(body, "on")));
+                        return;
+                    case "/api/keybinds/set":
+                        // (A request body's lists come as ArrayList.)
+                        SendJson(ctx, 200, SetKeyBinds(((Get(body, "changes") as System.Collections.IEnumerable) ?? new object[0]).Cast<object>().Select(D).Where(x => x != null).ToList()));
                         return;
                     case "/api/sharing/defaults":
                         SendJson(ctx, 200, SetShareByDefault(Bool(body, "on")));
