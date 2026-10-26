@@ -9765,6 +9765,26 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   $("rows").addEventListener("mousedown", function (e) {
     if (e.shiftKey && e.button === 0) e.preventDefault(); // Shift+click shouldn't highlight text
   });
+  // Clicking off the mods (empty space, plain text, the gaps between rows) clears the selection, like a
+  // file manager. Controls keep it, so filters and buttons still act on it. A click that only closes an
+  // open menu or popup, ends a text drag, or carries Ctrl/Shift doesn't count. The popup check runs on
+  // window in the capture phase, ahead of the document handlers that close those popups.
+  var popupAtPress = false;
+  window.addEventListener("mousedown", function () {
+    popupAtPress = !!document.querySelector(".menu:not([hidden]), .pop-menu:not([hidden]), .pop, .inst-pop:not([hidden])");
+  }, true);
+  document.addEventListener("click", function (e) {
+    if (currentView !== "mods" || popupAtPress || !Object.keys(selected).length) return;
+    if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    var t = e.target;
+    if (!t.closest || !document.contains(t)) return; // re-rendered away by the click itself
+    if (t.closest(".row, button, a, input, select, textarea, label, summary, [contenteditable], [tabindex]:not([tabindex='-1'])," +
+      " [role=button], [role=checkbox], [role=switch], [role=tab], [role=menuitem], [role=option], [role=slider], [role=dialog], [role=menu]," +
+      " #selection-bar, .drawer-scrim")) return;
+    var sel = window.getSelection && window.getSelection();
+    if (sel && !sel.isCollapsed) return;
+    clearSelection();
+  });
   $("rows").addEventListener("click", function (e) {
     var hit = rowFor(e.target);
     if (!hit || !hit.row) return;
