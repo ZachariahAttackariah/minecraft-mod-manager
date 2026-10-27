@@ -599,6 +599,8 @@ button.chip.biome[aria-pressed="true"] { border-style: solid; border-width: 1.5p
 .chip.biome.all { --c: var(--accent-fg); }
 button.chip.more { cursor: pointer; }
 .f-biomes .none { color: var(--muted); font-size: 13px; }
+.chip.struct { --c: var(--accent-fg); font-weight: 500; }
+.f-biomes .how { color: var(--muted); font-size: 13px; }
 .off-badge { --c: var(--warn); border-style: solid; }
 @media (max-width: 900px) {
   .feat-list { --cols: 22px minmax(0, 1fr) 34px; }
@@ -5126,7 +5128,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     structures: { one: "structure", many: "structures", spread: "Spacing", none: "Nowhere",
       lead: "The structures your mods add, from their data, with the biomes they generate in. Turning one off stops it generating in chunks made from then on; any already built stay." },
     mobs: { one: "mob", many: "mobs", spread: "Spawning", none: "Not in its data",
-      lead: "The mobs your mods add and where they spawn by themselves. Turning one off stops its natural spawns everywhere; spawners, structures and spawn eggs still make it. A mod's extra spawns of a vanilla mob have their own row, which turns off only those." },
+      lead: "Every mob, Minecraft's and your mods', and where it spawns by itself. Turning one off stops its natural spawns everywhere, inside structures too (blazes in fortresses); spawners, villages, raids and spawn eggs still make it. Mobs only the game's code spawns show how they turn up instead of a switch. A mod's extra spawns of a vanilla mob have their own row, which turns off only those." },
     ores: { one: "ore", many: "ores", spread: "Veins", none: "Nowhere",
       lead: "The ores in the world gen, the mods' and Minecraft's: which biomes, how high, how many veins per chunk and how big. Turning one off stops it generating in chunks made from then on." },
     biomes: { one: "biome", many: "biomes", none: "—",
@@ -5212,7 +5214,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!r.hay && r.typeName != null) r.hay = [r.name, r.id, featMod(r), r.file || "", r.typeName, r.result || "", r.by || "",
       (r.inputs || []).map(function (i) { return i.charAt(0) === "#" ? i : featItemName(i) + " " + i; }).join(" ")].join(" ").toLowerCase();
     if (!r.hay) r.hay = [r.name, r.id, featMod(r), r.file || "", r.dims.join(" "), (r.biomes || []).map(function (b) { return b.name + " " + b.id; }).join(" "),
-      r.extra ? "extra spawns" : "", r.vanilla ? "vanilla minecraft" : "", r.category || "", (r.blocks || []).map(function (b) { return b.name; }).join(" ")].join(" ").toLowerCase();
+      r.extra ? "extra spawns" : "", r.vanilla ? "vanilla minecraft" : "", r.category || "", r.how || "", (r.structures || []).map(function (s) { return s.name; }).join(" "), (r.blocks || []).map(function (b) { return b.name; }).join(" ")].join(" ").toLowerCase();
     return r.hay;
   }
   var FEAT_COUNT = { structures: "nStructures", mobs: "nMobs", ores: "nOres" };
@@ -5596,6 +5598,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   function featBiomes(r) {
     var chips = [], LIMIT = 4, f = feat.f[feat.kind];
+    // Structures with their own spawn list for it come first; their biomes follow.
+    (r.structures || []).forEach(function (s) {
+      chips.push(h("span", { class: "chip struct", title: s.id + ": spawns inside this structure, wherever it generates" }, "In " + s.name));
+    });
     if (r.allBiomes) chips.push(h("span", { class: "chip biome all" }, r.except && r.except.length ? "Every biome except" : "Every biome"));
     // #minecraft:is_desert and #c:is_desert read the same; the chip shows once (both still count for filtering).
     var names = {};
@@ -5614,6 +5620,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
     if (list.length > LIMIT) chips.push(h("button", { type: "button", class: "chip more", title: open ? "Show fewer" : list.slice(LIMIT).map(function (b) { return b.name; }).join(", "),
       onclick: function (e) { e.stopPropagation(); if (open) delete feat.expanded[r.id]; else feat.expanded[r.id] = true; renderFeatures(); } }, open ? "fewer" : "+" + (list.length - LIMIT)));
+    if (r.how) {
+      var also = /^Also: /.test(r.how);
+      chips.push(h("span", { class: "how", title: also ? "It also turns up this way, which its switch doesn't cover." : "How it turns up. Nothing in the game's data spawns it, so it has no switch." },
+        also ? "Also " + r.how.slice(6) : r.how));
+      return chips;
+    }
     if (!chips.length) {
       var why = feat.kind === "structures" ? ["No biome in this pack", "Its biome list only names biomes from mods that aren't installed, so it never generates."]
         : r.ownRules || (r.config && !r.config.general) ? ["Set by the mod itself", "Its mod spawns it by its own rules (usually its config), not from its data, so the biomes aren't listed here. Turning it off still stops those spawns."]
@@ -5628,9 +5640,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var picked = !!feat.sel[r.id], busyNow = !!feat.busy[r.id];
     var locked = !connected || busyNow || !d.supported || d.gameRunning;
     var spread = featSpread(r), mod = featMod(r);
-    var sw = h("button", { type: "button", class: "act sw-btn" + (r.off ? "" : " on"), role: "switch", "aria-checked": String(!r.off), disabled: locked,
+    var sw = h("button", { type: "button", class: "act sw-btn" + (r.off ? "" : " on"), role: "switch", "aria-checked": String(!r.off), disabled: locked || !!r.fixed,
       "aria-label": r.name + (r.extra ? " extra spawns" : "") + " on",
-      title: d.gameRunning ? "Close the game first" : r.off ? "Off. Click to turn it on" : "On. Click to turn it off",
+      title: r.fixed ? "Nothing in the game's data spawns it (" + (r.how || "it comes from the game's code") + "), so there's nothing to turn off here."
+        : d.gameRunning ? "Close the game first" : r.off ? "Off. Click to turn it on" : "On. Click to turn it off",
       onclick: function (e) { e.stopPropagation(); setFeatures([r], !!r.off); } }, h("span", { class: "sw", "aria-hidden": "true" }));
     return h("div", { class: "row feat-row" + (picked ? " is-selected" : "") + (r.off ? " is-off" : ""), role: "row", "data-id": r.id, "aria-selected": String(picked), "aria-busy": busyNow ? "true" : null,
         onmousedown: function (e) { if (e.shiftKey) e.preventDefault(); },
@@ -5766,6 +5779,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // kindArg: the kind the rows are (Undo may run after another kind is picked).
   function setFeatures(rows, on, kindArg) {
     var kind = kindArg || feat.kind, K = FEAT_KINDS[kind];
+    // Mobs only the game's code spawns (raids, villages) have nothing to switch.
+    rows = rows.filter(function (r) { return !r.fixed; });
+    if (!rows.length) { toast("Nothing in the game's data spawns " + (kind === "mobs" ? "these mobs" : "these") + ", so there's nothing to turn off."); return Promise.resolve(); }
     var ids = rows.map(function (r) { return r.id; });
     var undo = function () { setFeatures(rows, !on, kind); };
     ids.forEach(function (id) { feat.busy[id] = true; });

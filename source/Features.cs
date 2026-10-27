@@ -3,13 +3,15 @@
 // structure sets that place them, mobs from their loot tables and spawn eggs, spawns from the biome modifiers
 // (add_spawns), biome groups from the biome tags, and modded dimensions from their dimension files. The game's own
 // jar and NeoForge's (from Prism's libraries) add the vanilla biomes and the full shared biome groups, so the page
-// can filter by any biome; the game's own structures, biomes' spawn lists and ores are listed too. Ores are placed
+// can filter by any biome; the game's own structures, ores and every one of its mobs are listed too (with how the ones
+// its data doesn't spawn turn up, VanillaMobWays), and structures' own spawn lists count as spawns. Ores are placed
 // features of an ore type, from add_features rules and biomes' own feature lists. Where a mod's config names a
 // feature, its row links to that setting (ConfigFor); a biome's on/off setting is its switch (BiomeSwitch).
 //
 // Turning something off writes one small data-only mod into the mods folder (FeatureJarName). It carries:
 //   - a copy of each turned-off structure with no biomes, so it never generates in new chunks;
-//   - a remove_spawns rule for each turned-off modded mob, covering every biome;
+//   - a remove_spawns rule for each turned-off mob, covering every biome, and a copy of each structure whose own
+//     spawn list has it (fortresses' blazes), without it;
 //   - a "none" modifier in place of a mod's extra spawn rule for a vanilla mob (a mod adding End phantoms);
 //   - a remove_features rule for each turned-off ore, covering every biome;
 //   - a never-loading copy of each turned-off recipe (Items.cs).
@@ -50,6 +52,7 @@ namespace MinecraftModManager
         public readonly Dictionary<string, List<object>> BiomeTags = new Dictionary<string, List<object>>(StringComparer.Ordinal);
         public readonly HashSet<string> Biomes = new HashSet<string>(StringComparer.Ordinal);
         public readonly HashSet<string> Entities = new HashSet<string>(StringComparer.Ordinal);
+        public readonly HashSet<string> Eggs = new HashSet<string>(StringComparer.Ordinal); // entities with a spawn egg model
         public readonly List<SpawnRule> Spawns = new List<SpawnRule>();
         public readonly HashSet<string> OwnSpawnTypes = new HashSet<string>(StringComparer.Ordinal); // namespaces with their own spawn modifier types
         public readonly Dictionary<string, Dictionary<string, object>> Placed = new Dictionary<string, Dictionary<string, object>>(StringComparer.Ordinal);
@@ -138,7 +141,7 @@ namespace MinecraftModManager
                     continue;
                 }
                 Match m = EggEntry.Match(n);
-                if (m.Success) { jf.Entities.Add(m.Groups[1].Value + ":" + m.Groups[2].Value); continue; }
+                if (m.Success) { jf.Entities.Add(m.Groups[1].Value + ":" + m.Groups[2].Value); jf.Eggs.Add(m.Groups[1].Value + ":" + m.Groups[2].Value); continue; }
                 if (LangEntry.IsMatch(n))
                 {
                     if (e.Length > 8L << 20) continue;
@@ -791,6 +794,59 @@ namespace MinecraftModManager
 
         static string PathTail(string id) { string p = id.Substring(id.IndexOf(':') + 1); return p.Substring(p.LastIndexOf('/') + 1); }
 
+        // A structure's own spawn list (spawn_overrides): blazes in fortresses, guardians in monuments, witches in swamp huts.
+        static IEnumerable<SpawnRule> StructureSpawns(string id, Dictionary<string, object> def)
+        {
+            Dictionary<string, object> overrides = D(Get(def, "spawn_overrides"));
+            if (overrides == null) yield break;
+            foreach (KeyValuePair<string, object> category in overrides)
+                foreach (Dictionary<string, object> s in A(Get(D(category.Value), "spawns")).Select(D).Where(x => x != null && S(x, "type") != null))
+                    yield return new SpawnRule { Path = id, Ns = id.Substring(0, id.IndexOf(':')), Entity = NormId(S(s, "type")), Biomes = Get(def, "biomes"), Category = category.Key,
+                        Weight = IntOf(Get(s, "weight")), Min = IntOf(Get(s, "minCount")), Max = IntOf(Get(s, "maxCount")) };
+        }
+
+        // How the game's own mobs turn up when it isn't (only) from spawn lists in its data: villages, raids, spawners,
+        // eggs, its own code. "Also:" ones have spawn lists too. Only mobs this game version names are listed.
+        static readonly Dictionary<string, string> VanillaMobWays = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            { "minecraft:allay", "Caged in pillager outposts and woodland mansions" },
+            { "minecraft:bee", "From bee nests that grow on some trees" },
+            { "minecraft:blaze", "Also: spawners in fortresses" },
+            { "minecraft:breeze", "Trial chamber spawners" },
+            { "minecraft:camel", "Desert villages" },
+            { "minecraft:cat", "Also: villages" },
+            { "minecraft:cave_spider", "Mineshaft spawners" },
+            { "minecraft:elder_guardian", "Ocean monuments, three each" },
+            { "minecraft:ender_dragon", "The End's boss, once per world" },
+            { "minecraft:endermite", "Sometimes from thrown ender pearls" },
+            { "minecraft:evoker", "Woodland mansions and raids" },
+            { "minecraft:giant", "Only from commands" },
+            { "minecraft:illusioner", "Only from commands" },
+            { "minecraft:iron_golem", "Villages, or built by players" },
+            { "minecraft:mule", "Bred from a horse and a donkey" },
+            { "minecraft:phantom", "Players who skip sleep (game rule doInsomnia)" },
+            { "minecraft:piglin_brute", "Bastion remnants" },
+            { "minecraft:pillager", "Also: patrols (game rule doPatrolSpawning) and raids" },
+            { "minecraft:ravager", "Raids" },
+            { "minecraft:shulker", "End cities" },
+            { "minecraft:silverfish", "Infested stone and stronghold spawners" },
+            { "minecraft:skeleton_horse", "Skeleton traps in thunderstorms" },
+            { "minecraft:sniffer", "Hatched from eggs found in warm ocean ruins" },
+            { "minecraft:snow_golem", "Built by players" },
+            { "minecraft:tadpole", "Hatched from frogspawn" },
+            { "minecraft:trader_llama", "Comes with the wandering trader" },
+            { "minecraft:vex", "Summoned by evokers" },
+            { "minecraft:villager", "Villages, and cured zombie villagers" },
+            { "minecraft:vindicator", "Woodland mansions and raids" },
+            { "minecraft:wandering_trader", "Visits players now and then (game rule doTraderSpawning)" },
+            { "minecraft:warden", "Sculk shriekers in the Deep Dark (game rule doWardenSpawning)" },
+            { "minecraft:witch", "Also: raids" },
+            { "minecraft:wither", "Built by players" },
+            { "minecraft:zoglin", "Hoglins taken out of the Nether" },
+            { "minecraft:zombie_horse", "Only from spawn eggs and commands" },
+            { "minecraft:zombie_villager", "Also: abandoned villages, and villagers killed by zombies" },
+        };
+
         // ---------- What's off ----------
 
         sealed class FeaturesOff
@@ -890,6 +946,19 @@ namespace MinecraftModManager
                     if (!listed.TryGetValue(s.Entity, out list)) listed[s.Entity] = list = new List<SpawnRule>();
                     list.Add(s);
                 }
+                // Structures' own spawn lists, from placed structures in the version the game uses (as for the structures above).
+                var inStructures = new Dictionary<string, List<SpawnRule>>(StringComparer.Ordinal); // entity -> its entries
+                var structureSeen = new HashSet<string>(StringComparer.Ordinal);
+                foreach (var s in structureDefs)
+                {
+                    if (!placed.ContainsKey(s.Id) || !structureSeen.Add(s.Id)) continue;
+                    foreach (SpawnRule r in StructureSpawns(s.Id, s.Def))
+                    {
+                        List<SpawnRule> list;
+                        if (!inStructures.TryGetValue(r.Entity, out list)) inStructures[r.Entity] = list = new List<SpawnRule>();
+                        list.Add(r);
+                    }
+                }
 
                 // Mobs: each modded entity once, with every rule (from any mod) that spawns it.
                 var rules = new Dictionary<string, List<KeyValuePair<FeatureJar, SpawnRule>>>(StringComparer.Ordinal);
@@ -918,8 +987,19 @@ namespace MinecraftModManager
                     if (by == null) w.BiomeOwner.TryGetValue(listed[e][0].Path, out by);
                     if (by != null) owner[e] = by;
                 }
-                // Modded mobs (spawned by rules or listed in biomes), then the game's own; a mob is everywhere it's listed or added.
-                var mobIds = owner.Keys.Concat(listed.Keys.Where(e => e.StartsWith("minecraft:")).OrderBy(e => e, StringComparer.Ordinal)).ToList();
+                foreach (KeyValuePair<string, List<SpawnRule>> e in inStructures)
+                {
+                    if (e.Key.StartsWith("minecraft:") || owner.ContainsKey(e.Key)) continue;
+                    FeatureJar by = modOf(e.Key) ?? w.Jars.FirstOrDefault(j => j.Data.Structures.ContainsKey(e.Value[0].Path)); // else the mod whose structure spawns it
+                    if (by != null) owner[e.Key] = by;
+                }
+                // The game's own mobs: every one with a spawn egg or a spawn list, and the few with neither (giants).
+                // Its spawn egg models include a template, which isn't a mob; the game's names tell them apart.
+                var vanillaMobs = new SortedSet<string>(listed.Keys.Concat(inStructures.Keys).Where(e => e.StartsWith("minecraft:")), StringComparer.Ordinal);
+                foreach (string e in w.Base.SelectMany(b => b.Eggs).Concat(VanillaMobWays.Keys))
+                    if (e.StartsWith("minecraft:") && w.Names.ContainsKey("entity.minecraft." + e.Substring("minecraft:".Length))) vanillaMobs.Add(e);
+                // Modded mobs, then the game's own; a mob is everywhere it's listed or added.
+                var mobIds = owner.Keys.Concat(vanillaMobs).ToList();
                 foreach (string id in mobIds)
                 {
                     FeatureJar jar = id.StartsWith("minecraft:") ? null : owner[id];
@@ -927,17 +1007,26 @@ namespace MinecraftModManager
                     rules.TryGetValue(id, out mine);
                     // Vanilla mobs' add_spawns from mods have rows of their own (below), so they aren't counted here.
                     if (jar == null || mine == null) mine = new List<KeyValuePair<FeatureJar, SpawnRule>>();
-                    List<SpawnRule> inBiomes;
+                    List<SpawnRule> inBiomes, inStructs;
                     if (!listed.TryGetValue(id, out inBiomes)) inBiomes = new List<SpawnRule>();
+                    if (!inStructures.TryGetValue(id, out inStructs)) inStructs = new List<SpawnRule>();
                     var set = new BiomeSet();
                     foreach (var r in mine) AddBiomes(w, r.Value.Biomes, set);
                     foreach (SpawnRule r in inBiomes) set.Ids.Add(r.Path);
+                    foreach (SpawnRule r in inStructs) AddBiomes(w, r.Biomes, set); // where its structures generate
                     string ns = id.Substring(0, id.IndexOf(':'));
-                    bool any = mine.Count > 0 || inBiomes.Count > 0;
+                    bool any = mine.Count > 0 || inBiomes.Count > 0 || inStructs.Count > 0;
+                    string way;
+                    VanillaMobWays.TryGetValue(id, out way);
                     mobs.Add(Fields(
                         new object[] { "id", id, "name", NameOf(w, "entity", id), "off", off.Mobs.Contains(id),
-                            "spawns", SpawnFields(mine).Concat(BiomeSpawnFields(inBiomes)).ToList(),
-                            "category", inBiomes.Select(r => r.Category).Concat(mine.Select(r => r.Value.Category)).FirstOrDefault(c => c != null),
+                            "spawns", SpawnFields(mine).Concat(BiomeSpawnFields(inBiomes)).Concat(inStructs.Select(r => (object)Obj("weight", r.Weight, "min", r.Min, "max", r.Max,
+                                "where", "in " + NameOf(w, "structure", r.Path)))).ToList(),
+                            "structures", inStructs.Select(r => r.Path).Distinct().Select(s => (object)Obj("id", s, "name", NameOf(w, "structure", s))).ToList(),
+                            "how", jar == null ? way : null,
+                            // Nothing in the data spawns it (raids, villages, eggs), so there's nothing a switch could take away.
+                            "fixed", jar == null && !any,
+                            "category", inBiomes.Select(r => r.Category).Concat(mine.Select(r => r.Value.Category)).Concat(inStructs.Select(r => r.Category)).FirstOrDefault(c => c != null),
                             "ownRules", !any && w.Jars.Any(j => j.Data.OwnSpawnTypes.Contains(ns)),
                             "config", jar == null ? null : ConfigFor(configs, memo, OwnersOf(jar, id), PathTail(id), MobConfigWords, "spawn") },
                         SourceFields(jar),
@@ -1109,17 +1198,47 @@ namespace MinecraftModManager
             var files = new SortedDictionary<string, string>(StringComparer.Ordinal);
             var after = new SortedSet<string>(StringComparer.Ordinal);
 
-            foreach (string id in off.Structures)
+            // Structure copies: a turned-off structure gets no biomes; one whose own spawn list has a turned-off mob loses that
+            // mob (its spawn categories stay, even emptied, so the biome's mobs don't move in instead).
+            var structureCopies = new SortedDictionary<string, Dictionary<string, object>>(StringComparer.Ordinal);
+            Func<string, Dictionary<string, object>> copyOf = id =>
             {
+                Dictionary<string, object> copy;
+                if (structureCopies.TryGetValue(id, out copy)) return copy;
                 // The version the game uses: a mod's (loaded after it, so ours wins), else the game's own.
                 FeatureJar j = w.Jars.FirstOrDefault(x => x.Data.Structures.ContainsKey(id));
                 JarFeatures data = j != null ? j.Data : w.Base.FirstOrDefault(x => x.Structures.ContainsKey(id));
-                if (data == null) continue; // its mod is gone; it stays on the list in case it comes back
-                var copy = new Dictionary<string, object>(data.Structures[id]);
-                copy["biomes"] = new object[0];
-                int c = id.IndexOf(':');
-                files["data/" + id.Substring(0, c) + "/worldgen/structure/" + id.Substring(c + 1) + ".json"] = json.Serialize(copy);
+                if (data == null) return null; // its mod is gone; it stays on the list in case it comes back
                 if (j != null) after.UnionWith(ModIdsOf(j));
+                return structureCopies[id] = new Dictionary<string, object>(data.Structures[id]);
+            };
+            foreach (string id in off.Structures)
+            {
+                Dictionary<string, object> copy = copyOf(id);
+                if (copy != null) copy["biomes"] = new object[0];
+            }
+            var mobsOff = new HashSet<string>(off.Mobs.Where(id => id.IndexOf('@') < 0), StringComparer.Ordinal);
+            if (mobsOff.Count > 0)
+            {
+                var seen = new HashSet<string>(StringComparer.Ordinal);
+                foreach (KeyValuePair<string, Dictionary<string, object>> s in w.Jars.SelectMany(j => j.Data.Structures).Concat(w.Base.SelectMany(b => b.Structures)))
+                {
+                    if (!seen.Add(s.Key) || !StructureSpawns(s.Key, s.Value).Any(r => mobsOff.Contains(r.Entity))) continue;
+                    Dictionary<string, object> copy = copyOf(s.Key);
+                    var overrides = new Dictionary<string, object>();
+                    foreach (KeyValuePair<string, object> category in D(Get(copy, "spawn_overrides")))
+                    {
+                        var kept = new Dictionary<string, object>(D(category.Value) ?? new Dictionary<string, object>());
+                        kept["spawns"] = A(Get(kept, "spawns")).Where(x => S(D(x), "type") == null || !mobsOff.Contains(NormId(S(D(x), "type")))).ToArray();
+                        overrides[category.Key] = kept;
+                    }
+                    copy["spawn_overrides"] = overrides;
+                }
+            }
+            foreach (KeyValuePair<string, Dictionary<string, object>> s in structureCopies)
+            {
+                int c = s.Key.IndexOf(':');
+                files["data/" + s.Key.Substring(0, c) + "/worldgen/structure/" + s.Key.Substring(c + 1) + ".json"] = json.Serialize(s.Value);
             }
             foreach (string id in off.Mobs)
             {
