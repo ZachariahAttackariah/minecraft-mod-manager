@@ -1,7 +1,7 @@
 icon-source.png and the app icon built from it (app.ico)
 =========================================================
 
-The picture is Minecraft's chiseled bookshelf block. It is not the work of this project's author: the
+The picture is the front of Minecraft's chiseled bookshelf block (its texture). It is not the work of this project's author: the
 block, its textures and the Minecraft name belong to Mojang AB and Microsoft. It is used here as Mojang's
 Minecraft Usage Guidelines allow for free, non-commercial fan projects, and no ownership of it is claimed.
 

@@ -1,6 +1,6 @@
-# Builds app.ico from icon-source.png (a chiseled bookshelf filled with books: Minecraft's own block, used as
-# a non-commercial fan tool may under Mojang's usage guidelines), scaled down to each icon size with
-# high-quality filtering. Small sizes are 32-bit BMP entries, 256 is PNG.
+# Builds app.ico from icon-source.png (the front face of a chiseled bookshelf filled with books: Minecraft's own
+# 16x16 texture, used as a non-commercial fan tool may under Mojang's usage guidelines), scaled to each icon size
+# nearest-neighbour so the pixel art stays sharp. Small sizes are 32-bit BMP entries, 256 is PNG.
 Add-Type -AssemblyName System.Drawing
 $out = Join-Path $PSScriptRoot "app.ico"
 $source = [System.Drawing.Image]::FromFile((Join-Path $PSScriptRoot "icon-source.png"))
@@ -9,10 +9,9 @@ function New-IconBitmap([int]$s) {
     $bmp = New-Object System.Drawing.Bitmap $s, $s, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.Clear([System.Drawing.Color]::Transparent)
-    $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
-    $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
-    $g.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
-    # Clamp at the edges, so the transparent border doesn't bleed a dark fringe into the scaled picture.
+    $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
+    $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::Half
+    # Clamp at the edges, so the picture's border doesn't wrap around into the scaled picture.
     $attrs = New-Object System.Drawing.Imaging.ImageAttributes
     $attrs.SetWrapMode([System.Drawing.Drawing2D.WrapMode]::TileFlipXY)
     $g.DrawImage($source, (New-Object System.Drawing.Rectangle 0, 0, $s, $s), 0, 0, $source.Width, $source.Height, [System.Drawing.GraphicsUnit]::Pixel, $attrs)
