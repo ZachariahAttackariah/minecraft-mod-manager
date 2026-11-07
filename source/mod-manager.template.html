@@ -3014,7 +3014,46 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // Search answers by address, for a few minutes; installing or switching folders forgets them (the
   // "installed" marks change).
   var searchCache = {};
-  function forgetSearches() { searchCache = {}; }
+  function forgetSearches() { searchCache = {}; prefetchRun++; schedulePrefetch(); }
+  function cachedSearch(full) {
+    var kept = searchCache[full];
+    return kept && Date.now() - kept.at < (kept.ttl || 180000) ? kept : null;
+  }
+
+  // The first page of every search the drawer opens on (mods and each kind of pack: no words, the usual sort and
+  // filters) is fetched quietly a moment after the app starts, and again whenever the answers above are
+  // forgotten, so Add mods and Add packs open on results. One request at a time, so the app's own start-up
+  // isn't slowed; kept half an hour, since what's popular doesn't change by the minute. Their icons are fetched
+  // too.
+  var PREFETCH_KEEP = 1800000, prefetchTimer = null, prefetchRun = 0;
+  function schedulePrefetch() {
+    clearTimeout(prefetchTimer);
+    prefetchTimer = setTimeout(prefetchSearches, 4000);
+  }
+  function prefetchSearches() {
+    if (!connected || !server || !server.folderExists) return;
+    var run = prefetchRun;
+    var src = searchSource(), sites = src === "both" ? ["modrinth", "curseforge"] : [src];
+    var sort = $("search-sort").value === "relevance" ? "downloads" : $("search-sort").value;
+    var jobs = [];
+    ["mods", "resourcepacks", "shaderpacks", "datapacks"].forEach(function (kind) {
+      var cat = kind === "mods" ? $("search-cat").value : "", side = kind === "mods" ? $("search-side").value : "";
+      sites.forEach(function (site) {
+        if (side && site === "curseforge") return; // left out of a side-filtered search too
+        jobs.push(searchUrl(kind, site, "", cat, side) + "&offset=0&sort=" + sort);
+      });
+    });
+    (function next(i) {
+      if (i >= jobs.length || run !== prefetchRun) return;
+      var full = jobs[i];
+      if (cachedSearch(full)) { next(i + 1); return; }
+      api("GET", full).then(function (res) {
+        if (run !== prefetchRun) return;
+        searchCache[full] = { at: Date.now(), res: res, ttl: PREFETCH_KEEP };
+        (res.hits || []).slice(0, 24).forEach(function (hit) { if (hit.icon) new Image().src = hit.icon; });
+      }, function () {}).then(function () { next(i + 1); });
+    })(0);
+  }
   function resetSearch() {
     search.hits = []; search.prevHits = null; search.total = 0; search.error = null; search.warn = null; search.loading = false; search.seq++;
     search.mr = { offset: 0, total: 0, done: false };
@@ -3170,6 +3209,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     return src === "modrinth" ? search.mr.done : src === "curseforge" ? search.cf.done : search.mr.done && search.cf.done;
   }
 
+  // No folder chosen yet means the first one; once the Packs page says which that is, searches already fetched
+  // without one (the prefetched ones) count for it.
+  function placeSearches(kind, place) {
+    var from = "kind=" + kind + "&place=&", to = "kind=" + kind + "&place=" + encodeURIComponent(place) + "&";
+    Object.keys(searchCache).forEach(function (k) { if (k.indexOf(from) >= 0) searchCache[k.replace(from, to)] = searchCache[k]; });
+  }
+
+  // A search's address, without its page (offset) and sort.
+  function searchUrl(kind, site, q, cat, side) {
+    return kind !== "mods" ? (site === "curseforge" ? "/api/curseforge/packs/search" : "/api/packs/search") + "?kind=" + kind + "&place=" + encodeURIComponent(packs.places[kind] || "") + "&q=" + encodeURIComponent(q)
+      : "/api/" + site + "/search?q=" + encodeURIComponent(q) + (cat ? "&category=" + encodeURIComponent(cat) : "") + (side && site === "modrinth" ? "&side=" + side : "");
+  }
+
   function runSearch(reset) {
     if (reset) {
       // The last results stay up (dimmed) until the new ones arrive, instead of the list blanking each time.
@@ -3199,11 +3251,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var calls = sites.map(function (site) {
       var st = site === "curseforge" ? search.cf : search.mr;
       if (st.done) return Promise.resolve([]);
-      var url = search.kind !== "mods" ? (site === "curseforge" ? "/api/curseforge/packs/search" : "/api/packs/search") + "?kind=" + search.kind + "&place=" + encodeURIComponent(packs.places[search.kind] || "") + "&q=" + encodeURIComponent(q)
-        : "/api/" + site + "/search?q=" + encodeURIComponent(q) + (cat ? "&category=" + encodeURIComponent(cat) : "") + (side && site === "modrinth" ? "&side=" + side : "");
-      var full = url + "&offset=" + st.offset + "&sort=" + sort;
-      var kept = searchCache[full];
-      var ask = kept && Date.now() - kept.at < 180000 ? Promise.resolve(kept.res) : api("GET", full).then(function (res) { searchCache[full] = { at: Date.now(), res: res }; return res; });
+      var full = searchUrl(search.kind, site, q, cat, side) + "&offset=" + st.offset + "&sort=" + sort;
+      var kept = cachedSearch(full);
+      var ask = kept ? Promise.resolve(kept.res) : api("GET", full).then(function (res) { searchCache[full] = { at: Date.now(), res: res }; return res; });
       return ask.then(function (res) {
         if (res.noCategory) search.warn = "CurseForge has no matching category, so only Modrinth results show.";
         st.total = Number(res.total) || 0;
@@ -3396,6 +3446,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (seq !== packs.seq) return;
       packs.data = res;
       packs.error = null;
+      if (!packs.places[kind] && res.place) placeSearches(kind, res.place);
       packs.places[kind] = res.place;
       refreshSearchMarks();
     }, function (e) {
