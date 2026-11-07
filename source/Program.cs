@@ -84,7 +84,10 @@ namespace MinecraftModManager
         [STAThread]
         static int Main(string[] args)
         {
-            try { SetProcessDPIAware(); } catch { }
+            // Each screen's own scale (a 4K TV at 300% beside a monitor at 100%), not just the main screen's; older
+            // Windows only knows the main screen's.
+            try { if (!SetProcessDpiAwarenessContext(new IntPtr(-4))) SetProcessDPIAware(); }
+            catch { try { SetProcessDPIAware(); } catch { } }
             // Built without a target-framework stamp, so .NET would default to old TLS; Modrinth needs 1.2+.
             try { ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)12288; }
             catch (NotSupportedException) { ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; }
@@ -696,7 +699,7 @@ namespace MinecraftModManager
                     {
                         // Text size (Settings > Look): the window's own zoom, so menus and clicks stay lined up.
                         double factor = Convert.ToDouble(Get(body, "factor") ?? 1.0, CultureInfo.InvariantCulture);
-                        factor = Math.Max(0.8, Math.Min(1.4, factor));
+                        factor = Math.Max(0.8, Math.Min(2.0, factor));
                         if (window != null && !window.IsDisposed) ui.Post(delegate { window.SetPageZoom(factor); }, null);
                         SendJson(ctx, 200, Obj("ok", true));
                         return;
@@ -2387,5 +2390,8 @@ namespace MinecraftModManager
 
         [DllImport("user32.dll")]
         static extern bool SetProcessDPIAware();
+
+        [DllImport("user32.dll")]
+        static extern bool SetProcessDpiAwarenessContext(IntPtr context);
     }
 }

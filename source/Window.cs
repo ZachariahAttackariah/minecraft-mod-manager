@@ -155,14 +155,7 @@ namespace MinecraftModManager
                 nav.GripStyle = ToolStripGripStyle.Hidden;
                 nav.Dock = DockStyle.Top;
                 nav.CanOverflow = false;
-                nav.Padding = new Padding(Px(6), Px(4), Px(6), Px(4));
-                nav.Font = new Font("Segoe UI", 9.5f);
-                foreach (ToolStripButton b in new[] { back, forward, reload })
-                {
-                    b.Font = new Font("Segoe UI Symbol", 11f);
-                    b.AutoSize = false;
-                    b.Size = new Size(Px(34), Px(28));
-                }
+                foreach (ToolStripButton b in new[] { back, forward, reload }) b.AutoSize = false;
                 back.ToolTipText = "Back (Alt+Left)";
                 forward.ToolTipText = "Forward (Alt+Right)";
                 reload.ToolTipText = "Reload (F5)";
@@ -171,7 +164,6 @@ namespace MinecraftModManager
                 reload.Click += delegate { CoreWebView2 c = Core(active); if (c != null) c.Reload(); };
                 address.AutoSize = false;
                 address.BorderStyle = BorderStyle.FixedSingle;
-                address.Font = new Font("Segoe UI", 10f);
                 address.KeyDown += OnAddressKey;
                 address.GotFocus += delegate { BeginInvoke(new Action(address.SelectAll)); };
                 external.Alignment = ToolStripItemAlignment.Right;
@@ -195,12 +187,44 @@ namespace MinecraftModManager
                 tabs.Add(modrinthTab);
                 tabs.Add(curseforgeTab);
                 LoadSiteIcons();
+                Rescale();
                 ApplyPalette();
                 SystemEvents.UserPreferenceChanged += OnThemeChanged;
                 Load += OnLoad;
             }
 
-            int Px(int px) { return (int)Math.Round(px * DeviceDpi / 96.0); }
+            // The tab strip and address bar are sized for the screen the window is on (its Windows display scale,
+            // which can differ per screen: a 4K TV at 300% beside a monitor at 100%), times the page's Text size.
+            double dpi = 96, zoom = 1;
+            // Pixels for the bars, which follow Text size.
+            int Px(int px) { return (int)Math.Round(px * dpi * zoom / 96.0); }
+            // Pixels for the window itself (resize edges, frame, smallest size): the screen's scale only.
+            int Dp(int px) { return (int)Math.Round(px * dpi / 96.0); }
+            // A font for the bars, in pixels, so it follows the same scale.
+            Font UiFont(string face, float points) { return new Font(face, (float)(points * dpi * zoom / 72.0), FontStyle.Regular, GraphicsUnit.Pixel); }
+
+            // Size everything drawn by the window itself again, after the scale or Text size changed.
+            void Rescale()
+            {
+                MinimumSize = new Size(Dp(640), Dp(480));
+                nav.Padding = new Padding(Px(6), Px(4), Px(6), Px(4));
+                nav.Font = UiFont("Segoe UI", 9.5f);
+                foreach (ToolStripButton b in new[] { back, forward, reload })
+                {
+                    b.Font = UiFont("Segoe UI Symbol", 11f);
+                    b.Size = new Size(Px(34), Px(28));
+                }
+                address.Font = UiFont("Segoe UI", 10f);
+                strip.Rescale();
+                FitAddress();
+                PerformLayout();
+            }
+
+            int WindowDpi()
+            {
+                try { int d = (int)GetDpiForWindow(Handle); if (d > 0) return d; } catch { }
+                return DeviceDpi;
+            }
 
             void OnThemeChanged(object sender, UserPreferenceChangedEventArgs e)
             {
@@ -241,6 +265,16 @@ namespace MinecraftModManager
             {
                 base.OnHandleCreated(e);
                 windowHandle = Handle;
+                dpi = WindowDpi();
+                if (StartPosition == FormStartPosition.CenterScreen)
+                {
+                    // No saved size yet: the default size, scaled for this screen and centred on it.
+                    Rectangle area = Screen.FromHandle(Handle).WorkingArea;
+                    int width = Math.Min(area.Width, Dp(1320)), height = Math.Min(area.Height, Dp(900));
+                    StartPosition = FormStartPosition.Manual;
+                    Bounds = new Rectangle(area.X + (area.Width - width) / 2, area.Y + (area.Height - height) / 2, width, height);
+                }
+                Rescale();
                 ApplyTitleBarColours();
                 // Recalculate the frame now that WM_NCCALCSIZE folds the title bar into the window.
                 SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
@@ -268,7 +302,7 @@ namespace MinecraftModManager
                     calc = (NCCALCSIZE_PARAMS)Marshal.PtrToStructure(m.LParam, typeof(NCCALCSIZE_PARAMS));
                     // Keep the side and bottom borders, drop the caption. A maximized window hangs over the
                     // screen edge by its frame width, so its top moves in by that much to stay visible.
-                    calc.rgrc0.Top = top + (IsZoomed(Handle) ? GetSystemMetrics(SM_CYFRAME) + GetSystemMetrics(SM_CXPADDEDBORDER) : 0);
+                    calc.rgrc0.Top = top + (IsZoomed(Handle) ? Metric(SM_CYFRAME) + Metric(SM_CXPADDEDBORDER) : 0);
                     Marshal.StructureToPtr(calc, m.LParam, false);
                     m.Result = IntPtr.Zero;
                     return;
@@ -279,11 +313,22 @@ namespace MinecraftModManager
                     if ((int)m.Result != HTCLIENT || strip == null) return;
                     Point screen = PointFromLParam(m.LParam);
                     Point pt = PointToClient(screen);
-                    int edge = Px(6);
+                    int edge = Dp(6);
                     if (WindowState == FormWindowState.Normal && pt.Y < edge)
                         m.Result = (IntPtr)(pt.X < edge * 2 ? HTTOPLEFT : pt.X > ClientSize.Width - edge * 2 ? HTTOPRIGHT : HTTOP);
                     else if (strip.Bounds.Contains(pt) && strip.IsDragArea(strip.PointToClient(screen)))
                         m.Result = (IntPtr)HTCAPTION;
+                    return;
+                }
+                if (m.Msg == WM_DPICHANGED)
+                {
+                    // Moved to a screen with another scale: take the size Windows suggests for it, then redraw
+                    // the bars at the new scale.
+                    dpi = (int)(m.WParam.ToInt64() & 0xffff);
+                    var r = (RECT)Marshal.PtrToStructure(m.LParam, typeof(RECT));
+                    SetWindowPos(Handle, IntPtr.Zero, r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top, SWP_NOZORDER | SWP_NOACTIVATE);
+                    Rescale();
+                    m.Result = IntPtr.Zero;
                     return;
                 }
                 if (m.Msg == WM_WINDOWPOSCHANGED)
@@ -298,6 +343,12 @@ namespace MinecraftModManager
                     return;
                 }
                 base.WndProc(ref m);
+            }
+
+            // A frame size at this window's scale (the plain call answers for the main screen's).
+            int Metric(int index)
+            {
+                try { return GetSystemMetricsForDpi(index, (uint)dpi); } catch { return GetSystemMetrics(index); }
             }
 
             bool maxOrMin, leavingMaxOrMin;
@@ -373,6 +424,8 @@ namespace MinecraftModManager
             public void SetPageZoom(double factor)
             {
                 if (manager.View != null && Math.Abs(manager.View.ZoomFactor - factor) > 0.001) manager.View.ZoomFactor = factor;
+                // The bars above the page grow with it.
+                if (Math.Abs(zoom - factor) > 0.001) { zoom = factor; Rescale(); }
             }
 
             // Messages the page listens for: see NotifyPage.
@@ -805,11 +858,17 @@ namespace MinecraftModManager
                 {
                     w = owner;
                     SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
-                    Font = new Font("Segoe UI", 9.5f);
-                    Height = Px(38);
                 }
 
-                int Px(int px) { return (int)Math.Round(px * DeviceDpi / 96.0); }
+                // The window's scale (its screen, times Text size).
+                int Px(int px) { return w.Px(px); }
+
+                public void Rescale()
+                {
+                    Font = w.UiFont("Segoe UI", 9.5f);
+                    Height = Px(38);
+                    Invalidate();
+                }
 
                 void ArrangeTabs()
                 {
@@ -911,7 +970,7 @@ namespace MinecraftModManager
                     if (m.Msg == WM_NCHITTEST)
                     {
                         Point pt = PointToClient(PointFromLParam(m.LParam));
-                        bool topEdge = w.WindowState == FormWindowState.Normal && pt.Y < Px(6) && HitCaption(pt) < 0;
+                        bool topEdge = w.WindowState == FormWindowState.Normal && pt.Y < w.Dp(6) && HitCaption(pt) < 0;
                         if (IsDragArea(pt) || topEdge)
                         {
                             m.Result = (IntPtr)HTTRANSPARENT;
@@ -1120,10 +1179,17 @@ namespace MinecraftModManager
         static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
         // ---- Win32 for the custom title bar ----
-        const int WM_NCCALCSIZE = 0x0083, WM_NCHITTEST = 0x0084, WM_WINDOWPOSCHANGED = 0x0047;
+        const int WM_NCCALCSIZE = 0x0083, WM_NCHITTEST = 0x0084, WM_WINDOWPOSCHANGED = 0x0047, WM_DPICHANGED = 0x02E0;
         const int HTTRANSPARENT = -1, HTCLIENT = 1, HTCAPTION = 2, HTTOP = 12, HTTOPLEFT = 13, HTTOPRIGHT = 14;
         const int SM_CYFRAME = 33, SM_CXPADDEDBORDER = 92;
-        const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOZORDER = 0x4, SWP_FRAMECHANGED = 0x20;
+        const uint SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOZORDER = 0x4, SWP_NOACTIVATE = 0x10, SWP_FRAMECHANGED = 0x20;
+
+        // Windows 10 1607 and later; older Windows falls back to the main screen's scale.
+        [DllImport("user32.dll")]
+        static extern uint GetDpiForWindow(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        static extern int GetSystemMetricsForDpi(int index, uint dpi);
 
         [StructLayout(LayoutKind.Sequential)]
         struct RECT { public int Left, Top, Right, Bottom; }
