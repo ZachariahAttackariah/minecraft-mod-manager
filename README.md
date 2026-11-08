@@ -102,7 +102,7 @@ It's a small native window (WinForms + WebView2) with a local web page inside. T
 
 - **Settings** (the gear): quick looks (Overworld, Nether, The End, Deep Dark, Snowy), theme (dark, light or follow Windows), accent colour (or any colour), text size (90% to 200%, tab bar included, for big screens and TVs), and tags (vivid, soft, solid or outline) on top; under Fine-tune: background (glow, plain, block grid), a background picture of your own (dimmed, four strengths), square or rounded corners, row spacing, reduced motion, blocky lettering and `user.css`. The mod list can show or hide the Version, Side and Tags columns, and the app can open on a chosen page or wherever you left off. Also: file names, mod icons, row stripes, row buttons, tags per row, delete confirmation, search sources, the CurseForge key, and Detect's server-extras rule. The defaults are the intended look; only changes are saved, in the local settings file.
 - **Your own tag colours**: click a tag's colour dot in Manage tags to pick any colour; "automatic colour" undoes it.
-- **Tag search**: the Tags column and Manage tags each have a search box that matches a tag's name or what it means.
+- **Tag search**: the Tags column, Manage tags and the right-click menu's tag list each have a search box that matches a tag's name or what it means. In the right-click menu, Enter ticks the first match.
 - **user.css**: a stylesheet in the app data folder, loaded after the app's own. Settings has Edit and Reload buttons; the first Edit makes the file with a few commented examples.
 
 ## CurseForge
