@@ -201,6 +201,7 @@ namespace MinecraftModManager
             FollowInstanceTarget(path);
             RememberFolder(path);
             SaveSettings();
+            TrySyncAlwaysMods(path); // the mods every instance gets (AlwaysMods.cs)
             if (changed) Log("Now managing " + path);
             return Obj("ok", true, "changed", changed, "modsDir", path, "target", TargetObj());
         }
@@ -590,6 +591,7 @@ namespace MinecraftModManager
                 FollowInstanceTarget(info.Mods);
                 SaveSettings();
             }
+            if (versionChanged) TrySyncAlwaysMods(info.Mods); // mods that fit the new version now
             return Obj("ok", true, "changes", changes, "versionChanged", versionChanged, "target", TargetObj());
         }
 

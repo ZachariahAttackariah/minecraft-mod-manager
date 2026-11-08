@@ -438,6 +438,13 @@ a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--acce
 .mark svg { width: 13px; height: 13px; }
 .mark.pin { color: var(--warn); }
 .mark.note { color: var(--c-client); }
+.mark.always { color: var(--accent); }
+.always-list { display: grid; gap: 6px; }
+.always-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; }
+.always-main { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.always-row .toggle.always-main { display: flex; align-items: flex-start; }
+.always-row .toggle.always-main > span { display: grid; gap: 2px; min-width: 0; }
+.always-form .who { overflow-wrap: anywhere; }
 /* A mod's note, shown when the cursor rests on its row. */
 .note-pop { position: fixed; z-index: 30; max-width: min(380px, calc(100vw - 24px)); padding: 8px 11px 9px; font-size: 13px; line-height: 1.45; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--c-client); border-radius: 6px; box-shadow: var(--shadow-lg); pointer-events: none; }
 .note-pop .k { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; font: 700 11px/1 var(--font-body); letter-spacing: 0.05em; text-transform: uppercase; color: var(--c-client); }
@@ -1770,6 +1777,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   <div class="inst-foot">
     <button class="btn primary" type="button" id="new-instance">New instance…</button>
     <button class="btn" type="button" id="shared-settings">Shared settings…</button>
+    <button class="btn" type="button" id="always-mods">Mods in every instance…</button>
     <button class="btn" type="button" id="choose-folder">Other mods folder…</button>
     <button class="btn" type="button" id="open-prism">Open launcher</button>
   </div>
@@ -1935,7 +1943,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     folder: [["path", { d: "M1.75 4.25v8a1 1 0 0 0 1 1h10.5a1 1 0 0 0 1-1v-6.5a1 1 0 0 0-1-1H8L6.5 3.25H2.75a1 1 0 0 0-1 1z" }]],
     refresh: [["path", { d: "M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3" }]],
     search: [["circle", { cx: "7", cy: "7", r: "5" }], ["path", { d: "M11 11l3.5 3.5" }]],
-    dots: [["circle", { cx: "3.5", cy: "8", r: ".6" }], ["circle", { cx: "8", cy: "8", r: ".6" }], ["circle", { cx: "12.5", cy: "8", r: ".6" }]]
+    dots: [["circle", { cx: "3.5", cy: "8", r: ".6" }], ["circle", { cx: "8", cy: "8", r: ".6" }], ["circle", { cx: "12.5", cy: "8", r: ".6" }]],
+    layers: [["path", { d: "M8 2.5l5.5 3L8 8.5 2.5 5.5z" }], ["path", { d: "M2.5 8.5L8 11.5l5.5-3" }], ["path", { d: "M2.5 11.25L8 14.25l5.5-3" }]]
   };
 
   function $(id) { return document.getElementById(id); }
@@ -2272,7 +2281,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     return p.is.every(function (w) {
       return w === "on" ? r.status === "enabled" : w === "off" ? r.status === "disabled" : w === "update" || w === "updates" ? !!r.update
         : w === "pinned" ? !!ex.pin : w === "noted" ? !!ex.note : w === "new" ? isNewRow(r) : w === "unneeded" ? r.status !== "missing" && !r.requiredBy
-        : w === "missing" ? r.status === "missing" : true;
+        : w === "always" ? isAlways(r) : w === "missing" ? r.status === "missing" : true;
     });
   }
   // model.rows is already by name, so a stable sort by side keeps names in order within each side.
@@ -2629,6 +2638,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (ex.pin) badges.push(h("span", { class: "mark pin", title: "Pinned: Update all leaves it on this version" + (r.held ? ". " + r.held.versionNumber + " is out" : "") }, icon("pin")));
       if (r.held && r.held.why === "skipped") badges.push(h("span", { class: "mark", title: "Skipping the " + r.held.versionNumber + " update" }, icon("skip")));
       if (ex.note) badges.push(h("span", { class: "mark note", title: ex.note }, icon("note")));
+      if (isAlways(r)) badges.push(h("span", { class: "mark always", title: "In every instance: the app adds this mod to every instance it manages (Mods in every instance, in the instance picker)" }, icon("layers")));
       if (r.status !== "missing" && isNewRow(r)) badges.push(h("span", { class: "badge new", title: "Added or changed in the last " + NEW_DAYS + " days" }, "new"));
       if (r.status !== "missing" && currentView === "libraries" && !r.requiredBy)
         badges.push(h("span", { class: "badge unneeded", title: "No mod that's on lists it as required. It may still be used optionally, so check before removing it. (Search is:unneeded to list them.)" }, "not needed"));
@@ -4414,6 +4424,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }));
     if (single && rows[0].slug) actions.append(menuItem("Open on Modrinth", "link", function () { window.open("https://modrinth.com/project/" + encodeURIComponent(rows[0].slug), "_blank", "noopener"); }));
     else if (single && rows[0].mr && rows[0].mr.source === "curseforge" && rows[0].mr.url) actions.append(menuItem("Open on CurseForge", "link", function () { window.open(rows[0].mr.url, "_blank", "noopener"); }));
+    if (connected) {
+      var forAll = rows.filter(function (r) { return r.status !== "missing"; });
+      if (forAll.length && forAll.every(isAlways)) actions.append(menuItem("Mods in every instance…", "layers", alwaysDialog));
+      else if (forAll.length) actions.append(menuItem(single ? "Add to every instance" : "Add " + forAll.length + " to every instance", "layers", function () { addToAlways(forAll); }));
+    }
     if (!single) actions.append(menuItem("Clear selection", "clear", clearSelection));
     var wasOpen = !menuEl.hidden;
     menuEl.replaceChildren(actions, renderTagPanel(rows));
@@ -5187,6 +5202,94 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       });
     }
   }
+
+  // ---------- Mods in every instance (AlwaysMods.cs) ----------
+  // One collection of jars the app copies into every instance (and each other mods folder that's ticked).
+
+  function isAlways(r) {
+    var a = server && server.always;
+    if (!a || r.status === "missing") return false;
+    return r.modId ? a.ids.indexOf(String(r.modId).toLowerCase()) >= 0 : a.files.indexOf(String(r.key).toLowerCase()) >= 0;
+  }
+
+  function alwaysDone(res, what) {
+    var lines = [what].concat(res.notes || []).concat(res.report || []).filter(Boolean);
+    if (lines.length) toast(lines.join(" "));
+    inst.data = null;
+    return refresh(true);
+  }
+
+  function addToAlways(rows) {
+    var files = rows.filter(function (r) { return r.status !== "missing"; }).map(function (r) { return r.file; });
+    if (!files.length || !connected) return;
+    track("Adding to every instance", api("POST", "/api/always/add-from-list", { files: files })).then(function (res) {
+      var n = res.added.length;
+      return alwaysDone(res, n ? (n === 1 ? res.added[0].name + " goes into every instance now." : count(n, "mod goes", "mods go") + " into every instance now.") : "");
+    }, function (e) { toast(e.message); });
+  }
+
+  function alwaysDialog() {
+    var body = h("div", { class: "shared-form always-form" }, h("p", { class: "hint" }, "Loading…"));
+    openBig("Mods in every instance", "These mods are added to every instance the app manages, and to any other mods folder you tick below. A folder that already has the mod (on or off) keeps its own copy.",
+      body, [btn("Close", closeBig)]);
+    function load() {
+      return api("GET", "/api/always").then(render, function (e) { body.replaceChildren(h("p", { class: "tag-error", role: "alert" }, e.message)); });
+    }
+    function after(p, label) {
+      return track(label, p).then(function (res) { return alwaysDone(res, "").then(load); }, function (e) { toast(e.message); return load(); });
+    }
+    function askRemove(m) {
+      confirmDialog({
+        title: "Take " + m.name + " off the list?",
+        items: [m.file],
+        body: "It moves to the Recycle Bin. You can also remove the copies the app added to your instances (the ones nobody has changed since; they go to the Recycle Bin too), or leave them where they are.",
+        ok: "Remove it everywhere",
+        extra: { label: "Leave the copies", fn: function () { after(api("POST", "/api/always/remove", { files: [m.file], everywhere: false }), "Updating the list"); } },
+        onOk: function () { after(api("POST", "/api/always/remove", { files: [m.file], everywhere: true }), "Removing from every instance"); }
+      });
+    }
+    function render(d) {
+      var mods = d.mods.length
+        ? h("div", { class: "always-list" }, d.mods.map(function (m) {
+            var meta = [m.version, m.loader, m.minecraft ? "Minecraft " + m.minecraft : null].filter(Boolean).join(" · ");
+            return h("div", { class: "always-row" },
+              h("div", { class: "always-main" }, h("strong", null, m.name), h("span", { class: "who" }, meta || m.file),
+                m.tags.length ? h("span", { class: "who" }, m.tags.map(function (t) { return "#" + t; }).join(" ")) : null),
+              btn("Remove…", function () { askRemove(m); }, null, { disabled: !connected, "aria-label": "Remove " + m.name }));
+          }))
+        : h("p", { class: "who" }, "No mods yet. Add .jar files here, or right-click mods in your list and choose Add to every instance.");
+      var targets = h("div", { class: "always-list" }, d.targets.map(function (t) {
+        var box = h("input", { type: "checkbox" });
+        box.checked = t.on;
+        box.disabled = !connected;
+        box.addEventListener("change", function () {
+          box.disabled = true;
+          after(api("POST", "/api/always/target", { path: t.path, on: box.checked }), box.checked ? "Adding to " + t.name : "Updating");
+        });
+        var bits = [];
+        if (t.minecraft || t.loader) bits.push([t.loader, t.minecraft].filter(Boolean).join(" ") + (t.guessed ? " (assumed)" : ""));
+        if (d.mods.length) {
+          if (!t.on) bits.push("not getting them");
+          else if (t.running) bits.push("running: gets them next time");
+          else if (!t.missing.length && !t.stale.length) bits.push(t.present === d.mods.length ? "has all of them" : t.present ? "has all that fit here" : "none of them fit here");
+          if (t.on && t.missing.length) bits.push(t.missing.length + " to add: " + t.missing.join(", "));
+          if (t.on && t.stale.length) bits.push(t.stale.length + " to update: " + t.stale.join(", "));
+        }
+        var misfit = t.misfits.length ? h("span", { class: "who" }, "Can't load here: " + t.misfits.map(function (x) { return x.name + " (" + x.why + ")"; }).join(", ")) : null;
+        return h("div", { class: "always-row" },
+          h("label", { class: "toggle always-main" }, box, h("span", null, h("strong", null, t.name + (t.current ? " (open now)" : "")), h("span", { class: "who" }, bits.join(" · ")), misfit)));
+      }));
+      body.replaceChildren(
+        h("section", null, h("h3", null, "Mods"), mods,
+          h("div", { class: "share-row" },
+            btn("Add .jar files…", function () { after(api("POST", "/api/always/add-files", {}), "Adding to every instance"); }, "primary", { disabled: !connected }),
+            btn("Open folder", function () { api("POST", "/api/always/open", {}).catch(function (e) { toast(e.message); }); }))),
+        h("section", null, h("h3", null, "Where they go"), targets,
+          h("div", { class: "who" }, "Instances are ticked from the start; other mods folders only once you tick them. Each mod only goes where its loader and Minecraft version fit. Turning a copy off keeps it off; a deleted copy comes back. Copies get the mod's tags from here, and a newer jar in this list replaces the copies the app added. It all runs when the app starts, before Play, and when you open or create an instance.")));
+    }
+    load();
+  }
+  $("always-mods").addEventListener("click", function () { closeInstances(false); alwaysDialog(); });
 
   $("inst-btn").addEventListener("click", openInstances);
   $("new-instance").addEventListener("click", function () { closeInstances(false); instanceDialog("new", null); });
@@ -7195,7 +7298,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     ["Delete", "Delete the selected mods or packs; unbind the selected key binds"],
     ["Ctrl+click a tag", "Hide mods with that tag"],
     ["Right-click", "Actions for a mod (and its tags), a feature, a pack, a server mod or a key bind; selects it first"],
-    ["#tag  -#tag", "In the search box: with / without a tag. Also is:off, is:update, is:new, is:pinned, is:noted, is:unneeded, side:client"],
+    ["#tag  -#tag", "In the search box: with / without a tag. Also is:off, is:update, is:new, is:pinned, is:noted, is:unneeded, is:always, side:client"],
     ["Esc", "Close a dialog or menu, or clear the selection"],
     ["Ctrl+Enter", "Save a note"],
     ["Ctrl+T / Ctrl+W", "New tab / close tab"],

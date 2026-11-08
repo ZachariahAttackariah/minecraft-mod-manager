@@ -813,7 +813,7 @@ namespace MinecraftModManager
         }
 
         // Runs on the UI thread, like PickFolder.
-        static string[] PickFiles(string title, string startIn)
+        static string[] PickFiles(string title, string startIn, string filter = null)
         {
             using (var owner = new Form())
             using (var dialog = new OpenFileDialog())
@@ -825,7 +825,7 @@ namespace MinecraftModManager
                 owner.Size = new System.Drawing.Size(1, 1);
                 owner.Opacity = 0;
                 dialog.Title = title;
-                dialog.Filter = "Pack files (*.zip)|*.zip";
+                dialog.Filter = filter ?? "Pack files (*.zip)|*.zip";
                 dialog.Multiselect = true;
                 if (Directory.Exists(startIn)) dialog.InitialDirectory = startIn;
                 owner.Show();

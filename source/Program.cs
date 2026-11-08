@@ -214,7 +214,7 @@ namespace MinecraftModManager
 
             // Settings changed in a game since last time reach the other sharing instances, even ones
             // started from the launcher itself.
-            ThreadPool.QueueUserWorkItem(delegate { TryApplySharingDefaults(); TrySyncGameSettings(); TrySyncSharedConfigs(); });
+            ThreadPool.QueueUserWorkItem(delegate { TryApplySharingDefaults(); TrySyncGameSettings(); TrySyncSharedConfigs(); TrySyncAlwaysMods(null); });
             StartServerConfigWatch(); // configs changed in the game reach the server while it's stopped
 
             if (showWindow)
@@ -536,6 +536,9 @@ namespace MinecraftModManager
                         case "/api/sharing":
                             result = SharingInfo();
                             break;
+                        case "/api/always":
+                            result = AlwaysInfo();
+                            break;
                     }
                     if (result != null)
                     {
@@ -839,6 +842,22 @@ namespace MinecraftModManager
                     case "/api/sharing/defaults":
                         SendJson(ctx, 200, SetShareByDefault(Bool(body, "on")));
                         return;
+                    case "/api/always/add-from-list":
+                        SendJson(ctx, 200, AddAlwaysFromList(StrList(body, "files")));
+                        return;
+                    case "/api/always/add-files":
+                        SendJson(ctx, 200, AddAlwaysFiles());
+                        return;
+                    case "/api/always/remove":
+                        SendJson(ctx, 200, RemoveAlways(StrList(body, "files"), Bool(body, "everywhere")));
+                        return;
+                    case "/api/always/target":
+                        SendJson(ctx, 200, SetAlwaysTarget(Str(body, "path"), Bool(body, "on")));
+                        return;
+                    case "/api/always/open":
+                        OpenAlwaysFolder();
+                        SendJson(ctx, 200, Obj("ok", true));
+                        return;
                     case "/api/sharing/open":
                         OpenSharedFolder(Str(body, "kind"));
                         SendJson(ctx, 200, Obj("ok", true));
@@ -1030,7 +1049,7 @@ namespace MinecraftModManager
                 "paths", Obj("server", serverDir, "data", dataDir, "app", AppDir.TrimEnd('\\')),
                 "prism", Obj("installed", FindPrism() != null, "instanceId", prism == null ? null : prism[0], "instanceName", prism == null ? null : prism[1]),
                 "server", Obj("configured", serverDir != null, "state", serverState, "players", PlayerCount()),
-                "bisect", BisectSummary());
+                "bisect", BisectSummary(), "always", AlwaysMarks());
         }
 
         // ---------- Prism Launcher (Play) ----------
@@ -1077,6 +1096,7 @@ namespace MinecraftModManager
             TryApplySharingDefaults(); // an instance made in the launcher since starts out sharing too
             TrySyncGameSettings(); // shared game settings changed in another instance come along
             TrySyncSharedConfigs(); // and mod configs, the same way
+            TrySyncAlwaysMods(null); // and the mods every instance gets (AlwaysMods.cs)
             lock (GameLock)
                 if (game.State == "starting" || game.State == "running") throw new UserError(instance[1] + " is already " + (game.State == "starting" ? "starting." : "running."));
             if (GameRunning(GameDir())) throw new UserError(instance[1] + " is already running.");
