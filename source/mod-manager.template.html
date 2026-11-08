@@ -282,6 +282,7 @@ a.src:hover { border-color: var(--c); }
 .side-col .tag-card { padding: 8px 10px; }
 .side-col .tag-card .count { font-size: 15px; }
 .tag-filter { width: 100%; margin-bottom: 8px; padding: 6px 9px; font: 400 13px/1.2 var(--font-body); color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; }
+.tag-manage-filter { width: auto; flex: none; margin: 12px 20px 0; }
 .tag-group { margin: 6px 0 0; font: 700 10.5px/1.2 var(--font-body); letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
 .tag-group:first-child { margin-top: 0; }
 .fold { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: -4px; padding: 0; color: var(--muted); background: none; border: 0; border-radius: 3px; cursor: pointer; transition: transform 0.15s; }
@@ -1484,7 +1485,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   <aside class="side-col side-right" aria-label="Tags">
     <div class="panel">
       <h2 class="section-label"><span>Tags</span><span class="sl-actions"><button class="btn" type="button" id="auto-tag" title="Suggest your tags for mods from their Modrinth and CurseForge categories. You review them first.">Auto-tag</button><button class="btn" type="button" id="manage-tags">Manage</button></span></h2>
-      <input class="tag-filter" id="tag-filter" type="search" placeholder="Filter tags" aria-label="Filter tags" autocomplete="off" spellcheck="false" hidden>
+      <input class="tag-filter" id="tag-filter" type="search" placeholder="Search tags" aria-label="Search tags" autocomplete="off" spellcheck="false" hidden>
       <div class="tag-grid" id="tag-grid"></div>
       <p class="hint" id="tag-hint" style="margin:10px 0 0"></p>
     </div>
@@ -1833,6 +1834,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <button class="btn primary" type="submit">Add tag</button>
       <p class="tag-error" id="tag-new-error" role="alert" hidden></p>
     </form>
+    <input class="tag-filter tag-manage-filter" id="tag-manage-filter" type="search" placeholder="Search tags by name or meaning" aria-label="Search tags" autocomplete="off" spellcheck="false">
     <div class="results" id="tag-list"></div>
   </aside>
 </div>
@@ -2456,19 +2458,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
     var grid = $("tag-grid");
     grid.replaceChildren();
-    // Past 20 tags a filter box shows; tags that work as lists (to-do, testing, broken...) get their own group.
+    // A search box filters the tags (by name or what they mean); tags that work as lists (to-do, testing, broken...) get their own group.
     $("tag-hint").textContent = pref("tagHide") === "cycle"
       ? "Click a tag to show only it, click again to hide it. Ctrl+click or right-click hides it straight away."
       : "Click a tag to show only it. Ctrl+click (or right-click) to hide mods with it instead.";
-    var many = model.topics.length > 20;
-    $("tag-filter").hidden = !many;
-    var f = many ? $("tag-filter").value.trim().toLowerCase() : "";
+    var any = model.topics.length > 0;
+    $("tag-filter").hidden = !any;
+    var f = any ? $("tag-filter").value.trim().toLowerCase() : "";
     // The Libraries page shows the tags its libraries carry (the library tag among them); the Mods page shows
     // every tag but the library one (it never shows library mods).
     var shownTags = model.topics.filter(function (t) {
       return currentView === "libraries" ? area.counts[t] > 0 || LIBRARY_TAGS.indexOf(t) >= 0 : LIBRARY_TAGS.indexOf(t) < 0;
     })
-      .filter(function (t) { return !f || t.indexOf(f) >= 0 || state.tags.indexOf(t) >= 0 || state.excluded.indexOf(t) >= 0; });
+      .filter(function (t) { return !f || tagMatches(t, f) || state.tags.indexOf(t) >= 0 || state.excluded.indexOf(t) >= 0; });
     var lists = shownTags.filter(function (t) { return LIST_TAGS.test(t); });
     var topics = shownTags.filter(function (t) { return !LIST_TAGS.test(t); });
     var groups = lists.length && topics.length ? [["Topics", topics], ["Lists", lists]] : [["", shownTags]];
@@ -2495,6 +2497,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   var LIST_TAGS = /^(to-?do|todo-.*|test(ing)?|to-test|broken|check|to-check|wip|maybe|new|remove|to-remove|keep|fix|to-fix|favou?rites?|disabled|later|review|needs-.*)$/;
+  // A tag search matches the name or what the tag means; f is already lower-case.
+  function tagMatches(t, f) {
+    return t.toLowerCase().indexOf(f) >= 0 || String(model && model.defs[t] || "").toLowerCase().indexOf(f) >= 0;
+  }
   $("tag-filter").addEventListener("input", function () { renderSummary(); });
   $("tag-filter").addEventListener("keydown", function (e) { if (e.key === "Escape" && $("tag-filter").value) { e.stopPropagation(); $("tag-filter").value = ""; renderSummary(); } });
 
@@ -3953,6 +3959,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     editingTag = null;
     editDraft = null;
     $("tag-new-error").hidden = true;
+    $("tag-manage-filter").value = "";
     renderTagManager();
     $("tags-scrim").hidden = false;
     $("tag-new-name").focus();
@@ -3970,9 +3977,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!model) return;
     var side = model.order.filter(function (t) { return SIDE_TAGS.indexOf(t) >= 0; });
     var topics = model.order.filter(function (t) { return SIDE_TAGS.indexOf(t) < 0; });
-    if (!side.length && !topics.length) list.append(h("p", { class: "search-empty" }, "No tags yet. Add the first one above."));
-    side.concat(topics).forEach(function (t) { list.append(tagItem(t)); });
+    var all = side.concat(topics);
+    $("tag-manage-filter").hidden = !all.length;
+    if (!all.length) { list.append(h("p", { class: "search-empty" }, "No tags yet. Add the first one above.")); return; }
+    // The search keeps the tag being edited on screen.
+    var f = $("tag-manage-filter").value.trim().toLowerCase();
+    var shown = all.filter(function (t) { return !f || t === editingTag || tagMatches(t, f); });
+    if (!shown.length) list.append(h("p", { class: "search-empty" }, "No tag matches “" + $("tag-manage-filter").value.trim() + "”."));
+    shown.forEach(function (t) { list.append(tagItem(t)); });
   }
+  $("tag-manage-filter").addEventListener("input", function () { renderTagManager(); });
+  $("tag-manage-filter").addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && $("tag-manage-filter").value) { e.stopPropagation(); $("tag-manage-filter").value = ""; renderTagManager(); }
+  });
 
   // The colour picker wants #rrggbb; tag colours are hsl() or a theme variable. A canvas normalises them.
   var hexCanvas = null;
