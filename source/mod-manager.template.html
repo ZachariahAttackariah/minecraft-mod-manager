@@ -444,7 +444,11 @@ a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--acce
 .always-main { display: grid; gap: 2px; flex: 1; min-width: 0; }
 .always-row .toggle.always-main { display: flex; align-items: flex-start; }
 .always-row .toggle.always-main > span { display: grid; gap: 2px; min-width: 0; }
-.always-form .who { overflow-wrap: anywhere; }
+.always-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); align-items: start; }
+.always-cards .row-actions { margin-bottom: 12px; }
+.always-row.off { opacity: 0.7; }
+.always-row .hint { line-height: 1.35; overflow-wrap: anywhere; }
+.always-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
 /* A mod's note, shown when the cursor rests on its row. */
 .note-pop { position: fixed; z-index: 30; max-width: min(380px, calc(100vw - 24px)); padding: 8px 11px 9px; font-size: 13px; line-height: 1.45; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--c-client); border-radius: 6px; box-shadow: var(--shadow-lg); pointer-events: none; }
 .note-pop .k { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; font: 700 11px/1 var(--font-body); letter-spacing: 0.05em; text-transform: uppercase; color: var(--c-client); }
@@ -1398,6 +1402,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <button type="button" data-view="libraries" title="Mods tagged library: the ones other mods need. They're kept out of the Mods list.">Libraries<span class="nav-n" id="lib-count"></span></button>
       <button type="button" data-view="features" title="The structures, mobs, ores, biomes, items and recipes your mods add, with switches to turn them off">Features</button>
       <button type="button" data-view="packs">Packs</button>
+      <button type="button" data-view="always" title="Mods the app adds to every instance it manages">Every instance</button>
       <button type="button" data-view="configs" title="Every mod's settings, from the game's and the server's config folders">Configs</button>
       <button type="button" data-view="keys" title="Every control in the game, Minecraft's and the mods': which keys clash, and changing them">Key binds</button>
       <button type="button" data-view="server">Server</button>
@@ -1684,6 +1689,29 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     </div>
   </section>
 
+  <!-- Every instance: the mods the app adds to every instance (AlwaysMods.cs). -->
+  <section class="view" id="view-always" aria-label="Every instance" hidden>
+    <div class="cards always-cards">
+      <div class="card">
+        <h2>Mods in every instance</h2>
+        <p class="lead">The app copies these into every instance it manages, and into any other mods folder you tick. A place that already has the mod (any version, on or off) keeps its own copy. To add mods from your list, right-click them there and choose Add to every instance.</p>
+        <div class="row-actions">
+          <button class="btn primary" type="button" id="always-add">Add .jar files…</button>
+          <button class="btn" type="button" id="always-sync" hidden>Add the missing ones now</button>
+          <button class="btn quiet" type="button" id="always-open">Open folder</button>
+          <span class="hint" id="always-count"></span>
+          <span class="hint" id="always-status"></span>
+        </div>
+        <div class="always-list" id="always-list-mods"></div>
+      </div>
+      <div class="card">
+        <h2>Where they go</h2>
+        <p class="lead">Instances are ticked from the start; other mods folders only once you tick them. Each mod only goes where its loader and Minecraft version fit. A copy turned off stays off, and a deleted one comes back. Copies get the mod's tags from here, and a newer jar here replaces the copies the app added (ones you changed yourself are left alone). This runs when the app starts, before Play, and when you open or create an instance.</p>
+        <div class="always-list" id="always-list-targets"></div>
+      </div>
+    </div>
+  </section>
+
   <section class="view" id="view-snapshots" aria-label="Snapshots" hidden>
     <div class="cards">
       <div class="card" id="bisect-card"></div>
@@ -1777,7 +1805,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   <div class="inst-foot">
     <button class="btn primary" type="button" id="new-instance">New instance…</button>
     <button class="btn" type="button" id="shared-settings">Shared settings…</button>
-    <button class="btn" type="button" id="always-mods">Mods in every instance…</button>
+    <button class="btn" type="button" id="always-mods">Every instance</button>
     <button class="btn" type="button" id="choose-folder">Other mods folder…</button>
     <button class="btn" type="button" id="open-prism">Open launcher</button>
   </div>
@@ -2638,7 +2666,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (ex.pin) badges.push(h("span", { class: "mark pin", title: "Pinned: Update all leaves it on this version" + (r.held ? ". " + r.held.versionNumber + " is out" : "") }, icon("pin")));
       if (r.held && r.held.why === "skipped") badges.push(h("span", { class: "mark", title: "Skipping the " + r.held.versionNumber + " update" }, icon("skip")));
       if (ex.note) badges.push(h("span", { class: "mark note", title: ex.note }, icon("note")));
-      if (isAlways(r)) badges.push(h("span", { class: "mark always", title: "In every instance: the app adds this mod to every instance it manages (Mods in every instance, in the instance picker)" }, icon("layers")));
+      if (isAlways(r)) badges.push(h("span", { class: "mark always", title: "In every instance: the app adds this mod to every instance it manages (see the Every instance tab)" }, icon("layers")));
       if (r.status !== "missing" && isNewRow(r)) badges.push(h("span", { class: "badge new", title: "Added or changed in the last " + NEW_DAYS + " days" }, "new"));
       if (r.status !== "missing" && currentView === "libraries" && !r.requiredBy)
         badges.push(h("span", { class: "badge unneeded", title: "No mod that's on lists it as required. It may still be used optionally, so check before removing it. (Search is:unneeded to list them.)" }, "not needed"));
@@ -2902,7 +2930,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!hasToken) return Promise.resolve();
     if (inflight) return inflight.then(function () { return refresh(force); });
     inflight = api("GET", "/api/state").then(function (s) {
+      var wasConnected = connected;
       connected = true;
+      if (!wasConnected && currentView === "always") renderAlways(); // its buttons wait for the connection
       s.checkedAt = new Date();
       var sig = s.modsDir + "|" + s.files.map(function (f) { return f.name + ":" + f.size; }).join(",") + "|" + hash(s.tagsText || "");
       server = s;
@@ -2938,6 +2968,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }, function (e) {
       connected = false;
       renderHeader();
+      if (currentView === "always") renderAlways();
       if (model) { renderList(visible()); renderSelectionBar(); }
       var content = [e.message];
       if (e.status === 403) content.push(h("button", { type: "button", class: "btn", onclick: function () { location.reload(); } }, "Reload page"));
@@ -4426,7 +4457,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     else if (single && rows[0].mr && rows[0].mr.source === "curseforge" && rows[0].mr.url) actions.append(menuItem("Open on CurseForge", "link", function () { window.open(rows[0].mr.url, "_blank", "noopener"); }));
     if (connected) {
       var forAll = rows.filter(function (r) { return r.status !== "missing"; });
-      if (forAll.length && forAll.every(isAlways)) actions.append(menuItem("Mods in every instance…", "layers", alwaysDialog));
+      if (forAll.length && forAll.every(isAlways)) actions.append(menuItem("Show in Every instance", "layers", function () { setView("always"); }));
       else if (forAll.length) actions.append(menuItem(single ? "Add to every instance" : "Add " + forAll.length + " to every instance", "layers", function () { addToAlways(forAll); }));
     }
     if (!single) actions.append(menuItem("Clear selection", "clear", clearSelection));
@@ -5203,8 +5234,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }
   }
 
-  // ---------- Mods in every instance (AlwaysMods.cs) ----------
+  // ---------- Every instance: the mods the app adds to every instance (AlwaysMods.cs) ----------
   // One collection of jars the app copies into every instance (and each other mods folder that's ticked).
+
+  var always = { data: null, loading: null };
 
   function isAlways(r) {
     var a = server && server.always;
@@ -5212,11 +5245,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     return r.modId ? a.ids.indexOf(String(r.modId).toLowerCase()) >= 0 : a.files.indexOf(String(r.key).toLowerCase()) >= 0;
   }
 
+  // After any change: what happened as a toast, then the mod list (its marks, and the jars the change put
+  // in the folder being managed) and this page catch up.
   function alwaysDone(res, what) {
     var lines = [what].concat(res.notes || []).concat(res.report || []).filter(Boolean);
-    if (lines.length) toast(lines.join(" "));
+    if (lines.length) toast(lines.join(" "), currentView === "always" ? null : "Show", currentView === "always" ? null : function () { setView("always"); });
     inst.data = null;
-    return refresh(true);
+    return refresh(true).then(function () { if (currentView === "always") return loadAlways(); });
+  }
+
+  function alwaysAction(p, label) {
+    return track(label, p).then(function (res) { return alwaysDone(res, ""); }, function (e) { toast(e.message); if (currentView === "always") return loadAlways(); });
   }
 
   function addToAlways(rows) {
@@ -5228,68 +5267,92 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }, function (e) { toast(e.message); });
   }
 
-  function alwaysDialog() {
-    var body = h("div", { class: "shared-form always-form" }, h("p", { class: "hint" }, "Loading…"));
-    openBig("Mods in every instance", "These mods are added to every instance the app manages, and to any other mods folder you tick below. A folder that already has the mod (on or off) keeps its own copy.",
-      body, [btn("Close", closeBig)]);
-    function load() {
-      return api("GET", "/api/always").then(render, function (e) { body.replaceChildren(h("p", { class: "tag-error", role: "alert" }, e.message)); });
-    }
-    function after(p, label) {
-      return track(label, p).then(function (res) { return alwaysDone(res, "").then(load); }, function (e) { toast(e.message); return load(); });
-    }
-    function askRemove(m) {
-      confirmDialog({
-        title: "Take " + m.name + " off the list?",
-        items: [m.file],
-        body: "It moves to the Recycle Bin. You can also remove the copies the app added to your instances (the ones nobody has changed since; they go to the Recycle Bin too), or leave them where they are.",
-        ok: "Remove it everywhere",
-        extra: { label: "Leave the copies", fn: function () { after(api("POST", "/api/always/remove", { files: [m.file], everywhere: false }), "Updating the list"); } },
-        onOk: function () { after(api("POST", "/api/always/remove", { files: [m.file], everywhere: true }), "Removing from every instance"); }
-      });
-    }
-    function render(d) {
-      var mods = d.mods.length
-        ? h("div", { class: "always-list" }, d.mods.map(function (m) {
-            var meta = [m.version, m.loader, m.minecraft ? "Minecraft " + m.minecraft : null].filter(Boolean).join(" · ");
-            return h("div", { class: "always-row" },
-              h("div", { class: "always-main" }, h("strong", null, m.name), h("span", { class: "who" }, meta || m.file),
-                m.tags.length ? h("span", { class: "who" }, m.tags.map(function (t) { return "#" + t; }).join(" ")) : null),
-              btn("Remove…", function () { askRemove(m); }, null, { disabled: !connected, "aria-label": "Remove " + m.name }));
-          }))
-        : h("p", { class: "who" }, "No mods yet. Add .jar files here, or right-click mods in your list and choose Add to every instance.");
-      var targets = h("div", { class: "always-list" }, d.targets.map(function (t) {
-        var box = h("input", { type: "checkbox" });
-        box.checked = t.on;
-        box.disabled = !connected;
-        box.addEventListener("change", function () {
-          box.disabled = true;
-          after(api("POST", "/api/always/target", { path: t.path, on: box.checked }), box.checked ? "Adding to " + t.name : "Updating");
-        });
-        var bits = [];
-        if (t.minecraft || t.loader) bits.push([t.loader, t.minecraft].filter(Boolean).join(" ") + (t.guessed ? " (assumed)" : ""));
-        if (d.mods.length) {
-          if (!t.on) bits.push("not getting them");
-          else if (t.running) bits.push("running: gets them next time");
-          else if (!t.missing.length && !t.stale.length) bits.push(t.present === d.mods.length ? "has all of them" : t.present ? "has all that fit here" : "none of them fit here");
-          if (t.on && t.missing.length) bits.push(t.missing.length + " to add: " + t.missing.join(", "));
-          if (t.on && t.stale.length) bits.push(t.stale.length + " to update: " + t.stale.join(", "));
-        }
-        var misfit = t.misfits.length ? h("span", { class: "who" }, "Can't load here: " + t.misfits.map(function (x) { return x.name + " (" + x.why + ")"; }).join(", ")) : null;
-        return h("div", { class: "always-row" },
-          h("label", { class: "toggle always-main" }, box, h("span", null, h("strong", null, t.name + (t.current ? " (open now)" : "")), h("span", { class: "who" }, bits.join(" · ")), misfit)));
-      }));
-      body.replaceChildren(
-        h("section", null, h("h3", null, "Mods"), mods,
-          h("div", { class: "share-row" },
-            btn("Add .jar files…", function () { after(api("POST", "/api/always/add-files", {}), "Adding to every instance"); }, "primary", { disabled: !connected }),
-            btn("Open folder", function () { api("POST", "/api/always/open", {}).catch(function (e) { toast(e.message); }); }))),
-        h("section", null, h("h3", null, "Where they go"), targets,
-          h("div", { class: "who" }, "Instances are ticked from the start; other mods folders only once you tick them. Each mod only goes where its loader and Minecraft version fit. Turning a copy off keeps it off; a deleted copy comes back. Copies get the mod's tags from here, and a newer jar in this list replaces the copies the app added. It all runs when the app starts, before Play, and when you open or create an instance.")));
-    }
-    load();
+  function loadAlways() {
+    if (!hasToken) return Promise.resolve();
+    if (always.loading) return always.loading;
+    if (!always.data) $("always-status").textContent = "Loading…";
+    always.loading = api("GET", "/api/always").then(function (d) {
+      always.data = d;
+      $("always-status").textContent = "";
+    }, function (e) { $("always-status").textContent = e.message; }).then(function () { always.loading = null; renderAlways(); });
+    return always.loading;
   }
-  $("always-mods").addEventListener("click", function () { closeInstances(false); alwaysDialog(); });
+
+  function askRemoveAlways(m) {
+    confirmDialog({
+      title: "Take " + m.name + " off the list?",
+      items: [m.file],
+      body: "It moves to the Recycle Bin. You can also remove the copies the app added to your instances (the ones nobody has changed since; they go to the Recycle Bin too), or leave them where they are.",
+      ok: "Remove it everywhere",
+      extra: { label: "Leave the copies", fn: function () { alwaysAction(api("POST", "/api/always/remove", { files: [m.file], everywhere: false }), "Updating the list"); } },
+      onOk: function () { alwaysAction(api("POST", "/api/always/remove", { files: [m.file], everywhere: true }), "Removing from every instance"); }
+    });
+  }
+
+  function renderAlways() {
+    var d = always.data;
+    var modsEl = $("always-list-mods"), targetsEl = $("always-list-targets");
+    modsEl.replaceChildren();
+    targetsEl.replaceChildren();
+    if (!d) return;
+    var ticked = d.targets.filter(function (t) { return t.on; });
+    var waiting = ticked.filter(function (t) { return !t.running && (t.missing.length || t.stale.length); });
+    $("always-sync").hidden = !waiting.length;
+    $("always-sync").disabled = !connected;
+    $("always-add").disabled = !connected;
+    $("always-count").textContent = d.mods.length ? count(d.mods.length, "mod", "mods") + " · going to " + count(ticked.length, "place", "places") : "";
+
+    if (!d.mods.length) modsEl.append(h("p", { class: "hint" }, "No mods yet. Add .jar files here, or right-click mods in your list and choose Add to every instance."));
+    d.mods.forEach(function (m) {
+      // Where this one is: every ticked place that isn't waiting for it and where it can load.
+      var named = function (list) { return list.indexOf(m.name) >= 0; };
+      var cant = ticked.filter(function (t) { return t.misfits.some(function (x) { return x.name === m.name; }); });
+      var waits = ticked.filter(function (t) { return named(t.missing) || named(t.stale); });
+      var has = ticked.length - cant.length - waits.length;
+      var reach = ["in " + has + " of " + ticked.length];
+      if (waits.length) reach.push(waits.length + " waiting");
+      if (cant.length) reach.push("can't load in " + cant.map(function (t) { return t.name; }).join(", "));
+      var meta = [m.version, m.loader, m.minecraft ? "Minecraft " + m.minecraft : null].filter(Boolean).join(" · ");
+      modsEl.append(h("div", { class: "always-row" },
+        h("div", { class: "always-main" },
+          h("strong", null, m.name),
+          h("span", { class: "hint" }, meta || m.file),
+          h("span", { class: "hint" }, reach.join(" · ")),
+          m.tags.length ? h("span", { class: "always-tags" }, m.tags.map(function (t) { return h("span", { class: "chip", style: "--c:" + colorOf(t) }, t); })) : null),
+        btn("Remove…", function () { askRemoveAlways(m); }, "quiet", { disabled: !connected, "aria-label": "Remove " + m.name })));
+    });
+
+    d.targets.forEach(function (t) {
+      var box = h("input", { type: "checkbox", "aria-label": (t.on ? "Stop adding them to " : "Add them to ") + t.name });
+      box.checked = t.on;
+      box.disabled = !connected;
+      box.addEventListener("change", function () {
+        box.disabled = true;
+        alwaysAction(api("POST", "/api/always/target", { path: t.path, on: box.checked }), box.checked ? "Adding to " + t.name : "Updating");
+      });
+      var bits = [];
+      if (t.minecraft || t.loader) bits.push([t.loader, t.minecraft].filter(Boolean).join(" ") + (t.guessed ? " (assumed)" : ""));
+      if (!t.prism) bits.push("mods folder");
+      if (d.mods.length) {
+        if (!t.on) bits.push("not getting them");
+        else if (t.running) bits.push("running: gets them next time");
+        else if (!t.missing.length && !t.stale.length) bits.push(t.present === d.mods.length ? "has all of them" : t.present ? "has all that fit here" : "none of them fit here");
+        if (t.on && t.missing.length) bits.push(t.missing.length + " to add: " + t.missing.join(", "));
+        if (t.on && t.stale.length) bits.push(t.stale.length + " to update: " + t.stale.join(", "));
+      }
+      targetsEl.append(h("div", { class: "always-row" + (t.on ? "" : " off") },
+        h("label", { class: "toggle always-main" }, box, h("span", null,
+          h("strong", null, t.name + (t.current ? " (open now)" : "")),
+          h("span", { class: "hint" }, bits.join(" · ")),
+          t.misfits.length ? h("span", { class: "hint" }, "Can't load here: " + t.misfits.map(function (x) { return x.name + " (" + x.why + ")"; }).join(", ")) : null))));
+    });
+  }
+
+  $("always-add").addEventListener("click", function () { alwaysAction(api("POST", "/api/always/add-files", {}), "Adding to every instance"); });
+  $("always-sync").addEventListener("click", function () { alwaysAction(api("POST", "/api/always/sync", {}), "Adding to every instance"); });
+  $("always-open").addEventListener("click", function () { api("POST", "/api/always/open", {}).catch(function (e) { toast(e.message); }); });
+  $("always-mods").addEventListener("click", function () { closeInstances(false); setView("always"); });
+
 
   $("inst-btn").addEventListener("click", openInstances);
   $("new-instance").addEventListener("click", function () { closeInstances(false); instanceDialog("new", null); });
@@ -6553,7 +6616,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   // ---------- Sections (Mods / Server / Snapshots / Cleanup) ----------
 
-  var VIEWS = ["mods", "libraries", "features", "packs", "configs", "keys", "server", "snapshots", "cleanup", "settings"];
+  var VIEWS = ["mods", "libraries", "features", "packs", "always", "configs", "keys", "server", "snapshots", "cleanup", "settings"];
   var currentView = "mods";
   function setView(name, initial) {
     if (VIEWS.indexOf(name) < 0) name = "mods";
@@ -6561,7 +6624,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     currentView = name;
     // Libraries is the Mods page showing only mods tagged library.
     var section = name === "libraries" ? "mods" : name;
-    ["mods", "features", "packs", "configs", "keys", "server", "snapshots", "cleanup", "settings"].forEach(function (v) { $("view-" + v).hidden = v !== section; });
+    ["mods", "features", "packs", "always", "configs", "keys", "server", "snapshots", "cleanup", "settings"].forEach(function (v) { $("view-" + v).hidden = v !== section; });
     if (section === "mods") switchListArea(name);
     if (section === "mods" && was !== name && model) {
       Object.keys(selected).forEach(function (k) { delete selected[k]; });
@@ -6580,6 +6643,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!hasToken) return;
     if (name === "server") { refreshServer(); startConsole(); setSub(srv.sub); ensureSync(); }
     if (name === "packs") loadPacks(false);
+    if (name === "always") loadAlways();
     if (name === "keys") loadKeys();
     if (name !== "keys" && keys.capture) { keys.capture = null; keys.capMod = null; }
     if (name === "snapshots") { loadSnapshots(); loadWorlds(); loadHistory(); }
@@ -7172,7 +7236,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function paletteItems() {
     var items = [];
     var go = function (label, hint, fn, kind) { items.push({ label: label, hint: hint, fn: fn, kind: kind || "action" }); };
-    [["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["configs", "Configs"], ["keys", "Key binds"], ["server", "Server"], ["snapshots", "Snapshots"], ["cleanup", "Cleanup"], ["settings", "Settings"]]
+    [["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["always", "Every instance"], ["configs", "Configs"], ["keys", "Key binds"], ["server", "Server"], ["snapshots", "Snapshots"], ["cleanup", "Cleanup"], ["settings", "Settings"]]
       .forEach(function (v) { go("Go to " + v[1], "page", function () { setView(v[0]); }, "page"); });
     // The pages within pages: Features' kinds, Packs' kinds and the Server's tabs.
     Object.keys(FEAT_KINDS).forEach(function (k) {
@@ -7542,7 +7606,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "userCss", label: "Your own styles (user.css)", desc: "", custom: userCssControl, fine: true }
     ] },
     { title: "Mod list", items: [
-      { key: "startPage", label: "Open on", desc: "The page the app shows when it starts.", select: [["last", "Where I left off"], ["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["configs", "Configs"], ["keys", "Key binds"], ["server", "Server"], ["snapshots", "Snapshots"]] },
+      { key: "startPage", label: "Open on", desc: "The page the app shows when it starts.", select: [["last", "Where I left off"], ["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["always", "Every instance"], ["configs", "Configs"], ["keys", "Key binds"], ["server", "Server"], ["snapshots", "Snapshots"]] },
       { key: "fileNames", label: "Show file names", desc: "The jar's file name under each mod's name." },
       { key: "colVersion", label: "Version column", desc: "Each mod's installed version, from Modrinth or CurseForge when known, else from the jar." },
       { key: "colSide", label: "Side column", desc: "The C and S marks for client and server." },

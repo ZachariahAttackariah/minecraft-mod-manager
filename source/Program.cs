@@ -854,6 +854,14 @@ namespace MinecraftModManager
                     case "/api/always/target":
                         SendJson(ctx, 200, SetAlwaysTarget(Str(body, "path"), Bool(body, "on")));
                         return;
+                    case "/api/always/sync":
+                    {
+                        var alwaysReport = new List<string>();
+                        int alwaysCurrent = SyncAlwaysMods(null, alwaysReport);
+                        if (alwaysReport.Count == 0) alwaysReport.Add("Everything was already in place.");
+                        SendJson(ctx, 200, Obj("ok", true, "report", alwaysReport, "currentChanged", alwaysCurrent));
+                        return;
+                    }
                     case "/api/always/open":
                         OpenAlwaysFolder();
                         SendJson(ctx, 200, Obj("ok", true));

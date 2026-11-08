@@ -22,7 +22,7 @@ namespace MinecraftModManager
             { "tagStyle", new[] { "tint", "solid", "outline" } },
             { "motion", new[] { "system", "on", "reduce" } },
             { "rowStyle", new[] { "lines", "zebra" } },
-            { "startPage", new[] { "last", "mods", "libraries", "packs", "configs", "server", "snapshots" } },
+            { "startPage", new[] { "last", "mods", "libraries", "features", "packs", "always", "configs", "keys", "server", "snapshots" } },
             { "bgDim", new[] { "40", "60", "75", "90" } },
             { "density", new[] { "comfortable", "compact" } },
             { "tagColors", new[] { "vivid", "soft" } },
