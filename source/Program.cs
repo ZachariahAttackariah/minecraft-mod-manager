@@ -68,7 +68,11 @@ namespace MinecraftModManager
 
         static volatile string modsDir;
         static volatile string gameVersion = "1.21.1";
-        static volatile string loader = "neoforge";
+        static volatile string loaderSetting = "neoforge";
+        // A request for Fabric results (or a Fabric install) on a NeoForge or Forge instance reads this thread's
+        // loader as "fabric" until the request ends; everything else sees the instance's own loader.
+        [ThreadStatic] static string loaderOverride;
+        static string loader { get { return loaderOverride ?? loaderSetting; } set { loaderSetting = value; } }
         static bool rememberFolder = true;
         static string dataDir;                        // snapshots, sync backups (normally %LOCALAPPDATA%\MinecraftModManager)
         static Dictionary<string, object> savedWindow; // window position from the settings file
@@ -306,7 +310,7 @@ namespace MinecraftModManager
                 HttpListenerContext ctx;
                 try { ctx = listener.GetContext(); }
                 catch { break; }
-                ThreadPool.QueueUserWorkItem(delegate { Handle(ctx); });
+                ThreadPool.QueueUserWorkItem(delegate { try { Handle(ctx); } finally { loaderOverride = null; } });
             }
         }
 
@@ -375,6 +379,8 @@ namespace MinecraftModManager
                     SendError(ctx, 403, "This page is from an earlier run of Minecraft Mod Manager. Reload the page.");
                     return;
                 }
+                // Searches, previews and version lists for Fabric mods, which run through Sinytra Connector.
+                if (method == "GET" && req.QueryString["loader"] == "fabric" && ConnectorHost()) loaderOverride = "fabric";
 
                 if (method == "GET" && path == "/api/state")
                 {
@@ -763,12 +769,12 @@ namespace MinecraftModManager
                         SendJson(ctx, 200, SetCurseForgeKey(Str(body, "key")));
                         return;
                     case "/api/curseforge/install":
-                        SendJson(ctx, 200, Bool(body, "server") ? InstallKeptOnServer(dir => CurseForgeInstall(Str(body, "projectId"), Str(body, "fileId"), dir))
-                            : CurseForgeInstall(Str(body, "projectId"), Str(body, "fileId")));
+                        SendJson(ctx, 200, Bool(body, "server") ? InstallKeptOnServer(dir => CurseForgeInstall(Str(body, "projectId"), Str(body, "fileId"), dir, Bool(body, "fabric")))
+                            : CurseForgeInstall(Str(body, "projectId"), Str(body, "fileId"), null, Bool(body, "fabric")));
                         return;
                     case "/api/modrinth/install":
-                        SendJson(ctx, 200, Bool(body, "server") ? InstallKeptOnServer(dir => ModrinthInstall(Str(body, "projectId"), Str(body, "versionId"), dir))
-                            : ModrinthInstall(Str(body, "projectId"), Str(body, "versionId")));
+                        SendJson(ctx, 200, Bool(body, "server") ? InstallKeptOnServer(dir => ModrinthInstall(Str(body, "projectId"), Str(body, "versionId"), dir, Bool(body, "fabric")))
+                            : ModrinthInstall(Str(body, "projectId"), Str(body, "versionId"), null, Bool(body, "fabric")));
                         return;
                     case "/api/modrinth/update":
                         SendJson(ctx, 200, ModrinthUpdate(StrList(body, "files")));
@@ -1471,6 +1477,7 @@ namespace MinecraftModManager
                     "description", S(hit, "description"), "icon", S(hit, "icon_url"), "downloads", Get(hit, "downloads"),
                     "clientSide", S(hit, "client_side"), "serverSide", S(hit, "server_side"), "updated", S(hit, "date_modified"),
                     "categories", A(Get(hit, "display_categories")).OfType<string>().Where(c => !LoaderNames.Contains(c)).ToList(),
+                    "alsoNative", loaderOverride == "fabric" && A(Get(hit, "categories")).Contains(loaderSetting),
                     "installed", installed.Contains(S(hit, "project_id") ?? "")));
             }
             return Obj("ok", true, "target", TargetObj(), "total", Get(result, "total_hits"), "offset", offset, "hits", hits);
@@ -1484,18 +1491,49 @@ namespace MinecraftModManager
         }
 
         // Installs a mod and the required dependencies that aren't in the folder yet.
-        static Dictionary<string, object> ModrinthInstall(string projectIdOrSlug, string versionId = null, string into = null)
+        static Dictionary<string, object> ModrinthInstall(string projectIdOrSlug, string versionId = null, string into = null, bool fabric = false)
         {
             if (string.IsNullOrWhiteSpace(projectIdOrSlug)) throw new UserError("No mod was chosen.");
             lock (ModrinthLock)
             {
-                string dir = into ?? modsDir;
-                HashSet<string> installed = InstalledProjects(dir);
-                var plan = new List<PlanItem>();
-                var notes = new List<string>();
-                Resolve(projectIdOrSlug, string.IsNullOrWhiteSpace(versionId) ? null : versionId.Trim(), null, installed, new HashSet<string>(installed), plan, notes);
-                var added = InstallPlan(plan, dir, notes);
-                return Obj("ok", true, "added", added, "notes", notes);
+                // A Fabric result that also has a native build for this version installs that one (no Connector needed).
+                string nativeNote = null;
+                if (fabric && ConnectorHost())
+                {
+                    Dictionary<string, object> found = GetProject(projectIdOrSlug);
+                    // Fabric API itself: its stand-in, Forgified Fabric API, goes in instead.
+                    if (found != null && S(found, "id") == FabricApiProject)
+                    {
+                        fabric = false;
+                        projectIdOrSlug = ForgifiedFabricApiProject;
+                        versionId = null;
+                        nativeNote = "On " + LoaderName(loaderSetting) + ", Fabric API comes as Forgified Fabric API, so that was installed.";
+                    }
+                    else if (found != null && string.IsNullOrWhiteSpace(versionId) && BestVersion(S(found, "id")) != null)
+                    {
+                        fabric = false;
+                        nativeNote = S(found, "title") + " has a " + LoaderName(loaderSetting) + " build for this version, so that was installed instead of the Fabric one.";
+                    }
+                }
+                using (FabricInstall(fabric))
+                {
+                    string dir = into ?? modsDir;
+                    HashSet<string> installed = InstalledProjects(dir);
+                    var plan = new List<PlanItem>();
+                    var notes = new List<string>();
+                    if (nativeNote != null) notes.Add(nativeNote);
+                    var visited = new HashSet<string>(installed);
+                    if (fabric)
+                    {
+                        Dictionary<string, object> project = GetProject(projectIdOrSlug);
+                        if (project == null) throw new UserError("That mod wasn't found on Modrinth.");
+                        if (installed.Contains(S(project, "id"))) throw new UserError(S(project, "title") + " is already in this mods folder.");
+                        PlanConnector(dir, S(project, "title"), installed, visited, plan, notes);
+                    }
+                    Resolve(projectIdOrSlug, string.IsNullOrWhiteSpace(versionId) ? null : versionId.Trim(), null, installed, visited, plan, notes);
+                    var added = InstallPlan(plan, dir, notes);
+                    return Obj("ok", true, "added", added, "notes", notes);
+                }
             }
         }
 
@@ -1550,6 +1588,7 @@ namespace MinecraftModManager
                 string depProject = S(dependency, "project_id");
                 string depVersion = S(dependency, "version_id");
                 if (depProject == null && depVersion != null) depProject = S(D(ModrinthGet("/version/" + Uri.EscapeDataString(depVersion))), "project_id");
+                if (depProject != null && ResolveFabricDependency(depProject, title, installed, visited, plan, notes)) continue;
                 if (depProject != null) Resolve(depProject, depVersion, title, installed, visited, plan, notes);
             }
         }
@@ -2175,7 +2214,7 @@ namespace MinecraftModManager
 
         static Dictionary<string, object> TargetObj()
         {
-            return Obj("gameVersion", gameVersion, "loader", loader);
+            return Obj("gameVersion", gameVersion, "loader", loaderSetting);
         }
 
         // Runs on the UI thread. A hidden topmost owner keeps the dialog above the browser.

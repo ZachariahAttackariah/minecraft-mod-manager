@@ -433,11 +433,12 @@ namespace MinecraftModManager
             return Obj("ok", true, "target", TargetObj(), "total", Math.Min(CfId(Get(page, "totalCount")), 10000), "offset", offset, "hits", hits);
         }
 
-        static Dictionary<string, object> CurseForgeInstall(string projectId, string fileId = null, string into = null)
+        static Dictionary<string, object> CurseForgeInstall(string projectId, string fileId = null, string into = null, bool fabric = false)
         {
             long id = CfId((projectId ?? "").Replace("cf:", ""));
             if (id <= 0) throw new UserError("No mod was chosen.");
             lock (ModrinthLock)
+            using (FabricInstall(fabric))
             {
                 string dir = into ?? modsDir;
                 Dictionary<string, object> mod = CfMod(id);
@@ -461,8 +462,16 @@ namespace MinecraftModManager
                 if (CfIdentify(new DirectoryInfo(dir).GetFiles().Where(f => JarName.IsMatch(f.Name))).Values.Any(m => CfId(Get(m, "id")) == id))
                     throw new UserError(title + " is already in this mods folder.");
                 var notes = new List<string>();
-                string saved = CfDownloadFile(mod, chosen, dir, false, null, notes);
+                // A Fabric mod: Connector and Forgified Fabric API come from Modrinth first (Connector.cs).
                 var added = new List<object>();
+                if (fabric)
+                {
+                    HashSet<string> installed = InstalledProjects(dir);
+                    var plan = new List<PlanItem>();
+                    PlanConnector(dir, title, installed, new HashSet<string>(installed), plan, notes);
+                    added.AddRange(InstallPlan(plan, dir, notes));
+                }
+                string saved = CfDownloadFile(mod, chosen, dir, false, null, notes);
                 if (saved != null)
                 {
                     Log("Installed " + saved + " from CurseForge");

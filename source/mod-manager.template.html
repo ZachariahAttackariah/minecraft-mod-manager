@@ -1871,6 +1871,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <option value="client">Client only</option>
         <option value="server">Works on a server</option>
       </select>
+      <div class="seg-control" id="search-fabric-wrap" role="group" aria-label="Loader" hidden>
+        <button type="button" id="search-fabric" aria-pressed="false" title="Show Fabric mods instead. They run through Sinytra Connector: installing one also adds Connector and Forgified Fabric API if they aren't here yet.">Fabric</button>
+      </div>
     </form>
     <div class="results" id="search-results" aria-live="polite"></div>
     <div class="drawer-foot">
@@ -3072,8 +3075,21 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var cf = !!(server && server.curseforge);
     $("search-source").hidden = !cf;
     Array.prototype.forEach.call(document.querySelectorAll("#search-source button"), function (b) { b.setAttribute("aria-pressed", String(b.dataset.src === searchSource())); });
-    $("search-q").placeholder = "Search " + searchSite();
-    $("search-q").setAttribute("aria-label", "Search " + searchSite());
+    $("search-q").placeholder = "Search " + searchSite() + (fabricOn() ? " for Fabric mods" : "");
+    $("search-q").setAttribute("aria-label", "Search " + searchSite() + (fabricOn() ? " for Fabric mods" : ""));
+    $("search-fabric-wrap").hidden = !(search.kind === "mods" && connectorHost());
+    $("search-fabric").setAttribute("aria-pressed", String(fabricOn()));
+  }
+  function labelSearchTarget() {
+    var kind = search.kind;
+    $("search-title").textContent = search.dest === "server" ? "Add mods to the server" : kind === "mods" ? (fabricOn() ? "Add Fabric mods" : "Add mods") : "Add " + PACK_NOUNS[kind];
+    $("search-target").textContent = kind === "mods" && fabricOn() ? "Showing Fabric mods for Minecraft " + server.target.gameVersion + ". They run on " + (LOADER_NAMES[server.target.loader] || server.target.loader) +
+        " through Sinytra Connector, which is installed with the first one (with Forgified Fabric API)" + (search.dest === "server" ? ", into the server's mods folder." : ".")
+      : search.dest === "server" ? "Showing mods for " + targetText() + ". They go into the server's mods folder (with the mods they need) and are kept there."
+      : kind === "mods" ? "Showing mods for " + targetText() + ". Installing also adds the mods it needs."
+      : kind === "shaderpacks" ? "Showing shader packs that work with Iris. Iris is installed too if it isn't yet."
+      : kind === "datapacks" ? "Showing data packs for Minecraft " + (server && server.target ? server.target.gameVersion : "") + ". They go into " + packPlaceLabel() + "."
+      : "Showing resource packs for Minecraft " + (server && server.target ? server.target.gameVersion : "") + ".";
   }
   Array.prototype.forEach.call(document.querySelectorAll("#search-source button"), function (b) {
     b.addEventListener("click", function () { setSearchSource(b.dataset.src); });
@@ -3089,12 +3105,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (search.kind !== kind) { search.kind = kind; resetSearch(); }
     search.dest = kind === "mods" && dest === "server" ? "server" : "game";
     labelSearch();
-    $("search-title").textContent = search.dest === "server" ? "Add mods to the server" : kind === "mods" ? "Add mods" : "Add " + PACK_NOUNS[kind];
-    $("search-target").textContent = search.dest === "server" ? "Showing mods for " + targetText() + ". They go into the server's mods folder (with the mods they need) and are kept there."
-      : kind === "mods" ? "Showing mods for " + targetText() + ". Installing also adds the mods it needs."
-      : kind === "shaderpacks" ? "Showing shader packs that work with Iris. Iris is installed too if it isn't yet."
-      : kind === "datapacks" ? "Showing data packs for Minecraft " + (server && server.target ? server.target.gameVersion : "") + ". They go into " + packPlaceLabel() + "."
-      : "Showing resource packs for Minecraft " + (server && server.target ? server.target.gameVersion : "") + ".";
+    labelSearchTarget();
     $("search-scrim").hidden = false;
     if (!search.hits.length && !search.loading) runSearch(true);
     $("search-q").focus();
@@ -3136,7 +3147,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       // Its Modrinth result isn't here yet: the twin stands in for it (and that result is skipped when it comes).
       list.push(mergedHit({ projectId: twin.projectId, slug: twin.slug, title: twin.title, author: hit.author, description: twin.description || hit.description,
         icon: twin.icon || hit.icon, downloads: twin.downloads, clientSide: twin.clientSide, serverSide: twin.serverSide, updated: twin.updated,
-        installed: hit.installed, categories: [] }, hit));
+        installed: hit.installed, categories: [], fabric: hit.fabric }, hit));
       return;
     }
     for (j = 0; j < list.length; j++) {
@@ -3217,10 +3228,24 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   // A search's address, without its page (offset) and sort.
-  function searchUrl(kind, site, q, cat, side) {
+  function searchUrl(kind, site, q, cat, side, fabric) {
     return kind !== "mods" ? (site === "curseforge" ? "/api/curseforge/packs/search" : "/api/packs/search") + "?kind=" + kind + "&place=" + encodeURIComponent(packs.places[kind] || "") + "&q=" + encodeURIComponent(q)
-      : "/api/" + site + "/search?q=" + encodeURIComponent(q) + (cat ? "&category=" + encodeURIComponent(cat) : "") + (side && site === "modrinth" ? "&side=" + side : "");
+      : "/api/" + site + "/search?q=" + encodeURIComponent(q) + (cat ? "&category=" + encodeURIComponent(cat) : "") + (side && site === "modrinth" ? "&side=" + side : "") + (fabric ? "&loader=fabric" : "");
   }
+
+  // Fabric mods on a NeoForge or Forge instance: the Fabric toggle shows them instead of native ones, and
+  // installing one adds Sinytra Connector and Forgified Fabric API too (Connector.cs). Off each time the app starts.
+  function connectorHost() {
+    var t = server && server.target;
+    return !!t && (t.loader === "neoforge" || t.loader === "forge");
+  }
+  function fabricOn() { return !!search.fabric && search.kind === "mods" && connectorHost(); }
+  $("search-fabric").addEventListener("click", function () {
+    search.fabric = !fabricOn();
+    labelSearch();
+    labelSearchTarget();
+    runSearch(true);
+  });
 
   function runSearch(reset) {
     if (reset) {
@@ -3251,10 +3276,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var calls = sites.map(function (site) {
       var st = site === "curseforge" ? search.cf : search.mr;
       if (st.done) return Promise.resolve([]);
-      var full = searchUrl(search.kind, site, q, cat, side) + "&offset=" + st.offset + "&sort=" + sort;
+      var fabric = fabricOn();
+      var full = searchUrl(search.kind, site, q, cat, side, fabric) + "&offset=" + st.offset + "&sort=" + sort;
       var kept = cachedSearch(full);
       var ask = kept ? Promise.resolve(kept.res) : api("GET", full).then(function (res) { searchCache[full] = { at: Date.now(), res: res }; return res; });
       return ask.then(function (res) {
+        if (fabric) res.hits.forEach(function (x) { x.fabric = true; });
         if (res.noCategory) search.warn = "CurseForge has no matching category, so only Modrinth results show.";
         st.total = Number(res.total) || 0;
         st.offset += res.hits.length;
@@ -3310,7 +3337,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     search.hits.forEach(function (hit) { list.append(resultCard(hit)); });
     if (search.error) list.append(h("p", { class: "search-empty" }, search.error));
     else if (search.loading) list.append(h("p", { class: "search-empty" }, search.hits.length ? "Loading more…" : "Searching " + searchSite() + "…"));
-    else if (!search.hits.length) list.append(h("p", { class: "search-empty" }, search.kind === "mods" ? "No mods found for " + targetText() + "." : "No " + PACK_NOUNS[search.kind] + " found."));
+    else if (!search.hits.length) list.append(h("p", { class: "search-empty" }, search.kind === "mods" ? (fabricOn() ? "No Fabric mods found for Minecraft " + server.target.gameVersion + "." : "No mods found for " + targetText() + ".") : "No " + PACK_NOUNS[search.kind] + " found."));
     // More results load by themselves near the bottom; the button is only there to retry after an error.
     $("search-more").hidden = !search.error || !search.hits.length;
     $("search-more").textContent = "Try again";
@@ -3351,7 +3378,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           onclick: function () { var c = hit.categories.filter(function (x) { return $("search-cat").querySelector("option[value=\"" + x + "\"]"); })[0];
             if (!c) { toast("That category isn't one of the filters."); return; } $("search-cat").value = c; $("search-q").value = ""; runSearch(true); } }, "More like this") : null,
         h("p", { class: "result-desc" }, hit.description || ""),
-        h("div", { class: "result-meta" }, formatNum(hit.downloads) + " downloads" + (isMod && !cf ? " · " + (sides.join(" + ") || "side unknown") : "") + (hit.updated ? " · updated " + ago(hit.updated) : "") +
+        h("div", { class: "result-meta" }, formatNum(hit.downloads) + " downloads" + (isMod && !cf ? " · " + (sides.join(" + ") || "side unknown") : "") + (hit.updated ? " · updated " + ago(hit.updated) : "") + (hit.fabric ? (hit.slug === "fabric-api" ? " · installs as Forgified Fabric API" : hit.alsoNative ? " · also made for " + (LOADER_NAMES[server.target.loader] || server.target.loader) + ", which installs instead when it fits" : " · Fabric, runs through Connector") : "") +
           (pageOnly ? " · download from CurseForge's site only" : ""))),
       h("button", { type: "button", class: "btn" + (installed || pageOnly ? "" : " primary"), disabled: installed || busyNow || !connected,
           title: pageOnly ? "The author only allows downloads from the CurseForge website. Opens its page; " + (isMod ? "a jar you download there goes straight into this mods folder." : "a zip you download there goes straight into the " + PACK_NOUNS[search.kind] + " folder.") : null,
@@ -3378,7 +3405,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     renderSearch();
     renderPreviewOf(hit);
     function attempt(src) {
-      return api("POST", "/api/" + (src.source === "curseforge" ? "curseforge" : "modrinth") + "/install", pickBody(src, { projectId: src.projectId, server: toServer }));
+      return api("POST", "/api/" + (src.source === "curseforge" ? "curseforge" : "modrinth") + "/install", pickBody(src, { projectId: src.projectId, server: toServer, fabric: !!hit.fabric }));
     }
     var fellBack = false;
     track("Installing " + hit.title + (pick ? " " + pick.number : ""), attempt(pick || hit).then(null, function (e) {
@@ -8076,7 +8103,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     setDetTab("overview");
     $("details-close").focus();
     var seq = det.seq;
-    var ask = function (id) { return api("GET", "/api/project/preview?id=" + encodeURIComponent(id) + "&kind=" + encodeURIComponent(kind)); };
+    var ask = function (id) { return api("GET", "/api/project/preview?id=" + encodeURIComponent(id) + "&kind=" + encodeURIComponent(kind) + (hit.fabric ? "&loader=fabric" : "")); };
     ask(hit.projectId).then(null, function (e) {
       if (hit.also && !cf) return ask(hit.also.projectId);
       throw e;
@@ -8182,7 +8209,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (p) {
       // The site the preview shows; a Modrinth result with nothing for this version falls back to its CurseForge copy.
       var id = det.data && det.data.projectId || p.hit.projectId;
-      var get = function (pid) { return api("GET", "/api/project/versions?id=" + encodeURIComponent(pid) + "&kind=" + encodeURIComponent(p.kind)); };
+      var get = function (pid) { return api("GET", "/api/project/versions?id=" + encodeURIComponent(pid) + "&kind=" + encodeURIComponent(p.kind) + (p.hit.fabric ? "&loader=fabric" : "")); };
       ask = get(id).then(function (res) {
         var cf = p.hit.also;
         if (res.versions.length || res.source === "curseforge" || !cf || !cf.projectId) return res;
