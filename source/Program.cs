@@ -782,11 +782,13 @@ namespace MinecraftModManager
                         SendJson(ctx, 200, SetCurseForgeKey(Str(body, "key")));
                         return;
                     case "/api/curseforge/install":
-                        SendJson(ctx, 200, Bool(body, "server") ? InstallKeptOnServer(dir => CurseForgeInstall(Str(body, "projectId"), Str(body, "fileId"), dir, Bool(body, "fabric")))
+                        SendJson(ctx, 200, Bool(body, "shared") ? InstallIntoShared(dir => CurseForgeInstall(Str(body, "projectId"), Str(body, "fileId"), dir, Bool(body, "fabric")))
+                            : Bool(body, "server") ? InstallKeptOnServer(dir => CurseForgeInstall(Str(body, "projectId"), Str(body, "fileId"), dir, Bool(body, "fabric")))
                             : CurseForgeInstall(Str(body, "projectId"), Str(body, "fileId"), null, Bool(body, "fabric")));
                         return;
                     case "/api/modrinth/install":
-                        SendJson(ctx, 200, Bool(body, "server") ? InstallKeptOnServer(dir => ModrinthInstall(Str(body, "projectId"), Str(body, "versionId"), dir, Bool(body, "fabric")))
+                        SendJson(ctx, 200, Bool(body, "shared") ? InstallIntoShared(dir => ModrinthInstall(Str(body, "projectId"), Str(body, "versionId"), dir, Bool(body, "fabric")))
+                            : Bool(body, "server") ? InstallKeptOnServer(dir => ModrinthInstall(Str(body, "projectId"), Str(body, "versionId"), dir, Bool(body, "fabric")))
                             : ModrinthInstall(Str(body, "projectId"), Str(body, "versionId"), null, Bool(body, "fabric")));
                         return;
                     case "/api/modrinth/update":
@@ -818,10 +820,10 @@ namespace MinecraftModManager
                         SendJson(ctx, 200, SetSharedJavaArgs(Str(body, "javaArgs")));
                         return;
                     case "/api/packs/install":
-                        SendJson(ctx, 200, InstallPack(Str(body, "kind"), Str(body, "place"), Str(body, "projectId"), Str(body, "versionId")));
+                        SendJson(ctx, 200, AfterSharedPackInstall(Str(body, "place"), InstallPack(Str(body, "kind"), Str(body, "place"), Str(body, "projectId"), Str(body, "versionId"))));
                         return;
                     case "/api/curseforge/packs/install":
-                        SendJson(ctx, 200, CurseForgePackInstall(Str(body, "kind"), Str(body, "place"), Str(body, "projectId"), Str(body, "fileId")));
+                        SendJson(ctx, 200, AfterSharedPackInstall(Str(body, "place"), CurseForgePackInstall(Str(body, "kind"), Str(body, "place"), Str(body, "projectId"), Str(body, "fileId"))));
                         return;
                     case "/api/packs/update":
                         SendJson(ctx, 200, UpdatePacks(Str(body, "kind"), Str(body, "place"), StrList(body, "names")));

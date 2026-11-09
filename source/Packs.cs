@@ -108,6 +108,8 @@ namespace MinecraftModManager
         static PackPlace FindPlace(string kind, string id)
         {
             if (Array.IndexOf(PackKinds, kind) < 0) throw new UserError("Unknown kind of pack.");
+            // The Shared tab's collection, for installing from its search (SharedPacks.cs copies it out from there).
+            if (id == "shared") return new PackPlace { Id = "shared", Label = "Shared", Dir = SharedPackDir(kind), Side = "shared" };
             List<PackPlace> places = PackPlaces(kind);
             PackPlace place = string.IsNullOrEmpty(id) ? places.FirstOrDefault() : places.FirstOrDefault(p => p.Id == id);
             if (place == null) throw new UserError("That folder isn't there any more. Refresh the page.");
@@ -369,6 +371,7 @@ namespace MinecraftModManager
         static List<string> EnsurePackMod(string kind, PackPlace place, List<string> notes)
         {
             var added = new List<string>();
+            if (place.Side == "shared") return added; // each instance gets Iris or Paxi when it gets packs from its own Packs tab
             string dir, slug, title;
             string[] ids;
             if (kind == "shaderpacks") { dir = modsDir; ids = new[] { "iris", "oculus" }; slug = loader == "forge" ? "oculus" : "iris"; title = loader == "forge" ? "Oculus" : "Iris"; }

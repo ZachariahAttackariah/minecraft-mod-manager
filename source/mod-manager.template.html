@@ -929,7 +929,14 @@ details.fine > .set-row:first-of-type { border-top: 1px solid var(--line); }
 .swatch-pick { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 /* Settings page */
 /* Cards flow down columns (like a masonry wall), so a short card never leaves a hole beside a tall one. */
-.set-grid { columns: 2 440px; column-gap: 16px; }
+/* Settings: the section list on the left (sticky), the cards in one column. */
+.set-grid { display: grid; grid-template-columns: 180px minmax(0, 860px); gap: 20px; align-items: start; }
+.set-nav { position: sticky; top: 12px; display: grid; gap: 2px; }
+.set-nav a { padding: 7px 10px; font-size: 13.5px; font-weight: 600; color: var(--muted); text-decoration: none; border-radius: var(--radius, 4px); }
+.set-nav a:hover { color: var(--ink); background: var(--surface); }
+.set-col { display: grid; gap: 14px; min-width: 0; }
+.set-col .set-card { margin: 0; scroll-margin-top: 12px; }
+@media (max-width: 820px) { .set-grid { grid-template-columns: minmax(0, 1fr); } .set-nav { position: static; display: flex; flex-wrap: wrap; } }
 .set-card { display: grid; gap: 4px; break-inside: avoid; margin: 0 0 16px; }
 .set-card h2 { margin: 0 0 6px; font: 700 15px/1.2 var(--font-display); }
 html[data-blocky="on"] :is(.set-card h2, .card h2) { font-family: var(--font-blocky); font-weight: 400; font-synthesis: none; font-size: 18px; letter-spacing: 0; }
@@ -1388,6 +1395,33 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 @media (max-width: 720px) {
   .btn.play, html[data-blocky="on"] .btn.play { min-width: 0; height: 48px; font-size: 18px; }
 }
+/* ---------- Calm look ----------
+   The Minecraft feel stays in the pixel-font wordmark and PLAY, the colours and the square option; the rest is
+   quieter and closer to an ordinary desktop app: flat buttons with a hairline edge instead of the block bevel,
+   sentence-case labels, softer corners, normal-font headings and tinted (not solid) picked segments.
+   Later rules win, so this block tones down the ones above. */
+:root { --radius: 6px; --glow-a: color-mix(in srgb, var(--accent) 6%, transparent); --glow-b: rgba(74, 168, 255, 0.035); }
+.btn { border-radius: var(--radius); font-weight: 600; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent); }
+.btn.primary, .btn.danger { box-shadow: none; }
+.btn.quiet { box-shadow: none; }
+.btn.danger:hover { background: color-mix(in srgb, var(--danger) 86%, #fff); }
+.btn.play { border-radius: var(--radius); background: var(--accent); text-shadow: none; box-shadow: 0 4px 16px -8px color-mix(in srgb, var(--accent) 70%, transparent); }
+.btn.play:hover { background: var(--accent-hover); }
+.btn.play:disabled { box-shadow: none; }
+html[data-blocky="on"] .btn.play { font-size: 18px; }
+html[data-blocky="on"] .wordmark { font-size: 24px; }
+.view-nav { border-bottom-width: 1px; }
+.view-nav button { padding: 10px 12px 11px; font: 600 14px/1 var(--font-body); letter-spacing: 0; text-transform: none; }
+.view-nav button[aria-current="page"]::after { bottom: -1px; height: 2px; border-radius: 2px; background: var(--accent); }
+.view-nav .jobs-btn, .view-nav .nav-gear, .server-chip, .inst-btn { border-radius: var(--radius); box-shadow: none; }
+.eyebrow, .list-head, .where-head, .cfg-group, .cmp-head, .jobs-head, .inst-pop .head, .inst-group, .bf-dim, .kb-label, .cfg-diff .h { letter-spacing: 0.01em; text-transform: none; }
+.list-head { font-size: 12px; }
+.card, .mods-bar, .panel, .pop, .inst-pop, .toast { border-radius: calc(var(--radius) + 2px); }
+.card h2, .set-card h2, html[data-blocky="on"] :is(.set-card h2, .card h2) { font: 700 16px/1.25 var(--font-display); letter-spacing: 0; font-synthesis: weight; }
+html[data-blocky="on"] :is(.drawer-head h2, .dialog h2, .det-head h2) { font-size: 18px; }
+.seg-control { border-radius: var(--radius); }
+.seg-control button[aria-pressed="true"] { color: var(--ink); background: color-mix(in srgb, var(--accent) 24%, var(--surface)); box-shadow: inset 0 -2px 0 var(--accent); }
+input[type="search"], input[type="text"], input[type="password"], select, textarea { border-radius: var(--radius); }
 </style>
 </head>
 <body>
@@ -1719,7 +1753,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <h2 id="always-title">Mods shared across instances</h2>
         <p class="lead" id="always-lead"></p>
         <div class="row-actions" id="always-actions">
-          <button class="btn primary" type="button" id="always-add">Add .jar files…</button>
+          <button class="btn primary" type="button" id="always-search" title="Search Modrinth and CurseForge">Add mods</button>
+          <button class="btn" type="button" id="always-add">Add .jar files…</button>
           <button class="btn" type="button" id="always-sync" hidden>Add the missing ones now</button>
           <button class="btn" type="button" id="always-open">Open folder</button>
           <span class="hint" id="always-count"></span>
@@ -2881,7 +2916,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     bar.classList.toggle("is-empty", !rows.length);
     if (!rows.length) {
       bar.append(
-        h("span", { class: "sel-count", title: "Click a mod to select it (Ctrl+click: several, Shift+click: a range)" }, "None selected", h("span", { class: "note" }, " · click to select, Shift+click for a range, right-click for actions")),
+        h("span", { class: "sel-count", title: "Click a mod to select it (Ctrl+click: several, Shift+click: a range)" }, "None selected", h("span", { class: "note" }, " · click to select, right-click for actions")),
         h("span", { class: "sel-actions" },
           pasteControls("mods", null, clipNow() && clipNow().fromHere),
           h("button", { type: "button", class: "btn", disabled: true }, "Tags…"),
@@ -3181,10 +3216,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
   function labelSearchTarget() {
     var kind = search.kind;
-    $("search-title").textContent = search.dest === "server" ? "Add mods to the server" : kind === "mods" ? (fabricOn() ? "Add Fabric mods" : "Add mods") : "Add " + PACK_NOUNS[kind];
+    $("search-title").textContent = search.dest === "shared" ? "Share " + (kind === "mods" ? "mods" : PACK_NOUNS[kind]) + " across instances"
+      : search.dest === "server" ? "Add mods to the server" : kind === "mods" ? (fabricOn() ? "Add Fabric mods" : "Add mods") : "Add " + PACK_NOUNS[kind];
     $("search-target").textContent = kind === "mods" && fabricOn() ? "Showing Fabric mods for Minecraft " + server.target.gameVersion + ". They run on " + (LOADER_NAMES[server.target.loader] || server.target.loader) +
         " through Sinytra Connector, which is installed with the first one (with Forgified Fabric API)" + (search.dest === "server" ? ", into the server's mods folder." : ".")
-      : search.dest === "server" ? "Showing mods for " + targetText() + ". They go into the server's mods folder (with the mods they need) and are kept there."
+      : search.dest === "server" ? "Showing mods for " + targetText() + ". They go into the server's mods folder (with their dependencies) and are kept there."
+      : search.dest === "shared" ? (kind === "mods" ? "Showing mods for " + targetText() + ". They go into Shared, with their dependencies, and from there into every ticked instance they fit."
+        : "Showing " + PACK_NOUNS[kind] + (kind === "shaderpacks" ? "" : " for Minecraft " + (server && server.target ? server.target.gameVersion : "")) + ". They go into Shared, and from there into every ticked instance.")
       : kind === "mods" ? "Showing mods for " + targetText() + ". Installing also adds its dependencies."
       : kind === "shaderpacks" ? "Showing shader packs that work with Iris. Iris is installed too if it isn't yet."
       : kind === "datapacks" ? "Showing data packs for Minecraft " + (server && server.target ? server.target.gameVersion : "") + ". They go into " + packPlaceLabel() + "."
@@ -3198,11 +3236,14 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   var MODRINTH_PATH = { mods: "mod", resourcepacks: "resourcepack", shaderpacks: "shader", datapacks: "datapack" };
 
   // dest "server": opened from Server > Mods & configs, installs into the server's mods folder and keeps them there.
+  // dest "shared": opened from the Shared tab, installs into Shared (any kind), which copies it into the instances.
   function openSearch(kind, dest) {
     if (!connected) return;
     kind = typeof kind === "string" ? kind : "mods";
     if (search.kind !== kind) { search.kind = kind; resetSearch(); }
-    search.dest = kind === "mods" && dest === "server" ? "server" : "game";
+    var was = search.dest;
+    search.dest = dest === "shared" ? "shared" : kind === "mods" && dest === "server" ? "server" : "game";
+    if (was && was !== search.dest && search.hits.length) renderSearch(); // the installed marks follow where it installs
     labelSearch();
     labelSearchTarget();
     $("search-scrim").hidden = false;
@@ -3211,9 +3252,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
   function closeSearch() {
     $("search-scrim").hidden = true;
-    var back = search.dest === "server" ? $("kept-add") : null;
+    var back = search.dest === "server" ? $("kept-add") : search.dest === "shared" ? $("always-search") : null;
     (back || $(search.kind === "mods" ? "open-search" : "packs-search")).focus();
-    if (search.dest === "server") { search.dest = "game"; if (search.hits.length) renderSearch(); }
+    if (search.dest !== "game") { search.dest = "game"; if (search.hits.length) renderSearch(); }
   }
 
   // The same mod on both sites. The app works it out for each CurseForge result (CrossSite.cs: the same
@@ -3266,6 +3307,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // CurseForge project, or the same mod id or name, from either site's half of a merged result.
   function installedNow(hit) {
     if (search.dest === "server") return onServerNow(hit);
+    if (search.dest === "shared") return !!hit.inShared || inSharedNow(hit);
     if (hit.installed) return true;
     var mrId = hit.source === "curseforge" ? (hit.modrinth && hit.modrinth.projectId) : hit.projectId;
     var cfHit = hit.source === "curseforge" ? hit : hit.also;
@@ -3498,13 +3540,21 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (p.kind === "mods") installMod(p.hit, pick); else installPack(p.hit, pick);
   }
 
+  // Whether Shared already has it, by name (the Shared tab's list, when it's loaded for that kind).
+  function inSharedNow(hit) {
+    var d = always.data;
+    if (!d || d.kind !== search.kind || !d.items) return false;
+    var names = [hit.slug, hit.title].map(normName).filter(Boolean);
+    return d.items.some(function (m) { return names.indexOf(normName(m.name)) >= 0 || (m.modId && names.indexOf(normName(m.modId)) >= 0); });
+  }
+
   function installMod(hit, pick) {
-    var toServer = search.dest === "server";
+    var toServer = search.dest === "server", toShared = search.dest === "shared";
     installing[hit.projectId] = true;
     renderSearch();
     renderPreviewOf(hit);
     function attempt(src) {
-      return api("POST", "/api/" + (src.source === "curseforge" ? "curseforge" : "modrinth") + "/install", pickBody(src, { projectId: src.projectId, server: toServer, fabric: !!hit.fabric }));
+      return api("POST", "/api/" + (src.source === "curseforge" ? "curseforge" : "modrinth") + "/install", pickBody(src, { projectId: src.projectId, server: toServer, shared: toShared, fabric: !!hit.fabric }));
     }
     var fellBack = false;
     track("Installing " + hit.title + (pick ? " " + pick.number : ""), attempt(pick || hit).then(null, function (e) {
@@ -3522,18 +3572,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       res.added.forEach(function (a) {
         search.hits.forEach(function (x) {
           if (x.projectId !== a.projectId && !(x.also && x.also.projectId === a.projectId)) return;
-          if (toServer) x.onServer = true; else x.installed = true;
+          if (toServer) x.onServer = true; else if (toShared) x.inShared = true; else x.installed = true;
         });
       });
       var msg = res.added.length
         ? "Installed " + hit.title + (pick ? " " + pick.number : "") + (fellBack ? " from CurseForge (Modrinth has no file for " + targetText() + ")" : "") +
           (deps.length ? " and its " + (deps.length === 1 ? "dependency " : "dependencies ") + deps.map(function (d) { return d.title; }).join(", ") : "") +
-          (toServer ? " on the server, and kept there" + (res.serverRunning ? " (it loads when the server next starts)" : "") : "") + "."
+          (toServer ? " on the server, and kept there" + (res.serverRunning ? " (it loads when the server next starts)" : "") : toShared ? " into Shared" : "") + "."
         : "Nothing was installed.";
       if (res.notes && res.notes.length) msg += " " + res.notes.join(" ");
+      if (res.report && res.report.length) msg += " " + res.report.join(" ");
       toast(msg);
     }, function (e) {
-      if (/already in this mods folder/.test(e.message)) { if (toServer) hit.onServer = true; else hit.installed = true; }
+      if (/already in this mods folder/.test(e.message)) { if (toServer) hit.onServer = true; else if (toShared) hit.inShared = true; else hit.installed = true; }
       toast(e.message);
     }).then(function () {
       delete installing[hit.projectId];
@@ -3541,6 +3592,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       renderSearch();
       renderPreviewOf(hit);
       if (toServer) loadSync();
+      if (toShared) { always.data = null; inst.data = null; if (currentView === "shared") loadAlways(); }
       return refresh(true);
     });
   }
@@ -3782,7 +3834,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var noun = function (n) { return count(n, PACK_NOUNS[d.kind].replace(/s$/, ""), PACK_NOUNS[d.kind]); };
     var tail = h("span", { class: "count-label", style: "margin-left:auto" }, rows.length + " of " + d.packs.length + " shown");
     if (!picked.length) {
-      bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, Shift+click for a range, right-click for actions")),
+      bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, right-click for actions")),
         h("span", { class: "sel-actions" }, pasteControls(d.kind, d.place, packClipHere(d))), tail);
       return bar;
     }
@@ -3950,9 +4002,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     installing[hit.projectId] = true;
     renderSearch();
     renderPreviewOf(hit);
-    var kind = search.kind, fellBack = false;
+    var kind = search.kind, fellBack = false, toShared = search.dest === "shared";
     function attempt(src) {
-      return api("POST", src.source === "curseforge" ? "/api/curseforge/packs/install" : "/api/packs/install", pickBody(src, { kind: kind, place: packs.places[kind] || "", projectId: src.projectId }));
+      return api("POST", src.source === "curseforge" ? "/api/curseforge/packs/install" : "/api/packs/install", pickBody(src, { kind: kind, place: toShared ? "shared" : packs.places[kind] || "", projectId: src.projectId }));
     }
     track("Installing " + hit.title + (pick ? " " + pick.number : ""), attempt(pick || hit).then(null, function (e) {
       var cf = hit.also;
@@ -3965,17 +4017,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         toast(res.title + "'s author only allows downloads from CurseForge's website. Its page is open in a tab: download it there and it goes into the " + PACK_NOUNS[kind] + " folder by itself.");
         return;
       }
-      hit.installed = true;
-      toast("Installed " + hit.title + (pick ? " " + pick.number : "") + (fellBack ? " from CurseForge (Modrinth has no file for it)" : "") + "." + (res.added.length ? " " + neededText(res.added) : "") + (res.notes.length ? " " + res.notes.join(" ") : ""));
+      if (toShared) hit.inShared = true; else hit.installed = true;
+      toast((toShared ? "Shared " : "Installed ") + hit.title + (pick ? " " + pick.number : "") + (fellBack ? " from CurseForge (Modrinth has no file for it)" : "") + (toShared ? " across instances" : "") + "." +
+        (res.added.length ? " " + neededText(res.added) : "") + (res.notes.length ? " " + res.notes.join(" ") : "") + (res.report && res.report.length ? " " + res.report.join(" ") : ""));
       if (res.added.length) refresh(true);
     }, function (e) {
-      if (/already there/.test(e.message)) hit.installed = true;
+      if (/already there/.test(e.message)) { if (toShared) hit.inShared = true; else hit.installed = true; }
       toast(e.message);
     }).then(function () {
       delete installing[hit.projectId];
       forgetSearches();
       renderSearch();
       renderPreviewOf(hit);
+      if (toShared) { always.data = null; if (currentView === "shared") loadAlways(); }
       if (currentView === "packs") loadPacks(false);
     });
   }
@@ -5340,6 +5394,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     $("always-where-lead").textContent = k.where;
     $("always-where-title").textContent = k.settings ? "Which instances share them" : "Where they go";
     $("always-add").hidden = !!k.settings;
+    $("always-search").hidden = !!k.settings;
+    $("always-search").textContent = kind === "mods" ? "Add mods" : "Add " + k.nouns;
+    $("always-search").disabled = !connected;
     $("always-open").hidden = kind === "java";
     if (!k.settings) $("always-add").textContent = k.add;
     var d = always.data && always.data.kind === kind ? always.data : null;
@@ -5510,6 +5567,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
   });
   $("always-add").addEventListener("click", function () { alwaysAction(api("POST", "/api/always/add-files", { kind: always.kind }), "Adding to Shared"); });
+  $("always-search").addEventListener("click", function () { openSearch(always.kind, "shared"); });
   $("always-sync").addEventListener("click", function () { alwaysAction(api("POST", "/api/always/sync", {}), "Adding to every instance"); });
   $("always-open").addEventListener("click", function () {
     var kind = always.kind;
@@ -6048,7 +6106,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       return;
     }
     if (!picked.length) {
-      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, Shift+click for a range, right-click for actions")), tail);
+      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, right-click for actions")), tail);
       return;
     }
     var on = picked.filter(function (r) { return r.off; }), off = picked.filter(function (r) { return !r.off; });
@@ -6690,7 +6748,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     bar.classList.toggle("is-empty", !picked.length);
     var tail = h("span", { class: "count-label", style: "margin-left:auto" }, d ? shown.length + " of " + d.binds.length + " shown" : "");
     if (!picked.length) {
-      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, Shift+click for a range, right-click for actions")), tail);
+      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, right-click for actions")), tail);
       return;
     }
     var bound = picked.filter(function (b) { return b.key !== UNBOUND; }), resettable = picked.filter(function (b) { return b.changed; });
@@ -7677,6 +7735,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           messages.filter(function (m) { return !/^Added .*\.jar to the (server's )?mods folder\.$/.test(m); }).join(" "));
       if (packs && currentView === "packs") loadPacks(false);
       if (toServer) loadSync();
+      if (toShared) { always.data = null; inst.data = null; if (currentView === "shared") loadAlways(); }
       return refresh(true);
     });
   }
@@ -7819,64 +7878,56 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }, function (e) { toast("Couldn't save that setting (" + e.message + ")."); });
   }
 
-  // Each card is a group; each item is a choice (segmented), a switch, or the accent swatches.
+  // Each card is a group; each item is a choice (segmented), a switch, a set of on/off toggles (multi), the accent
+  // swatches, a list (select) or its own control (custom). Fine-tune items fold away under their card.
   var SETTINGS = [
-    { title: "Look", items: [
-      { key: "preset", label: "Quick looks", desc: "A whole look in one click: theme, accent and background. Change any part afterwards.", custom: presetControl },
-      { key: "theme", label: "Theme", desc: "Dark suits the game's own screens. System follows Windows.", choices: [["dark", "Dark"], ["light", "Light"], ["system", "System"]] },
-      { key: "accent", label: "Accent colour", desc: "Used for PLAY, switches that are on, and the selected tab. Nothing else. The last one picks any colour.", swatches: true },
-      { key: "textSize", label: "Text size", desc: "Makes everything in the window bigger or smaller, the tab bar too (the app window only). The bigger sizes are for a TV across the room.", choices: [["90", "90%"], ["100", "100%"], ["110", "110%"], ["120", "120%"], ["150", "150%"], ["175", "175%"], ["200", "200%"]] },
-      { key: "tagLook", label: "Tags", desc: "Vivid stands out like the game under shaders; soft is calmer. Each tag's own colour is set in Manage tags.",
+    { id: "look", title: "Appearance", items: [
+      { key: "preset", label: "Quick looks", desc: "Theme, accent and background in one click.", custom: presetControl },
+      { key: "theme", label: "Theme", desc: "System follows Windows.", choices: [["dark", "Dark"], ["light", "Light"], ["system", "System"]] },
+      { key: "accent", label: "Accent colour", desc: "PLAY, switches and the selected tab. The last swatch picks any colour.", swatches: true },
+      { key: "tagLook", label: "Tags", desc: "Each tag's own colour is set in Manage tags.",
         choices: [["vivid", "Vivid"], ["soft", "Soft"], ["solid", "Solid"], ["outline", "Outline"]], get: tagLook, set: setTagLook },
-      { key: "background", label: "Background", desc: "A soft glow of the accent, plain, or a faint block grid.", choices: [["glow", "Glow"], ["plain", "Plain"], ["blocks", "Blocks"]], fine: true },
+      { key: "textSize", label: "Text size", desc: "Scales the whole window, tab bar included.", choices: [["90", "90%"], ["100", "100%"], ["110", "110%"], ["120", "120%"], ["150", "150%"], ["175", "175%"], ["200", "200%"]] },
+      { key: "background", label: "Background", desc: "A faint glow of the accent, plain, or a block grid.", choices: [["glow", "Glow"], ["plain", "Plain"], ["blocks", "Blocks"]], fine: true },
       { key: "bgPicture", label: "Background picture", desc: "", custom: backgroundPictureControl, fine: true },
-      { key: "corners", label: "Corners", desc: "Square corners look more like the game.", choices: [["round", "Rounded"], ["square", "Square"]], fine: true },
-      { key: "density", label: "Row spacing", desc: "Compact fits more mods on screen.", choices: [["comfortable", "Comfortable"], ["compact", "Compact"]], fine: true },
-      { key: "motion", label: "Animation", desc: "Spinners, slides and fades. Follow Windows plays them unless its animation effects are off; Always plays them anyway; Reduce turns them down.", choices: [["system", "Follow Windows"], ["on", "Always"], ["reduce", "Reduce"]], fine: true },
-      { key: "blockyTitle", label: "Blocky lettering", desc: "The title, PLAY and headings in a pixel font.", fine: true },
+      { key: "corners", label: "Corners", desc: "Square looks more like the game.", choices: [["round", "Rounded"], ["square", "Square"]], fine: true },
+      { key: "density", label: "Row spacing", desc: "Compact fits more on screen.", choices: [["comfortable", "Comfortable"], ["compact", "Compact"]], fine: true },
+      { key: "motion", label: "Animation", desc: "Follow Windows respects its animation setting.", choices: [["system", "Follow Windows"], ["on", "Always"], ["reduce", "Reduce"]], fine: true },
+      { key: "blockyTitle", label: "Pixel font", desc: "The title, PLAY and dialog titles in the game's pixel font.", fine: true },
       { key: "userCss", label: "Your own styles (user.css)", desc: "", custom: userCssControl, fine: true }
     ] },
-    { title: "Mod list", items: [
-      { key: "startPage", label: "Open on", desc: "The page the app shows when it starts.", select: [["last", "Where I left off"], ["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["shared", "Shared"], ["configs", "Configs"], ["keys", "Key binds"], ["server", "Server"], ["snapshots", "Snapshots"]] },
-      { key: "fileNames", label: "Show file names", desc: "The jar's file name under each mod's name." },
-      { key: "colVersion", label: "Version column", desc: "Each mod's installed version, from Modrinth or CurseForge when known, else from the jar." },
-      { key: "colSide", label: "Side column", desc: "The C and S marks for client and server." },
-      { key: "colTags", label: "Tags column", desc: "Each mod's tags. With it off, tags still filter from the side panel." },
-      { key: "showIcons", label: "Show mod icons", desc: "Each mod's icon at the start of its row." },
-      { key: "rowStyle", label: "Rows", desc: "Lines between rows, or alternating stripes.", choices: [["lines", "Lines"], ["zebra", "Stripes"]] },
-      { key: "rowActions", label: "Row buttons", desc: "Update, on / off and delete stay visible, or only show strongly on hover. Updates always show.", choices: [["hover", "On hover"], ["always", "Always"]] },
-      { key: "tagsPerRow", label: "Tags per row", desc: "Extra tags fold into +N (hover to see them).", choices: [["3", "3"], ["5", "5"], ["all", "All"]] },
-      { key: "whatChanged", label: "What changed, on opening", desc: "A short note of new updates and added or removed jars since the folder was last open here." },
-      { key: "tagHide", label: "Hiding a tag", desc: "How to filter out the mods with a tag. Right-click a tag hides it either way.", choices: [["ctrl", "Ctrl+click"], ["cycle", "Click twice"]] },
-      { key: "tagOrder", label: "Tag order", desc: "How tags are listed in the side panel, on rows and when picking tags for a mod.", choices: [["alpha", "A to Z"], ["file", "As in the file"]] },
-      { key: "confirmDelete", label: "Ask before deleting", desc: "Off sends mods straight to the Recycle Bin, where they can still be restored." },
-      { key: "autoLibraries", label: "Turn on what a mod needs", desc: "Turning a mod on also turns on the turned-off libraries and mods it requires (the newest copy, if there are several)." },
-      { key: "tagSides", label: "Tag new mods' sides", desc: "A new jar without a client or server tag gets the side Detect finds for it (its own files first, then Modrinth and CurseForge), and the libraries it needs get its sides too. Installs, drops, downloads and jars copied in by hand all count; tags already there are never changed." },
-      { key: "tagLibraries", label: "Tag new libraries", desc: "A new jar that Modrinth or CurseForge lists as a library gets the library tag, so it's listed under Libraries. Installs, dropped and downloaded jars count; updates keep their tags." }
+    { id: "list", title: "Mod list", items: [
+      { key: "startPage", label: "Open on", desc: "The page shown when the app starts.", select: [["last", "Where I left off"], ["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["shared", "Shared"], ["configs", "Configs"], ["keys", "Key binds"], ["server", "Server"], ["snapshots", "Snapshots"]] },
+      { key: "columns", label: "Show", desc: "What each row shows.", multi: [["showIcons", "Icons"], ["fileNames", "File names"], ["colVersion", "Version"], ["colSide", "Side"], ["colTags", "Tags"]] },
+      { key: "rowStyle", label: "Rows", desc: "Lines between rows, or stripes.", choices: [["lines", "Lines"], ["zebra", "Stripes"]] },
+      { key: "rowActions", label: "Row buttons", desc: "Updates always show.", choices: [["hover", "On hover"], ["always", "Always"]] },
+      { key: "tagsPerRow", label: "Tags per row", desc: "The rest fold into +N.", choices: [["3", "3"], ["5", "5"], ["all", "All"]] },
+      { key: "tagOrder", label: "Tag order", desc: "In the side panel, on rows and in the tag picker.", choices: [["alpha", "A to Z"], ["file", "As in the file"]] },
+      { key: "tagHide", label: "Hiding a tag", desc: "Right-clicking a tag also hides it.", choices: [["ctrl", "Ctrl+click"], ["cycle", "Click twice"]] }
     ] },
-    { title: "Folders", items: [
-      { key: "folders", label: "Where things are", desc: "", custom: foldersControl }
+    { id: "auto", title: "Automatic actions", items: [
+      { key: "whatChanged", label: "What changed, on opening", desc: "New updates and added or removed jars since this folder was last open." },
+      { key: "confirmDelete", label: "Ask before deleting", desc: "Off sends mods straight to the Recycle Bin." },
+      { key: "autoLibraries", label: "Turn on dependencies", desc: "Turning a mod on also turns on its turned-off dependencies." },
+      { key: "tagSides", label: "Tag new mods' sides", desc: "From the jar, then Modrinth and CurseForge. Existing tags are never changed." },
+      { key: "tagLibraries", label: "Tag new libraries", desc: "Jars the sites list as libraries go under Libraries." },
+      { key: "serverExtras", label: "Client mods with server features", desc: "Detect marks them as both sides." }
     ] },
-    { title: "Sources", items: [
-      { key: "searchSources", label: "Search", desc: "Where Add mods and adding packs look. Anything on both sites shows once, and downloads from Modrinth.", choices: [["both", "Both"], ["modrinth", "Modrinth"], ["curseforge", "CurseForge"]] },
+    { id: "play", title: "Play and updates", items: [
+      { key: "checkBeforePlay", label: "Check mods before Play", desc: "Only stops you when something would keep the game from starting." },
+      { key: "hidePrism", label: "Keep the launcher out of sight", desc: "Prism still starts the game; its window shows only if it needs you." },
+      { key: "updateChannel", label: "Updates come from", desc: "Match keeps releases on releases and betas on betas. Each mod can override it.",
+        choices: [["auto", "Match"], ["release", "Releases"], ["beta", "+ Betas"], ["alpha", "Everything"]] },
+      { key: "worldBackups", label: "Back up worlds", desc: "Zips the last played world before updates and before removing worldgen mods." }
+    ] },
+    { id: "sources", title: "Sources", items: [
+      { key: "searchSources", label: "Search", desc: "Results on both sites show once and download from Modrinth.", choices: [["both", "Both"], ["modrinth", "Modrinth"], ["curseforge", "CurseForge"]] },
       { key: "curseforgeKey", label: "CurseForge API key", desc: "", custom: curseforgeKeyControl }
     ] },
-    { title: "Worlds", items: [
-      { key: "worldBackups", label: "Back up before risky changes", desc: "Zips your most recently played world before updates and before turning off or deleting worldgen mods. Backups are on the Snapshots page." }
-    ] },
-    { title: "Play", items: [
-      { key: "checkBeforePlay", label: "Check mods before Play", desc: "Runs the pre-launch check first, and only stops you when something would keep the game from starting." },
-      { key: "hidePrism", label: "Keep the launcher out of sight", desc: "Prism still signs in and starts the game, but its windows stay hidden: the app follows the game, shows its log, and opens the crash reader if it crashes. Prism's window comes back only if it needs you (a sign-in, say)." }
-    ] },
-    { title: "Updates", items: [
-      { key: "updateChannel", label: "Updates come from", desc: "Match keeps a release on releases and lets a beta move to newer betas. Each mod can override this in its details.",
-        choices: [["auto", "Match"], ["release", "Releases"], ["beta", "+ Betas"], ["alpha", "Everything"]] }
-    ] },
-    { title: "Detect sides", items: [
-      { key: "serverExtras", label: "Server copies that add features", desc: "Client mods that also do something on the server (multiplayer sync and the like) are marked both sides." }
+    { id: "folders", title: "Folders", items: [
+      { key: "folders", label: "", desc: "", custom: foldersControl }
     ] }
   ];
-
   // Tags in one choice: vivid or soft tinted chips, or solid / outlined ones (stored as tagColors + tagStyle).
   function tagLook() {
     return pref("tagStyle") === "solid" || pref("tagStyle") === "outline" ? pref("tagStyle") : pref("tagColors");
@@ -8007,18 +8058,23 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     renderPrefs();
   }
   var fineOpen = false;
+  // Settings: the sections listed down the left (a click scrolls to one), the cards in one column on the right.
   function renderPrefs() {
     prefsSig = settingsSig();
     var root = $("settings-body");
+    var scroll = window.scrollY;
     root.replaceChildren();
+    var nav = h("nav", { class: "set-nav", "aria-label": "Settings sections" });
+    var col = h("div", { class: "set-col" });
     SETTINGS.forEach(function (card) {
-      var el = h("section", { class: "panel set-card" }, h("h2", null, card.title));
+      nav.append(h("a", { href: "#settings", onclick: function (e) { e.preventDefault(); var el = $("set-" + card.id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); } }, card.title));
+      var el = h("section", { class: "panel set-card", id: "set-" + card.id }, h("h2", null, card.title));
       var fine = null;
       card.items.forEach(function (s) {
         var into = el;
         if (s.fine) {
           if (!fine) {
-            fine = h("details", { class: "fine" }, h("summary", null, "Fine-tune"));
+            fine = h("details", { class: "fine" }, h("summary", null, "More appearance settings"));
             if (fineOpen) fine.open = true;
             fine.addEventListener("toggle", function () { fineOpen = fine.open; });
             el.append(fine);
@@ -8027,7 +8083,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         }
         var value = s.get ? s.get() : pref(s.key);
         var choose = function (v) { return s.set ? s.set(v) : savePref(s.key, v); };
-        if (s.custom) { into.append(h("div", { class: "set-row wide" }, h("div", { class: "l" }, s.label), s.custom())); return; }
+        if (s.custom) { into.append(h("div", { class: "set-row wide" }, s.label ? h("div", { class: "l" }, s.label) : null, s.custom())); return; }
         var control;
         if (s.swatches) {
           control = h("div", { class: "swatches", role: "group", "aria-label": s.label });
@@ -8038,6 +8094,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           var picker = h("input", { type: "color", class: "swatch-pick", value: pref("accentColor"), title: "Any colour", "aria-label": "Pick any accent colour" });
           picker.addEventListener("change", function () { savePref("accentColor", picker.value).then(function () { return savePref("accent", "custom"); }); });
           control.append(h("label", { class: "swatch-btn custom" + (pref("accent") === "custom" ? " on" : ""), style: "background:" + pref("accentColor"), title: "Any colour" }, picker));
+        } else if (s.multi) {
+          // Several on/off settings side by side, each its own toggle.
+          control = h("div", { class: "seg-control", role: "group", "aria-label": s.label });
+          s.multi.forEach(function (m) {
+            var b = h("button", { type: "button", "aria-pressed": String(!!pref(m[0])), onclick: function () {
+              var on = b.getAttribute("aria-pressed") !== "true";
+              b.setAttribute("aria-pressed", String(on));
+              savePref(m[0], on, true);
+            } }, m[1]);
+            control.append(b);
+          });
         } else if (s.choices) {
           control = h("div", { class: "seg-control", role: "group", "aria-label": s.label });
           s.choices.forEach(function (c) {
@@ -8058,12 +8125,13 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
               savePref(s.key, on, true);
             } }, h("span", { class: "sw", "aria-hidden": "true" }));
         }
-        into.append(h("div", { class: "set-row" }, h("div", { class: "l" }, s.label), h("div", { class: "d" }, s.desc), h("div", { class: "c" }, control)));
+        into.append(h("div", { class: "set-row" }, h("div", { class: "l" }, s.label), s.desc ? h("div", { class: "d" }, s.desc) : null, h("div", { class: "c" }, control)));
       });
-      root.append(el);
+      col.append(el);
     });
+    root.append(nav, col);
+    window.scrollTo(0, scroll);
   }
-
   // ---------- Big dialog (changelogs, problem lists, previews) ----------
 
   var bigReturn = null;

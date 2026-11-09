@@ -502,6 +502,42 @@ namespace MinecraftModManager
             return Obj("ok", true, "kind", kind, "path", SharedPackDir(kind), "items", items, "targets", targets);
         }
 
+        // ---------- Installing from the Shared tab's search ----------
+
+        // A pack installed into Shared (place "shared") goes out to the instances straight away.
+        static Dictionary<string, object> AfterSharedPackInstall(string placeId, Dictionary<string, object> result)
+        {
+            if (placeId != "shared" || Get(result, "manual") is bool && (bool)Get(result, "manual")) return result;
+            var report = new List<string>();
+            SyncSharedPacks(null, report);
+            result["report"] = report;
+            return result;
+        }
+
+        // A mod (and its dependencies) installed from the Shared tab's search: downloaded into a folder of its
+        // own, then added to the shared mods like files added by hand, which copies them into each instance.
+        static Dictionary<string, object> InstallIntoShared(Func<string, Dictionary<string, object>> install)
+        {
+            string temp = Path.Combine(Path.GetTempPath(), "mmm-shared-install-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(temp);
+            try
+            {
+                Dictionary<string, object> result = install(temp);
+                List<string> jars = Directory.GetFiles(temp, "*.jar").ToList();
+                if (jars.Count == 0) return result;
+                Dictionary<string, object> shared = AddToAlways(jars, null);
+                result["report"] = shared["report"];
+                var notes = (Get(result, "notes") as List<string>) ?? new List<string>();
+                notes.AddRange((List<string>)shared["notes"]);
+                result["notes"] = notes;
+                return result;
+            }
+            finally
+            {
+                try { Directory.Delete(temp, true); } catch { }
+            }
+        }
+
         static HashSet<string> SharedPackNames(string kind)
         {
             try { return new HashSet<string>(SharedPacks(kind).Select(f => f.Name), StringComparer.OrdinalIgnoreCase); }
