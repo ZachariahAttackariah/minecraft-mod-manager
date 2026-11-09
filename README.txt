@@ -25,6 +25,12 @@ Settings (the gear at the right end of the section tabs)
                       "automatic colour" next to it goes back to the usual one.
   Changelog ......... what changed in each update of this app, newest first. The first time the app opens
                       after an update, a note offers What's new: the changes since it was last opened.
+  Remote access ..... use the app from a phone or another computer. Off until switched on here. It works on
+                      your home network, or from anywhere with Tailscale (a free private VPN: install it on
+                      this PC and the phone, same account). Open one of the addresses shown on the device,
+                      choose Pair a device here and type the 8-digit code there. Each device is paired once;
+                      remove it here to lock it out. Folder pickers and Show in folder only work on the PC.
+                      On a phone, swipe the section tabs and hold a row for its menu.
   Folders ........... the mods folder and the server folder (open or change), the app's data folder
                       (snapshots, backups, notes, presets) and the app's own folder (settings, actions.log).
   Mod list .......... open on (Mods, Libraries, Packs, Server, Snapshots, or wherever you left off),

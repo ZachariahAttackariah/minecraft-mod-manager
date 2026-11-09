@@ -6,6 +6,9 @@ and after an update it offers what's new since the last time it was opened.
 ## 2026-11-09
 - Changelog under Settings, and a "What's new" note the first time the app opens after an update.
 - Tag menu: ticking a tag no longer scrolls the list; ticked tags move to the top only the next time the menu opens.
+- Remote access: use the app from a phone or another computer on your home network, or from anywhere through a private VPN such as Tailscale. Off until switched on in Settings; each device is paired once with a code shown on the PC.
+- Phones: the section tabs in one row you swipe, side panels start folded, finger-sized menus, hold a row for its menu, and nothing wider than the screen.
+- Dropping files on the window refreshes the list again afterwards.
 
 ## 2026-11-08
 - Shared tab: mods, resource packs, shader packs and data packs kept once and copied into every ticked instance; game settings, configs and Java arguments shared per instance from the same tab.

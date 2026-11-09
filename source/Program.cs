@@ -12,6 +12,8 @@
 //   tags     adds / removes tags in the folder's mod-tags.json (previous copy kept as .bak)
 // Only this PC can reach the server, and every API call must carry the random
 // token embedded in the page it served. Every change is appended to actions.log.
+// Phones and other computers on the home network or a private VPN can be let in through a
+// pairing gate on the next port, when switched on in Settings (RemoteAccess.cs).
 //
 // The code is split by topic: Program.cs (core, HTTP, Modrinth, tags), Window.cs (window + tabs),
 // Server.cs (hosting the Minecraft server), Sync.cs (game -> server), JarMeta.cs (what's inside a
@@ -200,6 +202,7 @@ namespace MinecraftModManager
             server.IsBackground = true;
             server.Name = "http";
             server.Start();
+            if (remoteEnabled) StartRemote(); // phones and other computers, when switched on (RemoteAccess.cs)
 
             var showWatcher = new Thread(delegate ()
             {
@@ -329,6 +332,9 @@ namespace MinecraftModManager
             string path = req.Url.AbsolutePath;
             string method = req.HttpMethod;
             currentJob = req.Headers["X-Mod-Manager-Job"];
+            // Set by the remote-access gate (RemoteAccess.cs), which runs in this process and connects from this PC.
+            string viaGate = req.Headers["X-Mod-Manager-Remote"];
+            remoteViewer = viaGate != null && IPAddress.IsLoopback(req.RemoteEndPoint.Address) ? Uri.UnescapeDataString(viaGate) : null;
             if (currentJob != null && (currentJob.Length > 40 || !Regex.IsMatch(currentJob, "^[A-Za-z0-9-]+$"))) currentJob = null;
             try
             {
@@ -379,6 +385,13 @@ namespace MinecraftModManager
                     SendError(ctx, 403, "This page is from an earlier run of Minecraft Mod Manager. Reload the page.");
                     return;
                 }
+                if (path == "/api/remote" || path.StartsWith("/api/remote/"))
+                {
+                    SendJson(ctx, 200, HandleRemoteApi(path, method == "POST" ? ReadBody(req) : new Dictionary<string, object>()));
+                    return;
+                }
+                if (remoteViewer != null && PcOnlyRoutes.Contains(path))
+                    throw new UserError("That opens a window on the PC, so it only works there.");
                 // Searches, previews and version lists for Fabric mods, which run through Sinytra Connector.
                 if (method == "GET" && req.QueryString["loader"] == "fabric" && ConnectorHost()) loaderOverride = "fabric";
 
@@ -1106,7 +1119,7 @@ namespace MinecraftModManager
                 "paths", Obj("server", serverDir, "data", dataDir, "app", AppDir.TrimEnd('\\')),
                 "prism", Obj("installed", FindPrism() != null, "instanceId", prism == null ? null : prism[0], "instanceName", prism == null ? null : prism[1]),
                 "server", Obj("configured", serverDir != null, "state", serverState, "players", PlayerCount()),
-                "bisect", BisectSummary(), "always", AlwaysMarks(), "clip", ClipInfo());
+                "bisect", BisectSummary(), "always", AlwaysMarks(), "clip", ClipInfo(), "remoteViewer", remoteViewer);
         }
 
         // ---------- Prism Launcher (Play) ----------
@@ -2265,6 +2278,7 @@ namespace MinecraftModManager
                     curseforgeKey = Str(settings, "curseforgeKey"); // CurseForge.cs; kept only in this local file
                     Dictionary<string, object> savedPrefs = D(Get(settings, "prefs"));
                     if (savedPrefs != null) lock (prefs) foreach (KeyValuePair<string, object> p in savedPrefs) prefs[p.Key] = p.Value;
+                    LoadRemoteSettings(D(Get(settings, "remote"))); // RemoteAccess.cs
                 }
             }
             catch { }
@@ -2279,7 +2293,7 @@ namespace MinecraftModManager
             {
                 File.WriteAllText(SettingsPath, new JavaScriptSerializer().Serialize(Obj("modsFolder", modsDir, "gameVersion", gameVersion, "loader", loader,
                     "serverFolder", serverDir, "window", savedWindow, "recentFolders", RecentFoldersCopy(), "servers", KnownServersCopy(),
-                    "curseforgeKey", string.IsNullOrEmpty(curseforgeKey) ? null : curseforgeKey, "prefs", PrefsCopy())), new UTF8Encoding(false));
+                    "curseforgeKey", string.IsNullOrEmpty(curseforgeKey) ? null : curseforgeKey, "prefs", PrefsCopy(), "remote", RemoteSettingsCopy())), new UTF8Encoding(false));
             }
             catch { }
         }

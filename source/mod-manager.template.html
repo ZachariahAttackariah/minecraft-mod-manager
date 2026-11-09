@@ -314,6 +314,11 @@ a.src:hover { border-color: var(--c); }
 /* Settings that change the list's look */
 html[data-files="off"] .row .file { display: none; }
 html[data-actions="always"] .act { opacity: 1; }
+/* Touch screens have no hover: row buttons always show, and a long press opens the row's menu (see longPress). */
+@media (hover: none) {
+  .act { opacity: 1; }
+  .row, .pack-row, .always-row, .feat-row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+}
 .section-label { margin: 0 0 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font: 600 14px/1.2 var(--font-display); letter-spacing: 0.01em; }
 .hint { font: 400 12px/1.2 var(--font-body); color: var(--muted); }
 
@@ -733,6 +738,7 @@ html[data-anim="on"] :is(.tag-card, .legend-item, .btn, .pill, .act, .check, .ro
 .view-nav button { position: relative; padding: 10px 12px 12px; font: 700 13.5px/1 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: none; border: 0; cursor: pointer; }
 .view-nav button:hover { color: var(--ink); }
 .view-nav button[aria-current="page"] { color: var(--ink); }
+.nav-tabs { display: contents; } /* the section tabs; one swipeable row on phones */
 .view-nav button[aria-current="page"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -2px; height: 3px; background: var(--accent-hover); }
 .view-nav .nav-right { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 10px; margin-left: auto; padding-bottom: 6px; }
 .view-nav .server-chip { padding: 7px 12px; font-size: 13px; }
@@ -761,6 +767,17 @@ html[data-anim="off"] :is(.spin, .jobbar span) { animation-duration: 3s; }
 .view-nav .nav-gear:hover, .view-nav .nav-gear[aria-current="page"] { color: var(--ink); background: var(--btn); }
 .view-nav .nav-gear[aria-current="page"]::after { display: none; }
 .wc-list { margin: 0; padding-left: 18px; font-size: 13.5px; }
+/* Remote access: what only works on the PC itself is hidden on other devices. */
+html[data-remote="on"] .pc-only { display: none !important; }
+html[data-remote="on"] #open-folder { pointer-events: none; }
+.remote-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.remote-urls { display: grid; gap: 6px; margin: 8px 0 4px; }
+.remote-url { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.remote-url code { font: 600 13.5px/1.3 var(--font-mono, ui-monospace, Consolas, monospace); padding: 4px 8px; border-radius: var(--radius, 4px); background: var(--surface); user-select: all; }
+.remote-url .hint { flex-basis: 100%; margin: 0; }
+.pair-code { font: 700 30px/1.1 var(--font-mono, ui-monospace, Consolas, monospace); letter-spacing: .18em; margin: 6px 0; }
+.remote-devices { display: grid; gap: 4px; margin-top: 10px; }
+.remote-device { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
 .changelog h3 { margin: 14px 0 4px; font-size: 14px; font-weight: 700; }
 .changelog h3:first-child { margin-top: 2px; }
 .changelog .wc-list li { margin: 2px 0; line-height: 1.45; }
@@ -1425,6 +1442,29 @@ html[data-blocky="on"] :is(.drawer-head h2, .dialog h2, .det-head h2) { font-siz
 .seg-control { border-radius: var(--radius); }
 .seg-control button[aria-pressed="true"] { color: var(--ink); background: color-mix(in srgb, var(--accent) 24%, var(--surface)); box-shadow: inset 0 -2px 0 var(--accent); }
 input[type="search"], input[type="text"], input[type="password"], select, textarea { border-radius: var(--radius); }
+
+/* ---------- Phones ----------
+   Remote access brings the app to phones (RemoteAccess.cs). Below 640px: a smaller title, the section tabs in one
+   row you swipe, finger-sized controls, and inputs at 16px so iOS doesn't zoom in on them. Later rules win. */
+@media (max-width: 640px) {
+  body { overflow-wrap: break-word; } /* long paths and file names wrap instead of widening the page */
+  html[data-blocky="on"] .wordmark, .wordmark { font-size: 19px; }
+  .view-nav { flex-wrap: wrap; margin-top: 10px; }
+  /* contain: the row's own width must not widen the page (it scrolls instead) */
+  .nav-tabs { display: flex; position: relative; order: 2; flex: 1 1 100%; min-width: 0; contain: inline-size; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .nav-tabs button { flex: none; white-space: nowrap; padding: 12px 11px; }
+  .view-nav .nav-tabs button[aria-current="page"]::after { bottom: 0; }
+  .view-nav .nav-right { order: 1; flex: 1 1 100%; justify-content: flex-end; margin-left: 0; padding: 0 0 6px; }
+  input[type="search"], input[type="text"], input[type="password"], input[type="number"], select, textarea { font-size: 16px; }
+  .btn { min-height: 40px; }
+  /* Menus: the full width of the screen, finger-sized items, scrolling when longer than the screen. */
+  .menu, .pop { left: 8px !important; right: 8px; width: auto; min-width: 0; max-width: none; max-height: calc(100vh - 16px); overflow-y: auto; }
+  .menu button, .pop button { min-height: 40px; }
+  .tag-opt { min-height: 38px; }
+  /* Rows: names, sides and tags; the file names are left to the PC so more mods fit on the screen. */
+  .row .file { display: none; }
+}
 </style>
 </head>
 <body>
@@ -1446,6 +1486,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       </div>
     </div>
     <nav class="view-nav" id="view-nav" aria-label="Sections">
+      <span class="nav-tabs">
       <button type="button" data-view="mods" aria-current="page">Mods</button>
       <button type="button" data-view="libraries" title="Mods tagged library: dependencies of other mods. They're kept out of the Mods list.">Libraries<span class="nav-n" id="lib-count"></span></button>
       <button type="button" data-view="features" title="The structures, mobs, ores, biomes, items and recipes your mods add, with switches to turn them off">Features</button>
@@ -1456,6 +1497,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       <button type="button" data-view="server">Server</button>
       <button type="button" data-view="snapshots">Snapshots</button>
       <button type="button" data-view="cleanup">Cleanup</button>
+      </span>
       <span class="nav-right">
         <span class="jobs-wrap" id="jobs-wrap" hidden>
           <button class="jobs-btn" type="button" id="jobs-btn" aria-haspopup="dialog" aria-expanded="false" title="What the app is doing"><span class="spin" aria-hidden="true"></span><span id="jobs-n"></span></button>
@@ -1474,7 +1516,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       </button>
       <span class="folder-stats" id="folder-stats"></span>
       <span class="folder-actions">
-        <button class="btn quiet" type="button" id="open-game-folder">Open instance folder</button>
+        <button class="btn quiet pc-only" type="button" id="open-game-folder">Open instance folder</button>
         <button class="btn quiet" type="button" id="refresh">
           <span data-icon="refresh" data-size="13"></span>
           Refresh
@@ -1666,7 +1708,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       <div class="row-actions">
         <button class="btn primary" type="button" id="packs-search" title="Search Modrinth and CurseForge">Add packs</button>
         <button class="btn" type="button" id="packs-add">Add .zip files…</button>
-        <button class="btn" type="button" id="packs-open">Open folder</button>
+        <button class="btn pc-only" type="button" id="packs-open">Open folder</button>
         <button class="btn" type="button" id="packs-check">Check for updates</button>
         <button class="btn primary" type="button" id="packs-update-all" hidden>Update all</button>
       </div>
@@ -1712,7 +1754,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
               </div>
               <input id="console-find" type="search" placeholder="Filter lines" aria-label="Filter console lines" autocomplete="off" spellcheck="false">
               <button class="btn" type="button" id="console-copy">Copy</button>
-              <button class="btn" type="button" id="console-logs">Logs folder</button>
+              <button class="btn pc-only" type="button" id="console-logs">Logs folder</button>
             </div>
             <div class="console-out" id="console-out" role="log" aria-live="off" tabindex="0"></div>
             <button class="btn jump" type="button" id="console-jump" hidden>↓ Jump to latest</button>
@@ -1757,9 +1799,9 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         <p class="lead" id="always-lead"></p>
         <div class="row-actions" id="always-actions">
           <button class="btn primary" type="button" id="always-search" title="Search Modrinth and CurseForge">Add mods</button>
-          <button class="btn" type="button" id="always-add">Add .jar files…</button>
+          <button class="btn pc-only" type="button" id="always-add">Add .jar files…</button>
           <button class="btn" type="button" id="always-sync" hidden>Add the missing ones now</button>
-          <button class="btn" type="button" id="always-open">Open folder</button>
+          <button class="btn pc-only" type="button" id="always-open">Open folder</button>
           <span class="hint" id="always-count"></span>
           <span class="hint" id="always-status"></span>
         </div>
@@ -1795,7 +1837,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       <div class="card">
         <h2>World backups</h2>
         <p class="lead">A world zipped up, so you can go back after an update or a removed mod breaks it. Restoring moves the current world to the Recycle Bin first. The newest five of each world are kept.</p>
-        <div class="row-actions"><button class="btn quiet" type="button" id="worlds-folder">Open backups folder</button><span class="hint" id="worlds-auto"></span></div>
+        <div class="row-actions"><button class="btn quiet pc-only" type="button" id="worlds-folder">Open backups folder</button><span class="hint" id="worlds-auto"></span></div>
         <div id="worlds-list"></div>
       </div>
     </div>
@@ -1866,7 +1908,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   <div class="inst-foot">
     <button class="btn primary" type="button" id="new-instance">New instance…</button>
     <button class="btn" type="button" id="always-mods" title="Mods, packs and settings shared across instances">Shared…</button>
-    <button class="btn" type="button" id="choose-folder">Other mods folder…</button>
+    <button class="btn pc-only" type="button" id="choose-folder">Other mods folder…</button>
     <button class="btn" type="button" id="open-prism">Open launcher</button>
   </div>
 </div>
@@ -2133,6 +2175,41 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   function clock(d) { return pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds()); }
   function hash(s) { var n = 0; for (var i = 0; i < s.length; i++) n = (n * 31 + s.charCodeAt(i)) | 0; return n; }
   function count(n, one, many) { return n + " " + (n === 1 ? one : many); }
+  // Touch screens: a long press opens the same menu as a right-click. Android fires its own contextmenu on a long
+  // press (then this stands down); iOS doesn't, so one is sent to whatever was pressed. The tap that ends the press
+  // is swallowed, so it doesn't also click the row.
+  (function longPress() {
+    var timer = 0, start = null, swallowUntil = 0;
+    var cancel = function () { clearTimeout(timer); timer = 0; start = null; };
+    document.addEventListener("touchstart", function (e) {
+      if (e.touches.length !== 1) { cancel(); return; }
+      var t = e.touches[0];
+      start = { x: t.clientX, y: t.clientY, target: e.target };
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        if (!start) return;
+        var s = start;
+        cancel();
+        swallowUntil = Date.now() + 800;
+        s.target.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: s.x, clientY: s.y }));
+      }, 550);
+    }, { passive: true });
+    document.addEventListener("touchmove", function (e) {
+      if (!start) return;
+      var t = e.touches[0];
+      if (Math.abs(t.clientX - start.x) > 10 || Math.abs(t.clientY - start.y) > 10) cancel();
+    }, { passive: true });
+    document.addEventListener("touchend", cancel, { passive: true });
+    document.addEventListener("touchcancel", cancel, { passive: true });
+    document.addEventListener("contextmenu", function (e) { if (e.isTrusted && timer) { cancel(); swallowUntil = Date.now() + 800; } }, true);
+    document.addEventListener("click", function (e) { if (Date.now() < swallowUntil) { e.preventDefault(); e.stopPropagation(); swallowUntil = 0; } }, true);
+  })();
+
+  // The empty-selection hint, in the words of the device: a touch screen taps and holds (see longPress).
+  var SEL_HINT = window.matchMedia && window.matchMedia("(hover: none)").matches ? " · tap to select, hold for actions" : " · click to select, right-click for actions";
+
+  // Viewed from a phone or another computer through Remote access (RemoteAccess.cs): no PC windows or pickers.
+  function isRemote() { return !!(server && server.remoteViewer); }
 
   // ---------- Talking to the exe ----------
 
@@ -2643,7 +2720,10 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     };
     fold.addEventListener("click", function () { set(!panel.classList.contains("folded")); });
     head.insertBefore(fold, head.firstChild);
-    try { if (localStorage.getItem(id) === "1") set(true); } catch (e) {}
+    var saved = null;
+    try { saved = localStorage.getItem(id); } catch (e) {}
+    // On a phone the panels start folded, so the list comes first; unfolding one is remembered as usual.
+    if (saved === "1" || (saved === null && window.matchMedia && window.matchMedia("(max-width: 640px)").matches)) set(true);
   });
 
   function sideTitle(key) {
@@ -2919,7 +2999,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     bar.classList.toggle("is-empty", !rows.length);
     if (!rows.length) {
       bar.append(
-        h("span", { class: "sel-count", title: "Click a mod to select it (Ctrl+click: several, Shift+click: a range)" }, "None selected", h("span", { class: "note" }, " · click to select, right-click for actions")),
+        h("span", { class: "sel-count", title: "Click a mod to select it (Ctrl+click: several, Shift+click: a range)" }, "None selected", h("span", { class: "note" }, SEL_HINT)),
         h("span", { class: "sel-actions" },
           pasteControls("mods", null, clipNow() && clipNow().fromHere),
           h("button", { type: "button", class: "btn", disabled: true }, "Tags…"),
@@ -3024,6 +3104,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       s.checkedAt = new Date();
       var sig = s.modsDir + "|" + s.files.map(function (f) { return f.name + ":" + f.size; }).join(",") + "|" + hash(s.tagsText || "");
       server = s;
+      document.documentElement.setAttribute("data-remote", s.remoteViewer ? "on" : "off");
       var lookChanged = applyPrefs();
       if (currentView === "settings") renderPrefsIfChanged();
       if (force || lookChanged || sig !== lastSignature || !model) {
@@ -3838,7 +3919,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var noun = function (n) { return count(n, PACK_NOUNS[d.kind].replace(/s$/, ""), PACK_NOUNS[d.kind]); };
     var tail = h("span", { class: "count-label", style: "margin-left:auto" }, rows.length + " of " + d.packs.length + " shown");
     if (!picked.length) {
-      bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, right-click for actions")),
+      bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, SEL_HINT)),
         h("span", { class: "sel-actions" }, pasteControls(d.kind, d.place, packClipHere(d))), tail);
       return bar;
     }
@@ -4084,7 +4165,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     items.push([single ? "Copy filename" : "Copy " + picked.length + " filenames", function () {
       copyText(picked.map(function (x) { return x.name; }).join("\n"), single ? "Copied " + one.name : "Copied " + picked.length + " filenames");
     }, false, null, "copy"]);
-    if (single) items.push(["Show in folder", function () {
+    if (single && !isRemote()) items.push(["Show in folder", function () {
       api("POST", "/api/packs/reveal", { kind: d.kind, place: d.place, name: one.name }).then(null, function (e) { toast(e.message); });
     }, false, null, "folder"]);
     if (single && one.modrinth && one.modrinth.slug) items.push(["Open on Modrinth", function () { openTab("https://modrinth.com/" + MODRINTH_PATH[d.kind] + "/" + encodeURIComponent(one.modrinth.slug)); }, false, null, "link"]);
@@ -4114,6 +4195,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     updatePacks(packs.data.packs.filter(function (p) { return p.modrinth && p.modrinth.update; }).map(function (p) { return p.name; }));
   });
   $("packs-add").addEventListener("click", function () {
+    // On a phone the PC's file dialog is no use: pick files on the device and upload them (a .zip finds its place).
+    if (isRemote()) { $("add-files").click(); return; }
     var kind = packs.kind;
     api("POST", "/api/packs/add", { kind: kind, place: packs.places[kind] || "" }).then(function (res) {
       var parts = [];
@@ -4588,7 +4671,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     actions.append(menuItem(single ? "Copy filename" : "Copy " + rows.length + " filenames", "copy", function () {
       copyText(rows.map(function (r) { return r.file; }).join("\n"), single ? "Copied " + rows[0].file : "Copied " + rows.length + " filenames");
     }));
-    if (single && rows[0].status !== "missing") actions.append(menuItem("Show in folder", "folder", function () {
+    if (single && rows[0].status !== "missing" && !isRemote()) actions.append(menuItem("Show in folder", "folder", function () {
       api("POST", "/api/reveal", { file: rows[0].file }).then(null, function (e) { toast(e.message); });
     }));
     if (single && rows[0].slug) actions.append(menuItem("Open on Modrinth", "link", function () { window.open("https://modrinth.com/project/" + encodeURIComponent(rows[0].slug), "_blank", "noopener"); }));
@@ -5489,7 +5572,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       ["Stop sharing…", function () { askRemoveAlways(m); }, !connected, "danger", "trash"],
       null,
       ["Copy filename", function () { copyText(m.file, "Copied " + m.file); }, false, null, "copy"],
-      ["Show in folder", function () { api("POST", "/api/always/reveal", { kind: kind, file: m.file }).then(null, function (e) { toast(e.message); }); }, false, null, "folder"],
+      isRemote() ? false : ["Show in folder", function () { api("POST", "/api/always/reveal", { kind: kind, file: m.file }).then(null, function (e) { toast(e.message); }); }, false, null, "folder"],
       [kind === "mods" ? "Show in the Mods list" : "Show in Packs", function () {
         if (kind === "mods") { setView("mods"); return; }
         packs.kind = kind; packs.data = null; savePackPrefs(); setView("packs");
@@ -6114,7 +6197,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       return;
     }
     if (!picked.length) {
-      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, right-click for actions")), tail);
+      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, SEL_HINT)), tail);
       return;
     }
     var on = picked.filter(function (r) { return r.off; }), off = picked.filter(function (r) { return !r.off; });
@@ -6756,7 +6839,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     bar.classList.toggle("is-empty", !picked.length);
     var tail = h("span", { class: "count-label", style: "margin-left:auto" }, d ? shown.length + " of " + d.binds.length + " shown" : "");
     if (!picked.length) {
-      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, right-click for actions")), tail);
+      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, SEL_HINT)), tail);
       return;
     }
     var bound = picked.filter(function (b) { return b.key !== UNBOUND; }), resettable = picked.filter(function (b) { return b.changed; });
@@ -6934,8 +7017,10 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     if (!initial) {
       try { history.replaceState(null, "", name === "mods" ? location.pathname : "#" + name); } catch (e) {}
     }
+    var curTab = document.querySelector(".nav-tabs [aria-current=page]");
+    if (curTab && curTab.parentNode.scrollWidth > curTab.parentNode.clientWidth) curTab.parentNode.scrollLeft = Math.max(0, curTab.offsetLeft - 40);
     if (!menuEl.hidden) closeMenu();
-    if (name === "settings") renderPrefs();
+    if (name === "settings") { renderPrefs(); loadRemote(); }
     try { localStorage.setItem("mmm.lastView", name); } catch (e) {}
     if (!hasToken) return;
     if (name === "server") { refreshServer(); startConsole(); setSub(srv.sub); ensureSync(); }
@@ -7801,7 +7886,6 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
           messages.filter(function (m) { return !/^Added .*\.jar to the (server's )?mods folder\.$/.test(m); }).join(" "));
       if (packs && currentView === "packs") loadPacks(false);
       if (toServer) loadSync();
-      if (toShared) { always.data = null; inst.data = null; if (currentView === "shared") loadAlways(); }
       return refresh(true);
     });
   }
@@ -7900,7 +7984,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     look.extra = [cols.join(" "), bg ? bg.version : "", pref("bgDim"), JSON.stringify(pref("tagHues") || {})].join("|");
     look.custom = pref("accent") === "custom" ? pref("accentColor") : "";
     // Text size is the window's own zoom (so menus and clicks stay lined up); only the app window has one.
-    if (pref("textSize") !== appliedZoom && hasToken && server) {
+    if (pref("textSize") !== appliedZoom && hasToken && server && !server.remoteViewer) {
       appliedZoom = pref("textSize");
       api("POST", "/api/zoom", { factor: Number(appliedZoom) / 100 }).then(null, function () {});
     }
@@ -7990,6 +8074,9 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       { key: "searchSources", label: "Search", desc: "Results on both sites show once and download from Modrinth.", choices: [["both", "Both"], ["modrinth", "Modrinth"], ["curseforge", "CurseForge"]] },
       { key: "curseforgeKey", label: "CurseForge API key", desc: "", custom: curseforgeKeyControl }
     ] },
+    { id: "remote", title: "Remote access", items: [
+      { key: "remote", label: "", desc: "", custom: remoteControl }
+    ] },
     { id: "folders", title: "Folders", items: [
       { key: "folders", label: "", desc: "", custom: foldersControl }
     ] },
@@ -8048,6 +8135,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   }
   loadUserCss();
   function userCssControl() {
+    if (isRemote()) return h("div", { class: "d" }, "user.css is edited on the PC.");
     return h("div", null,
       h("div", { class: "d" }, "For anything these settings don't cover: user.css in the app data folder loads after the app's own styles. Delete the file to undo it all."),
       h("div", { class: "bg-pic" },
@@ -8057,6 +8145,11 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
 
   function foldersControl() {
     var p = (server && server.paths) || {};
+    if (isRemote()) {
+      // Folders are opened and changed on the PC; here they're only listed.
+      var line = function (label, path) { return h("div", { class: "fold-row" }, h("div", null, h("div", { class: "fl" }, label), h("div", { class: "fp" }, path || "not set"))); };
+      return h("div", { class: "folders" }, line("Mods folder", server && server.modsDir), line("Server", p.server), line("App data", p.data));
+    }
     var row = function (label, path, buttons) {
       return h("div", { class: "fold-row" }, h("div", null, h("div", { class: "fl" }, label), h("div", { class: "fp" }, path || "not set")), h("div", { class: "row-actions" }, buttons));
     };
@@ -8069,6 +8162,69 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         btn(p.server ? "Change…" : "Choose…", function () { chooseServerFolder(); })]),
       row("App data (snapshots, backups, notes, presets)", p.data, [btn("Open", function () { api("POST", "/api/open-path", { which: "data" }).then(null, function (e) { toast(e.message); }); })]),
       row("The app itself (settings file, actions.log)", p.app, [btn("Open", function () { api("POST", "/api/open-path", { which: "app" }).then(null, function (e) { toast(e.message); }); })]));
+  }
+
+  // Remote access (RemoteAccess.cs): this app on a phone or another computer, over the home network or a private
+  // VPN such as Tailscale. Switched on, paired and managed only here on the PC; a remote device just sees who it is.
+  var remote = { info: null, loading: false, poll: 0 };
+  function loadRemote() {
+    if (!hasToken || isRemote() || remote.loading) return Promise.resolve();
+    remote.loading = true;
+    return api("GET", "/api/remote").then(function (d) { remote.info = d; }, function () {}).then(function () {
+      remote.loading = false;
+      remoteShown();
+    });
+  }
+  // After new remote info: redraw Settings, and while a code waits, look again so a paired device shows up.
+  function remoteShown() {
+    if (currentView === "settings") renderPrefs();
+    clearTimeout(remote.poll);
+    if (remote.info && remote.info.pairing) remote.poll = setTimeout(loadRemote, 3000);
+  }
+  function remoteAction(path, body) {
+    return api("POST", path, body || {}).then(function (d) { remote.info = d; remoteShown(); }, function (e) { toast(e.message); });
+  }
+  function remoteControl() {
+    if (isRemote()) return h("div", null,
+      h("div", { class: "d" }, "This is " + server.remoteViewer + ". Pairing and the device list are managed on the PC, where folder pickers and Show in folder also live."),
+      h("div", { class: "bg-pic" }, h("a", { class: "btn", href: "/remote/forget" }, "Unpair this device")));
+    var d = remote.info;
+    if (!d) { if (!remote.loading) setTimeout(loadRemote, 0); return h("div", { class: "d" }, "Loading…"); }
+    var on = !!d.enabled;
+    var sw = h("button", { type: "button", class: "toggle sw-btn" + (on ? " on" : ""), role: "switch", "aria-checked": String(on), "aria-label": "Allow phones and other computers",
+      onclick: function () { remoteAction("/api/remote/enable", { on: !on }); } }, h("span", { class: "sw", "aria-hidden": "true" }));
+    var box = h("div", null, h("div", { class: "remote-head" },
+      h("div", null, h("div", { class: "fl" }, "Allow phones and other computers"),
+        h("div", { class: "d" }, "From your home network, or from anywhere through a private VPN such as Tailscale; never the open internet. Each device is paired once with a code from here.")),
+      sw));
+    if (!on) return box;
+    if (!d.listening) box.append(h("p", { class: "hint" }, "Couldn't listen on port " + d.port + ". Another program may be using it."));
+    var urls = h("div", { class: "remote-urls" });
+    if (!d.addresses.length) urls.append(h("p", { class: "hint" }, "This PC isn't on a network right now."));
+    d.addresses.forEach(function (a) {
+      urls.append(h("div", { class: "remote-url" }, h("code", null, a.url), btn("Copy", function () { copyText(a.url, "Copied " + a.url); }), h("p", { class: "hint" }, a.label)));
+    });
+    box.append(h("div", { class: "d", style: "margin-top:12px" }, "Open one of these on the device:"), urls);
+    if (!d.addresses.some(function (a) { return a.vpn; }))
+      box.append(h("p", { class: "hint" }, "Away from home: install Tailscale on this PC and on the device, signed in to the same account, and its address appears here."));
+    box.append(h("p", { class: "hint" }, "The first time, Windows may ask whether Minecraft Mod Manager can use the network: allow it on private networks."));
+    if (d.pairing) {
+      box.append(h("div", { class: "d", style: "margin-top:12px" }, "Type this code on the device. It works once, for 10 minutes:"),
+        h("div", { class: "pair-code" }, d.pairing.code.slice(0, 4) + " " + d.pairing.code.slice(4)),
+        btn("Cancel", function () { remoteAction("/api/remote/pair/cancel"); }));
+    } else {
+      box.append(h("div", { class: "bg-pic", style: "margin-top:12px" }, btn("Pair a device", function () { remoteAction("/api/remote/pair"); }, "primary")));
+    }
+    if (d.devices.length) {
+      var list = h("div", { class: "remote-devices" });
+      d.devices.forEach(function (dev) {
+        list.append(h("div", { class: "remote-device" },
+          h("div", null, h("div", { class: "fl" }, dev.name), h("div", { class: "hint" }, "Paired " + dateText(dev.added) + (dev.seen ? " · last used " + ago(dev.seen) : ""))),
+          btn("Remove", function () { remoteAction("/api/remote/remove", { id: dev.id }); })));
+      });
+      box.append(h("div", { class: "d", style: "margin-top:12px" }, "Paired devices"), list);
+    }
+    return box;
   }
 
   // Quick looks: each sets the theme, accent and background together, nodding to a place in the game.
@@ -9925,6 +10081,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var el = h("div", { class: "pop", role: "menu", "aria-label": opts.head || null });
     if (opts.head) el.append(h("div", { class: "menu-head" }, opts.head));
     items.forEach(function (it) {
+      if (it === false || it === undefined) return; // left out (e.g. PC-only entries on a remote device)
       if (!it) { if (el.lastChild && el.lastChild.tagName === "BUTTON") el.append(h("hr")); return; }
       // [label, fn, disabled, class, icon]: with an icon it looks like the Mods list's menu.
       el.append(h("button", { type: "button", role: "menuitem", class: (it[3] || "") + (it[4] ? " with-icon" : "") || null, disabled: !!it[2], onclick: function () { popReturn = null; closePop(); it[1](); } },
