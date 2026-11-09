@@ -1402,7 +1402,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <button type="button" data-view="libraries" title="Mods tagged library: the ones other mods need. They're kept out of the Mods list.">Libraries<span class="nav-n" id="lib-count"></span></button>
       <button type="button" data-view="features" title="The structures, mobs, ores, biomes, items and recipes your mods add, with switches to turn them off">Features</button>
       <button type="button" data-view="packs">Packs</button>
-      <button type="button" data-view="always" title="Mods the app adds to every instance it manages">Every instance</button>
+      <button type="button" data-view="shared" title="Mods and packs shared across every instance the app manages">Shared</button>
       <button type="button" data-view="configs" title="Every mod's settings, from the game's and the server's config folders">Configs</button>
       <button type="button" data-view="keys" title="Every control in the game, Minecraft's and the mods': which keys clash, and changing them">Key binds</button>
       <button type="button" data-view="server">Server</button>
@@ -1689,12 +1689,18 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     </div>
   </section>
 
-  <!-- Every instance: the mods the app adds to every instance (AlwaysMods.cs). -->
-  <section class="view" id="view-always" aria-label="Every instance" hidden>
+  <!-- Shared: the mods and packs the app adds to every instance (AlwaysMods.cs, SharedPacks.cs). Packs is the per-instance manager. -->
+  <section class="view" id="view-shared" aria-label="Shared" hidden>
+    <div class="seg-control subnav" id="shared-kinds" role="group" aria-label="What's shared">
+      <button type="button" data-kind="mods" aria-pressed="true">Mods</button>
+      <button type="button" data-kind="resourcepacks" aria-pressed="false">Resource packs</button>
+      <button type="button" data-kind="shaderpacks" aria-pressed="false">Shader packs</button>
+      <button type="button" data-kind="datapacks" aria-pressed="false">Data packs</button>
+    </div>
     <div class="cards always-cards">
       <div class="card">
-        <h2>Mods in every instance</h2>
-        <p class="lead">The app copies these into every instance it manages, and into any other mods folder you tick. A place that already has the mod (any version, on or off) keeps its own copy. To add mods from your list, right-click them there and choose Add to every instance.</p>
+        <h2 id="always-title">Mods shared across instances</h2>
+        <p class="lead" id="always-lead"></p>
         <div class="row-actions">
           <button class="btn primary" type="button" id="always-add">Add .jar files…</button>
           <button class="btn" type="button" id="always-sync" hidden>Add the missing ones now</button>
@@ -1706,7 +1712,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       </div>
       <div class="card">
         <h2>Where they go</h2>
-        <p class="lead">Instances are ticked from the start; other mods folders only once you tick them. Each mod only goes where its loader and Minecraft version fit. A copy turned off stays off, and a deleted one comes back. Copies get the mod's tags from here, and a newer jar here replaces the copies the app added (ones you changed yourself are left alone). This runs when the app starts, before Play, and when you open or create an instance.</p>
+        <p class="lead" id="always-where-lead"></p>
         <div class="always-list" id="always-list-targets"></div>
       </div>
     </div>
@@ -1805,7 +1811,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   <div class="inst-foot">
     <button class="btn primary" type="button" id="new-instance">New instance…</button>
     <button class="btn" type="button" id="shared-settings">Shared settings…</button>
-    <button class="btn" type="button" id="always-mods">Every instance</button>
+    <button class="btn" type="button" id="always-mods">Shared mods &amp; packs</button>
     <button class="btn" type="button" id="choose-folder">Other mods folder…</button>
     <button class="btn" type="button" id="open-prism">Open launcher</button>
   </div>
@@ -2309,7 +2315,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     return p.is.every(function (w) {
       return w === "on" ? r.status === "enabled" : w === "off" ? r.status === "disabled" : w === "update" || w === "updates" ? !!r.update
         : w === "pinned" ? !!ex.pin : w === "noted" ? !!ex.note : w === "new" ? isNewRow(r) : w === "unneeded" ? r.status !== "missing" && !r.requiredBy
-        : w === "always" ? isAlways(r) : w === "missing" ? r.status === "missing" : true;
+        : w === "always" || w === "shared" ? isAlways(r) : w === "missing" ? r.status === "missing" : true;
     });
   }
   // model.rows is already by name, so a stable sort by side keeps names in order within each side.
@@ -2666,7 +2672,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (ex.pin) badges.push(h("span", { class: "mark pin", title: "Pinned: Update all leaves it on this version" + (r.held ? ". " + r.held.versionNumber + " is out" : "") }, icon("pin")));
       if (r.held && r.held.why === "skipped") badges.push(h("span", { class: "mark", title: "Skipping the " + r.held.versionNumber + " update" }, icon("skip")));
       if (ex.note) badges.push(h("span", { class: "mark note", title: ex.note }, icon("note")));
-      if (isAlways(r)) badges.push(h("span", { class: "mark always", title: "In every instance: the app adds this mod to every instance it manages (see the Every instance tab)" }, icon("layers")));
+      if (isAlways(r)) badges.push(h("span", { class: "mark always", title: "Shared: the app adds this mod to every instance it manages (see the Shared tab)" }, icon("layers")));
       if (r.status !== "missing" && isNewRow(r)) badges.push(h("span", { class: "badge new", title: "Added or changed in the last " + NEW_DAYS + " days" }, "new"));
       if (r.status !== "missing" && currentView === "libraries" && !r.requiredBy)
         badges.push(h("span", { class: "badge unneeded", title: "No mod that's on lists it as required. It may still be used optionally, so check before removing it. (Search is:unneeded to list them.)" }, "not needed"));
@@ -2932,7 +2938,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     inflight = api("GET", "/api/state").then(function (s) {
       var wasConnected = connected;
       connected = true;
-      if (!wasConnected && currentView === "always") renderAlways(); // its buttons wait for the connection
+      if (!wasConnected && currentView === "shared") renderAlways(); // its buttons wait for the connection
       s.checkedAt = new Date();
       var sig = s.modsDir + "|" + s.files.map(function (f) { return f.name + ":" + f.size; }).join(",") + "|" + hash(s.tagsText || "");
       server = s;
@@ -2968,7 +2974,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }, function (e) {
       connected = false;
       renderHeader();
-      if (currentView === "always") renderAlways();
+      if (currentView === "shared") renderAlways();
       if (model) { renderList(visible()); renderSelectionBar(); }
       var content = [e.message];
       if (e.status === 403) content.push(h("button", { type: "button", class: "btn", onclick: function () { location.reload(); } }, "Reload page"));
@@ -3735,9 +3741,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var turnOn = d.kind === "resourcepacks" ? picked.filter(function (p) { return p.on < 0; }) : [];
     var turnOff = d.kind === "resourcepacks" ? picked.filter(function (p) { return p.on >= 0; }) : [];
     var updatable = picked.filter(function (p) { return p.modrinth && p.modrinth.update; });
+    var shareable = picked.filter(function (p) { return !p.shared && !p.folder; });
     bar.append(
       h("span", { class: "sel-count" }, noun(picked.length) + " selected"),
       h("span", { class: "sel-actions" },
+        shareable.length ? btn("Share " + shareable.length, function () { sharePacks(d, shareable.map(function (p) { return p.name; })); }, "",
+          { disabled: !connected, title: "Share across instances: every instance gets them (the Shared tab)" }) : null,
         updatable.length ? btn("Update " + updatable.length, function () { updatePacks(updatable.map(function (p) { return p.name; })); }, "primary", { disabled: locked }) : null,
         turnOn.length ? btn("Turn on " + turnOn.length, function () { setResourcePacks(turnOn, true); }, "", { disabled: locked }) : null,
         turnOff.length ? btn("Turn off " + turnOff.length, function () { setResourcePacks(turnOff, false); }, "", { disabled: locked }) : null,
@@ -3799,6 +3808,10 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }
     var actions = h("div", { class: "pack-actions" },
       m && m.update ? btn("Update", function () { updatePacks([p.name]); }, "primary", { disabled: locked, title: "Update to " + m.update.versionNumber }) : null,
+      // Shared across instances (the Shared tab), or a button to share it; folder packs can't be copied around.
+      p.shared ? h("button", { type: "button", class: "act", title: "Shared across instances: open the Shared tab", "aria-label": packTitle(p) + " is shared across instances", onclick: function () { showShared(d.kind); } }, icon("layers"))
+        : p.folder ? null
+        : h("button", { type: "button", class: "act", disabled: !connected || busyNow, title: "Share across instances (every instance gets it)", "aria-label": "Share " + packTitle(p) + " across instances", onclick: function () { sharePacks(d, [p.name]); } }, icon("layers")),
       h("button", { type: "button", class: "act delete", disabled: locked, title: "Delete…", "aria-label": "Delete " + packTitle(p), onclick: function () { askDeletePack(d, p); } }, icon("trash")));
     var meta = [p.name, p.folder ? "folder" : formatBytes(p.size)];
     if (m) meta.push("Modrinth " + m.versionNumber);
@@ -4457,8 +4470,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     else if (single && rows[0].mr && rows[0].mr.source === "curseforge" && rows[0].mr.url) actions.append(menuItem("Open on CurseForge", "link", function () { window.open(rows[0].mr.url, "_blank", "noopener"); }));
     if (connected) {
       var forAll = rows.filter(function (r) { return r.status !== "missing"; });
-      if (forAll.length && forAll.every(isAlways)) actions.append(menuItem("Show in Every instance", "layers", function () { setView("always"); }));
-      else if (forAll.length) actions.append(menuItem(single ? "Add to every instance" : "Add " + forAll.length + " to every instance", "layers", function () { addToAlways(forAll); }));
+      if (forAll.length && forAll.every(isAlways)) actions.append(menuItem("Show in Shared", "layers", function () { showShared("mods"); }));
+      else if (forAll.length) actions.append(menuItem(single ? "Share across instances" : "Share " + forAll.length + " across instances", "layers", function () { addToAlways(forAll); }));
     }
     if (!single) actions.append(menuItem("Clear selection", "clear", clearSelection));
     var wasOpen = !menuEl.hidden;
@@ -5234,10 +5247,30 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }
   }
 
-  // ---------- Every instance: the mods the app adds to every instance (AlwaysMods.cs) ----------
-  // One collection of jars the app copies into every instance (and each other mods folder that's ticked).
+  // ---------- Shared: the mods and packs the app adds to every instance (AlwaysMods.cs, SharedPacks.cs) ----------
+  // One collection of each kind that the app copies into every instance (and each other mods folder that's
+  // ticked; the ticks are the same for every kind). The Packs tab is the per-instance manager.
 
-  var always = { data: null, loading: null };
+  var always = { kind: "mods", data: null, loading: null };
+
+  var SHARED_KINDS = {
+    mods: { noun: "mod", nouns: "mods", title: "Mods shared across instances", add: "Add .jar files…",
+      lead: "The app copies these into every instance it manages, and into any other mods folder you tick. A place that already has the mod (any version, on or off) keeps its own copy. To add mods from your list, right-click them there and choose Share across instances.",
+      where: "Instances are ticked from the start; other mods folders only once you tick them (the ticks count for mods and packs alike). Each mod only goes where its loader and Minecraft version fit. A copy turned off stays off, and a deleted one comes back. Copies get the mod's tags from here, and a newer jar here replaces the copies the app added (ones you changed yourself are left alone). This runs when the app starts, before Play, and when you open or create an instance.",
+      empty: "No mods yet. Add .jar files here, or right-click mods in your list and choose Share across instances." },
+    resourcepacks: { noun: "resource pack", nouns: "resource packs", title: "Resource packs shared across instances", add: "Add .zip files…",
+      lead: "The app copies these into every instance's resource packs and turns each one on once there (on top of the others). Turned off in an instance later, it stays off. Instances that use the shared resource pack folder get them once, together. To share packs an instance already has, select them in the Packs tab and choose Share.",
+      where: "The same ticks as the mods. Servers don't get resource packs. A pack is in place when the folder has a pack of that name or the same file under another name. Changing the file here updates the copies the app added. Runs when the app starts, before Play, and when you open or create an instance.",
+      empty: "No resource packs yet. Add .zip files here, or select packs in the Packs tab and choose Share." },
+    shaderpacks: { noun: "shader pack", nouns: "shader packs", title: "Shader packs shared across instances", add: "Add .zip files…",
+      lead: "The app copies these into the shader packs of every instance that has Iris or Oculus on. The shader in use isn't changed: pick it in the Packs tab or in the game. Instances that use the shared shader pack folder get them once, together.",
+      where: "The same ticks as the mods. An instance without Iris or Oculus gets them once it has one. Changing the file here updates the copies the app added. Runs when the app starts, before Play, and when you open or create an instance.",
+      empty: "No shader packs yet. Add .zip files here, or select packs in the Packs tab and choose Share." },
+    datapacks: { noun: "data pack", nouns: "data packs", title: "Data packs shared across instances", add: "Add .zip files…",
+      lead: "An instance with Paxi on gets these in its every-world folder, so new worlds start with them (worldgen packs need that). Without Paxi they go into each of its worlds, and a world made later gets them the next time this runs. A server folder you tick gets them in its world.",
+      where: "The same ticks as the mods. Changing the file here updates the copies the app added. Runs when the app starts, before Play, and when you open or create an instance.",
+      empty: "No data packs yet. Add .zip files here, or select packs in the Packs tab and choose Share." }
+  };
 
   function isAlways(r) {
     var a = server && server.always;
@@ -5246,79 +5279,114 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   // After any change: what happened as a toast, then the mod list (its marks, and the jars the change put
-  // in the folder being managed) and this page catch up.
+  // in the folder being managed), the Packs tab and this page catch up.
   function alwaysDone(res, what) {
     var lines = [what].concat(res.notes || []).concat(res.report || []).filter(Boolean);
-    if (lines.length) toast(lines.join(" "), currentView === "always" ? null : "Show", currentView === "always" ? null : function () { setView("always"); });
+    if (lines.length) toast(lines.join(" "), currentView === "shared" ? null : "Show", currentView === "shared" ? null : function () { setView("shared"); });
     inst.data = null;
-    return refresh(true).then(function () { if (currentView === "always") return loadAlways(); });
+    return refresh(true).then(function () {
+      if (currentView === "shared") return loadAlways();
+      if (currentView === "packs") return loadPacks(false);
+    });
   }
 
   function alwaysAction(p, label) {
-    return track(label, p).then(function (res) { return alwaysDone(res, ""); }, function (e) { toast(e.message); if (currentView === "always") return loadAlways(); });
+    return track(label, p).then(function (res) { return alwaysDone(res, ""); }, function (e) { toast(e.message); if (currentView === "shared") return loadAlways(); });
   }
 
   function addToAlways(rows) {
     var files = rows.filter(function (r) { return r.status !== "missing"; }).map(function (r) { return r.file; });
     if (!files.length || !connected) return;
-    track("Adding to every instance", api("POST", "/api/always/add-from-list", { files: files })).then(function (res) {
+    track("Sharing across instances", api("POST", "/api/always/add-from-list", { files: files })).then(function (res) {
       var n = res.added.length;
-      return alwaysDone(res, n ? (n === 1 ? res.added[0].name + " goes into every instance now." : count(n, "mod goes", "mods go") + " into every instance now.") : "");
+      return alwaysDone(res, n ? (n === 1 ? res.added[0].name + " is shared across instances now." : count(n, "mod is", "mods are") + " shared across instances now.") : "");
     }, function (e) { toast(e.message); });
+  }
+
+  // From the Packs tab: packs this instance has join the shared ones.
+  function sharePacks(d, names) {
+    if (!names.length || !connected) return;
+    track("Sharing across instances", api("POST", "/api/always/add-packs", { kind: d.kind, place: d.place, names: names })).then(function (res) {
+      var n = res.added.length, k = SHARED_KINDS[d.kind];
+      return alwaysDone(res, n ? (n === 1 ? res.added[0].name + " is shared across instances now." : count(n, k.noun + " is", k.nouns + " are") + " shared across instances now.") : "");
+    }, function (e) { toast(e.message); });
+  }
+
+  function showShared(kind) {
+    if (kind && kind !== always.kind) { always.kind = kind; always.data = null; }
+    setView("shared");
   }
 
   function loadAlways() {
     if (!hasToken) return Promise.resolve();
     if (always.loading) return always.loading;
-    if (!always.data) $("always-status").textContent = "Loading…";
-    always.loading = api("GET", "/api/always").then(function (d) {
-      always.data = d;
+    var kind = always.kind;
+    if (!always.data || always.data.kind !== kind) $("always-status").textContent = "Loading…";
+    always.loading = api("GET", "/api/always?kind=" + kind).then(function (d) {
+      if (kind === always.kind) always.data = d;
       $("always-status").textContent = "";
-    }, function (e) { $("always-status").textContent = e.message; }).then(function () { always.loading = null; renderAlways(); });
+    }, function (e) { $("always-status").textContent = e.message; }).then(function () {
+      always.loading = null;
+      if (kind !== always.kind) return loadAlways(); // switched while it loaded
+      renderAlways();
+    });
     return always.loading;
   }
 
   function askRemoveAlways(m) {
+    var kind = always.kind;
     confirmDialog({
-      title: "Take " + m.name + " off the list?",
+      title: "Stop sharing " + m.name + "?",
       items: [m.file],
       body: "It moves to the Recycle Bin. You can also remove the copies the app added to your instances (the ones nobody has changed since; they go to the Recycle Bin too), or leave them where they are.",
       ok: "Remove it everywhere",
-      extra: { label: "Leave the copies", fn: function () { alwaysAction(api("POST", "/api/always/remove", { files: [m.file], everywhere: false }), "Updating the list"); } },
-      onOk: function () { alwaysAction(api("POST", "/api/always/remove", { files: [m.file], everywhere: true }), "Removing from every instance"); }
+      extra: { label: "Leave the copies", fn: function () { alwaysAction(api("POST", "/api/always/remove", { kind: kind, files: [m.file], everywhere: false }), "Updating the list"); } },
+      onOk: function () { alwaysAction(api("POST", "/api/always/remove", { kind: kind, files: [m.file], everywhere: true }), "Removing from every instance"); }
     });
   }
 
   function renderAlways() {
-    var d = always.data;
+    var kind = always.kind, k = SHARED_KINDS[kind];
+    Array.prototype.forEach.call($("shared-kinds").querySelectorAll("button"), function (b) { b.setAttribute("aria-pressed", String(b.dataset.kind === kind)); });
+    $("always-title").textContent = k.title;
+    $("always-lead").textContent = k.lead;
+    $("always-where-lead").textContent = k.where;
+    $("always-add").textContent = k.add;
+    var d = always.data && always.data.kind === kind ? always.data : null;
     var modsEl = $("always-list-mods"), targetsEl = $("always-list-targets");
     modsEl.replaceChildren();
     targetsEl.replaceChildren();
-    if (!d) return;
+    $("always-add").disabled = !connected;
+    if (!d) { $("always-sync").hidden = true; $("always-count").textContent = ""; return; }
     var ticked = d.targets.filter(function (t) { return t.on; });
     var waiting = ticked.filter(function (t) { return !t.running && (t.missing.length || t.stale.length); });
     $("always-sync").hidden = !waiting.length;
     $("always-sync").disabled = !connected;
-    $("always-add").disabled = !connected;
-    $("always-count").textContent = d.mods.length ? count(d.mods.length, "mod", "mods") + " · going to " + count(ticked.length, "place", "places") : "";
+    $("always-count").textContent = d.items.length ? count(d.items.length, k.noun, k.nouns) + " · going to " + count(ticked.length, "place", "places") : "";
 
-    if (!d.mods.length) modsEl.append(h("p", { class: "hint" }, "No mods yet. Add .jar files here, or right-click mods in your list and choose Add to every instance."));
-    d.mods.forEach(function (m) {
-      // Where this one is: every ticked place that isn't waiting for it and where it can load.
+    if (!d.items.length) modsEl.append(h("p", { class: "hint" }, k.empty));
+    d.items.forEach(function (m) {
+      // Where this one is: every ticked place that isn't waiting for it and where it can go.
       var named = function (list) { return list.indexOf(m.name) >= 0; };
       var cant = ticked.filter(function (t) { return t.misfits.some(function (x) { return x.name === m.name; }); });
       var waits = ticked.filter(function (t) { return named(t.missing) || named(t.stale); });
-      var has = ticked.length - cant.length - waits.length;
+      var nowhere = ticked.filter(function (t) { return t.waiting; });
+      var has = ticked.length - cant.length - waits.length - nowhere.length;
       var reach = ["in " + has + " of " + ticked.length];
       if (waits.length) reach.push(waits.length + " waiting");
-      if (cant.length) reach.push("can't load in " + cant.map(function (t) { return t.name; }).join(", "));
-      var meta = [m.version, m.loader, m.minecraft ? "Minecraft " + m.minecraft : null].filter(Boolean).join(" · ");
+      if (nowhere.length) reach.push(count(nowhere.length, "place", "places") + " with no worlds yet");
+      if (cant.length) reach.push((kind === "mods" ? "can't load in " : "can't go in ") + cant.map(function (t) { return t.name; }).join(", "));
+      var meta = kind === "mods" ? [m.version, m.loader, m.minecraft ? "Minecraft " + m.minecraft : null].filter(Boolean).join(" · ")
+        : [m.file, formatBytes(m.size), m.format ? "format " + m.format : null].filter(Boolean).join(" · ");
+      var main = h("div", { class: "always-main" },
+        h("strong", null, m.name),
+        m.description ? h("span", { class: "hint" }, m.description) : null,
+        h("span", { class: "hint" }, meta || m.file),
+        h("span", { class: "hint" }, reach.join(" · ")),
+        m.tags.length ? h("span", { class: "always-tags" }, m.tags.map(function (t) { return h("span", { class: "chip", style: "--c:" + colorOf(t) }, t); })) : null);
       modsEl.append(h("div", { class: "always-row" },
-        h("div", { class: "always-main" },
-          h("strong", null, m.name),
-          h("span", { class: "hint" }, meta || m.file),
-          h("span", { class: "hint" }, reach.join(" · ")),
-          m.tags.length ? h("span", { class: "always-tags" }, m.tags.map(function (t) { return h("span", { class: "chip", style: "--c:" + colorOf(t) }, t); })) : null),
+        kind === "mods" ? null : m.icon ? h("img", { class: "pack-icon", src: m.icon, alt: "" }) : h("span", { class: "pack-icon", "aria-hidden": "true" }),
+        main,
         btn("Remove…", function () { askRemoveAlways(m); }, "quiet", { disabled: !connected, "aria-label": "Remove " + m.name })));
     });
 
@@ -5330,13 +5398,17 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         box.disabled = true;
         alwaysAction(api("POST", "/api/always/target", { path: t.path, on: box.checked }), box.checked ? "Adding to " + t.name : "Updating");
       });
+      // Packs that can't go in share one reason (no Iris, a server), so it's said once.
+      var why = kind === "mods" ? null : t.misfits.length ? t.misfits[0].why : null;
       var bits = [];
       if (t.minecraft || t.loader) bits.push([t.loader, t.minecraft].filter(Boolean).join(" ") + (t.guessed ? " (assumed)" : ""));
       if (!t.prism) bits.push("mods folder");
-      if (d.mods.length) {
+      if (t.on && t.where) bits.push(t.where);
+      if (d.items.length) {
         if (!t.on) bits.push("not getting them");
         else if (t.running) bits.push("running: gets them next time");
-        else if (!t.missing.length && !t.stale.length) bits.push(t.present === d.mods.length ? "has all of them" : t.present ? "has all that fit here" : "none of them fit here");
+        else if (!why && !t.waiting && !t.missing.length && !t.stale.length)
+          bits.push(t.present === d.items.length ? "has all of them" : t.present ? "has all that fit here" : "none of them fit here");
         if (t.on && t.missing.length) bits.push(t.missing.length + " to add: " + t.missing.join(", "));
         if (t.on && t.stale.length) bits.push(t.stale.length + " to update: " + t.stale.join(", "));
       }
@@ -5344,14 +5416,24 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         h("label", { class: "toggle always-main" }, box, h("span", null,
           h("strong", null, t.name + (t.current ? " (open now)" : "")),
           h("span", { class: "hint" }, bits.join(" · ")),
+          why ? h("span", { class: "hint" }, "None go here: " + why) :
           t.misfits.length ? h("span", { class: "hint" }, "Can't load here: " + t.misfits.map(function (x) { return x.name + " (" + x.why + ")"; }).join(", ")) : null))));
     });
   }
 
-  $("always-add").addEventListener("click", function () { alwaysAction(api("POST", "/api/always/add-files", {}), "Adding to every instance"); });
+  Array.prototype.forEach.call($("shared-kinds").querySelectorAll("button"), function (b) {
+    b.addEventListener("click", function () {
+      if (b.dataset.kind === always.kind) return;
+      always.kind = b.dataset.kind;
+      always.data = null;
+      renderAlways();
+      loadAlways();
+    });
+  });
+  $("always-add").addEventListener("click", function () { alwaysAction(api("POST", "/api/always/add-files", { kind: always.kind }), "Adding to Shared"); });
   $("always-sync").addEventListener("click", function () { alwaysAction(api("POST", "/api/always/sync", {}), "Adding to every instance"); });
-  $("always-open").addEventListener("click", function () { api("POST", "/api/always/open", {}).catch(function (e) { toast(e.message); }); });
-  $("always-mods").addEventListener("click", function () { closeInstances(false); setView("always"); });
+  $("always-open").addEventListener("click", function () { api("POST", "/api/always/open", { kind: always.kind }).catch(function (e) { toast(e.message); }); });
+  $("always-mods").addEventListener("click", function () { closeInstances(false); setView("shared"); });
 
 
   $("inst-btn").addEventListener("click", openInstances);
@@ -6616,7 +6698,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   // ---------- Sections (Mods / Server / Snapshots / Cleanup) ----------
 
-  var VIEWS = ["mods", "libraries", "features", "packs", "always", "configs", "keys", "server", "snapshots", "cleanup", "settings"];
+  var VIEWS = ["mods", "libraries", "features", "packs", "shared", "configs", "keys", "server", "snapshots", "cleanup", "settings"];
   var currentView = "mods";
   function setView(name, initial) {
     if (VIEWS.indexOf(name) < 0) name = "mods";
@@ -6624,7 +6706,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     currentView = name;
     // Libraries is the Mods page showing only mods tagged library.
     var section = name === "libraries" ? "mods" : name;
-    ["mods", "features", "packs", "always", "configs", "keys", "server", "snapshots", "cleanup", "settings"].forEach(function (v) { $("view-" + v).hidden = v !== section; });
+    ["mods", "features", "packs", "shared", "configs", "keys", "server", "snapshots", "cleanup", "settings"].forEach(function (v) { $("view-" + v).hidden = v !== section; });
     if (section === "mods") switchListArea(name);
     if (section === "mods" && was !== name && model) {
       Object.keys(selected).forEach(function (k) { delete selected[k]; });
@@ -6643,7 +6725,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (!hasToken) return;
     if (name === "server") { refreshServer(); startConsole(); setSub(srv.sub); ensureSync(); }
     if (name === "packs") loadPacks(false);
-    if (name === "always") loadAlways();
+    if (name === "shared") loadAlways();
     if (name === "keys") loadKeys();
     if (name !== "keys" && keys.capture) { keys.capture = null; keys.capMod = null; }
     if (name === "snapshots") { loadSnapshots(); loadWorlds(); loadHistory(); }
@@ -7236,7 +7318,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function paletteItems() {
     var items = [];
     var go = function (label, hint, fn, kind) { items.push({ label: label, hint: hint, fn: fn, kind: kind || "action" }); };
-    [["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["always", "Every instance"], ["configs", "Configs"], ["keys", "Key binds"], ["server", "Server"], ["snapshots", "Snapshots"], ["cleanup", "Cleanup"], ["settings", "Settings"]]
+    [["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["shared", "Shared"], ["configs", "Configs"], ["keys", "Key binds"], ["server", "Server"], ["snapshots", "Snapshots"], ["cleanup", "Cleanup"], ["settings", "Settings"]]
       .forEach(function (v) { go("Go to " + v[1], "page", function () { setView(v[0]); }, "page"); });
     // The pages within pages: Features' kinds, Packs' kinds and the Server's tabs.
     Object.keys(FEAT_KINDS).forEach(function (k) {
@@ -7362,7 +7444,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     ["Delete", "Delete the selected mods or packs; unbind the selected key binds"],
     ["Ctrl+click a tag", "Hide mods with that tag"],
     ["Right-click", "Actions for a mod (and its tags), a feature, a pack, a server mod or a key bind; selects it first"],
-    ["#tag  -#tag", "In the search box: with / without a tag. Also is:off, is:update, is:new, is:pinned, is:noted, is:unneeded, is:always, side:client"],
+    ["#tag  -#tag", "In the search box: with / without a tag. Also is:off, is:update, is:new, is:pinned, is:noted, is:unneeded, is:shared, side:client"],
     ["Esc", "Close a dialog or menu, or clear the selection"],
     ["Ctrl+Enter", "Save a note"],
     ["Ctrl+T / Ctrl+W", "New tab / close tab"],
@@ -7606,7 +7688,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       { key: "userCss", label: "Your own styles (user.css)", desc: "", custom: userCssControl, fine: true }
     ] },
     { title: "Mod list", items: [
-      { key: "startPage", label: "Open on", desc: "The page the app shows when it starts.", select: [["last", "Where I left off"], ["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["always", "Every instance"], ["configs", "Configs"], ["keys", "Key binds"], ["server", "Server"], ["snapshots", "Snapshots"]] },
+      { key: "startPage", label: "Open on", desc: "The page the app shows when it starts.", select: [["last", "Where I left off"], ["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["shared", "Shared"], ["configs", "Configs"], ["keys", "Key binds"], ["server", "Server"], ["snapshots", "Snapshots"]] },
       { key: "fileNames", label: "Show file names", desc: "The jar's file name under each mod's name." },
       { key: "colVersion", label: "Version column", desc: "Each mod's installed version, from Modrinth or CurseForge when known, else from the jar." },
       { key: "colSide", label: "Side column", desc: "The C and S marks for client and server." },

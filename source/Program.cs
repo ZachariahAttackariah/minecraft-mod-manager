@@ -537,8 +537,11 @@ namespace MinecraftModManager
                             result = SharingInfo();
                             break;
                         case "/api/always":
-                            result = AlwaysInfo();
+                        {
+                            string sharedKind = req.QueryString["kind"];
+                            result = string.IsNullOrEmpty(sharedKind) || sharedKind == "mods" ? AlwaysInfo() : SharedPackInfo(sharedKind);
                             break;
+                        }
                     }
                     if (result != null)
                     {
@@ -846,11 +849,22 @@ namespace MinecraftModManager
                         SendJson(ctx, 200, AddAlwaysFromList(StrList(body, "files")));
                         return;
                     case "/api/always/add-files":
-                        SendJson(ctx, 200, AddAlwaysFiles());
+                    {
+                        string sharedKind = Str(body, "kind");
+                        SendJson(ctx, 200, string.IsNullOrEmpty(sharedKind) || sharedKind == "mods" ? AddAlwaysFiles() : AddSharedPackFiles(sharedKind));
+                        return;
+                    }
+                    case "/api/always/add-packs":
+                        SendJson(ctx, 200, AddSharedPacksFromPlace(Str(body, "kind"), Str(body, "place"), StrList(body, "names")));
                         return;
                     case "/api/always/remove":
-                        SendJson(ctx, 200, RemoveAlways(StrList(body, "files"), Bool(body, "everywhere")));
+                    {
+                        string sharedKind = Str(body, "kind");
+                        SendJson(ctx, 200, string.IsNullOrEmpty(sharedKind) || sharedKind == "mods"
+                            ? RemoveAlways(StrList(body, "files"), Bool(body, "everywhere"))
+                            : RemoveSharedPacks(sharedKind, StrList(body, "files"), Bool(body, "everywhere")));
                         return;
+                    }
                     case "/api/always/target":
                         SendJson(ctx, 200, SetAlwaysTarget(Str(body, "path"), Bool(body, "on")));
                         return;
@@ -858,12 +872,13 @@ namespace MinecraftModManager
                     {
                         var alwaysReport = new List<string>();
                         int alwaysCurrent = SyncAlwaysMods(null, alwaysReport);
+                        SyncSharedPacks(null, alwaysReport);
                         if (alwaysReport.Count == 0) alwaysReport.Add("Everything was already in place.");
                         SendJson(ctx, 200, Obj("ok", true, "report", alwaysReport, "currentChanged", alwaysCurrent));
                         return;
                     }
                     case "/api/always/open":
-                        OpenAlwaysFolder();
+                        if (string.IsNullOrEmpty(Str(body, "kind")) || Str(body, "kind") == "mods") OpenAlwaysFolder(); else OpenSharedPackFolder(Str(body, "kind"));
                         SendJson(ctx, 200, Obj("ok", true));
                         return;
                     case "/api/sharing/open":

@@ -437,6 +437,7 @@ namespace MinecraftModManager
             string active = null, enableShaders;
             if (shaderMod != null && shaderProps.TryGetValue("enableShaders", out enableShaders) && enableShaders == "true") shaderProps.TryGetValue("shaderPack", out active);
 
+            HashSet<string> shared = SharedPackNames(kind); // shared across instances (SharedPacks.cs)
             var packs = new List<object>();
             foreach (FileSystemInfo e in entries)
             {
@@ -446,7 +447,7 @@ namespace MinecraftModManager
                 else if (kind == "shaderpacks") on = active == e.Name;
                 packs.Add(Obj("name", e.Name, "folder", e is DirectoryInfo, "size", e is FileInfo ? ((FileInfo)e).Length : FolderSize((DirectoryInfo)e),
                     "modified", e.LastWriteTimeUtc.ToString("o"), "description", meta.Description, "format", meta.Format, "icon", meta.Icon,
-                    "on", on, "modrinth", Get(modrinth, e.Name)));
+                    "on", on, "modrinth", Get(modrinth, e.Name), "shared", shared.Contains(e.Name)));
             }
 
             var places = PackPlaces(kind).Select(p =>

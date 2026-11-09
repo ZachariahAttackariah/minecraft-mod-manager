@@ -1,4 +1,5 @@
-// Mods in every instance: one collection of jars (<data>\shared\always-mods) that the app copies into
+// Shared mods (the Shared tab; the packs shared the same way are in SharedPacks.cs, with the same ticks).
+// One collection of jars (<data>\shared\always-mods) that the app copies into
 // every mods folder it manages: each Prism instance (unless it's unticked) and each other mods folder
 // that's ticked. It runs when the app starts, before Play, when an instance is opened, made or changes
 // version, and whenever the collection or a tick changes.
@@ -331,6 +332,8 @@ namespace MinecraftModManager
         {
             try { SyncAlwaysMods(onlyDir, null); }
             catch (Exception ex) { Log("Always    couldn't add the mods every instance gets: " + ex.Message); }
+            try { SyncSharedPacks(onlyDir, null); } // and the shared packs (SharedPacks.cs)
+            catch (Exception ex) { Log("Shared    couldn't add the shared packs: " + ex.Message); }
         }
 
         // ---------- Changing the collection ----------
@@ -505,6 +508,7 @@ namespace MinecraftModManager
                 Log("Always    " + t.Name + (on ? " gets the mods every instance gets" : " no longer gets the mods every instance gets"));
             }
             int current = on ? SyncAlwaysMods(path, report) : 0;
+            if (on) SyncSharedPacks(path, report);
             return Obj("ok", true, "report", report, "currentChanged", current);
         }
 
@@ -536,7 +540,7 @@ namespace MinecraftModManager
                     "guessed", t.Guessed, "current", SamePath(t.Dir, modsDir), "running", t.GameDir != null && GameRunning(t.GameDir), "linkedTags", HasLinkedTags(t.Dir),
                     "present", s.Present, "missing", s.Missing, "stale", s.Stale, "misfits", s.Misfits);
             }).ToList();
-            return Obj("ok", true, "path", AlwaysDir(), "mods", mods, "targets", targets);
+            return Obj("ok", true, "kind", "mods", "path", AlwaysDir(), "items", mods, "targets", targets);
         }
 
         // Mod ids and file names in the collection, so the mod list can mark the mods every instance gets.
