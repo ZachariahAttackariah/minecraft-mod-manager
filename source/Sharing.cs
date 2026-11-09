@@ -316,6 +316,9 @@ namespace MinecraftModManager
                         string old = Path.Combine(SharedDir(), kind);
                         if (!Directory.Exists(old)) continue;
                         List<InstanceInfo> linked = PrismInstances().Where(i => SharesFolder(i, kind)).ToList();
+                        // Only a folder instances still link to is moved over. One nothing links to (put back from the
+                        // Recycle Bin, or filled again by a sync tool) is left alone rather than shared all over again.
+                        if (linked.Count == 0) continue;
                         string collection = SharedPackDir(kind);
                         Directory.CreateDirectory(collection);
                         var zips = new DirectoryInfo(old).GetFiles("*.zip");
