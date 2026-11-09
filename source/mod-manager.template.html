@@ -447,6 +447,8 @@ a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--acce
 .always-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); align-items: start; }
 .always-cards .row-actions { margin-bottom: 12px; }
 .always-row.off { opacity: 0.7; }
+.clip-paste { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.clip-paste .note { color: var(--muted); }
 .always-row .hint { line-height: 1.35; overflow-wrap: anywhere; }
 .always-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
 /* A mod's note, shown when the cursor rests on its row. */
@@ -1978,7 +1980,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     refresh: [["path", { d: "M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3" }]],
     search: [["circle", { cx: "7", cy: "7", r: "5" }], ["path", { d: "M11 11l3.5 3.5" }]],
     dots: [["circle", { cx: "3.5", cy: "8", r: ".6" }], ["circle", { cx: "8", cy: "8", r: ".6" }], ["circle", { cx: "12.5", cy: "8", r: ".6" }]],
-    layers: [["path", { d: "M8 2.5l5.5 3L8 8.5 2.5 5.5z" }], ["path", { d: "M2.5 8.5L8 11.5l5.5-3" }], ["path", { d: "M2.5 11.25L8 14.25l5.5-3" }]]
+    layers: [["path", { d: "M8 2.5l5.5 3L8 8.5 2.5 5.5z" }], ["path", { d: "M2.5 8.5L8 11.5l5.5-3" }], ["path", { d: "M2.5 11.25L8 14.25l5.5-3" }]],
+    cut: [["circle", { cx: "4.5", cy: "11.5", r: "2" }], ["circle", { cx: "11.5", cy: "11.5", r: "2" }], ["path", { d: "M5.9 10L12 2.5M10.1 10L4 2.5" }]],
+    paste: [["rect", { x: "3", y: "3", width: "10", height: "11", rx: "1.3" }], ["path", { d: "M6 3V1.8h4V3" }], ["path", { d: "M5.5 7.5h5M5.5 10h3.5" }]]
   };
 
   function $(id) { return document.getElementById(id); }
@@ -2841,6 +2845,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       bar.append(
         h("span", { class: "sel-count", title: "Click a mod to select it (Ctrl+click: several, Shift+click: a range)" }, "No mods selected", h("span", { class: "note" }, " · right-click a mod for actions")),
         h("span", { class: "sel-actions" },
+          pasteControls("mods", null, clipNow() && clipNow().fromHere),
           h("button", { type: "button", class: "btn", disabled: true }, "Tags…"),
           h("button", { type: "button", class: "btn", disabled: true }, "Copy names")));
       end();
@@ -2855,6 +2860,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       h("span", { class: "sel-count" }, count(rows.length, "mod", "mods") + " selected",
         hidden ? h("span", { class: "note" }, " · " + hidden + " hidden by filters") : null),
       h("span", { class: "sel-actions" },
+        pasteControls("mods", null, clipNow() && clipNow().fromHere),
         g.updatable.length ? h("button", { type: "button", class: "btn primary", disabled: !connected, onclick: function () { updateMods(g.updatable); } }, "Update " + g.updatable.length) : null,
         g.disabled.length ? h("button", { type: "button", class: "btn", disabled: !connected, onclick: function () { setEnabled(g.disabled, true); } }, "Turn on " + g.disabled.length) : null,
         g.enabled.length ? h("button", { type: "button", class: "btn", disabled: !connected, onclick: function () { setEnabled(g.enabled, false); } }, "Turn off " + g.enabled.length) : null,
@@ -3634,8 +3640,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     packs.rows = rows;
     var slot = $("packs-selbar");
     slot.replaceChildren();
-    if (!all.length) list.append(h("p", { class: "packs-empty" }, "No " + PACK_NOUNS[d.kind] + " here yet. Search for some, add .zip files, or download one in a tab (it lands here by itself)."));
-    else slot.append(packSelectionBar(d, rows));
+    if (!all.length) {
+      list.append(h("p", { class: "packs-empty" }, "No " + PACK_NOUNS[d.kind] + " here yet. Search for some, add .zip files, or download one in a tab (it lands here by itself)."));
+      var emptyPaste = pasteControls(d.kind, d.place, packClipHere(d)); // an empty world is a common place to paste data packs into
+      if (emptyPaste) list.append(emptyPaste);
+    } else slot.append(packSelectionBar(d, rows));
     $("packs-nomatch").hidden = !all.length || rows.length > 0;
     rows.forEach(function (p) { list.append(packRow(d, p)); });
   }
@@ -3735,7 +3744,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var noun = function (n) { return count(n, PACK_NOUNS[d.kind].replace(/s$/, ""), PACK_NOUNS[d.kind]); };
     var tail = h("span", { class: "count-label", style: "margin-left:auto" }, rows.length + " of " + d.packs.length + " shown");
     if (!picked.length) {
-      bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click packs to act on several at once")), tail);
+      bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click packs to act on several at once")),
+        h("span", { class: "sel-actions" }, pasteControls(d.kind, d.place, packClipHere(d))), tail);
       return bar;
     }
     var turnOn = d.kind === "resourcepacks" ? picked.filter(function (p) { return p.on < 0; }) : [];
@@ -3745,6 +3755,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     bar.append(
       h("span", { class: "sel-count" }, noun(picked.length) + " selected"),
       h("span", { class: "sel-actions" },
+        pasteControls(d.kind, d.place, packClipHere(d)),
+        btn("Copy", function () { clipCopy(d.kind, d.place, picked.map(function (p) { return p.name; }), false); }, "", { disabled: !connected, title: "Copy, to paste into another instance or world (Ctrl+C)" }),
+        btn("Cut", function () { clipCopy(d.kind, d.place, picked.map(function (p) { return p.name; }), true); }, "", { disabled: locked, title: "Cut, to move into another instance or world (Ctrl+X)" }),
         shareable.length ? btn("Share " + shareable.length, function () { sharePacks(d, shareable.map(function (p) { return p.name; })); }, "",
           { disabled: !connected, title: "Share across instances: every instance gets them (the Shared tab)" }) : null,
         updatable.length ? btn("Update " + updatable.length, function () { updatePacks(updatable.map(function (p) { return p.name; })); }, "primary", { disabled: locked }) : null,
@@ -4472,6 +4485,15 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var forAll = rows.filter(function (r) { return r.status !== "missing"; });
       if (forAll.length && forAll.every(isAlways)) actions.append(menuItem("Show in Shared", "layers", function () { showShared("mods"); }));
       else if (forAll.length) actions.append(menuItem(single ? "Share across instances" : "Share " + forAll.length + " across instances", "layers", function () { addToAlways(forAll); }));
+      // Copy / Cut to paste into another instance (Clipboard.cs).
+      if (forAll.length) {
+        var clipNames = forAll.map(function (r) { return r.file; });
+        actions.append(menuItem(single ? "Copy (Ctrl+C)" : "Copy " + forAll.length + " (Ctrl+C)", "copy", function () { clipCopy("mods", null, clipNames, false); }));
+        actions.append(menuItem(single ? "Cut (Ctrl+X)" : "Cut " + forAll.length + " (Ctrl+X)", "cut", function () { clipCopy("mods", null, clipNames, true); }));
+      }
+      var clipHere = clipNow();
+      if (clipHere && clipHere.kind === "mods" && !clipHere.fromHere)
+        actions.append(menuItem("Paste " + count(clipHere.count, "mod", "mods") + " from " + clipHere.from + " (Ctrl+V)", "paste", function () { clipPaste("mods", null); }));
     }
     if (!single) actions.append(menuItem("Clear selection", "clear", clearSelection));
     var wasOpen = !menuEl.hidden;
@@ -5434,6 +5456,73 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   $("always-sync").addEventListener("click", function () { alwaysAction(api("POST", "/api/always/sync", {}), "Adding to every instance"); });
   $("always-open").addEventListener("click", function () { api("POST", "/api/always/open", { kind: always.kind }).catch(function (e) { toast(e.message); }); });
   $("always-mods").addEventListener("click", function () { closeInstances(false); setView("shared"); });
+
+  // ---------- Copy, cut and paste between instances (Clipboard.cs) ----------
+  // The clipboard is the app's, so it survives switching instances. Mods in the mod list, packs in the Packs tab.
+
+  function clipNow() { return (server && server.clip) || null; }
+  function clipNoun(kind, n) { return kind === "mods" ? (n === 1 ? "mod" : "mods") : n === 1 ? PACK_NOUNS[kind].replace(/s$/, "") : PACK_NOUNS[kind]; }
+  function setClip(c) {
+    if (server) server.clip = c;
+    if (model) renderSelectionBar();
+    if (currentView === "packs") renderPacks();
+  }
+
+  function clipCopy(kind, place, names, cut) {
+    if (!names.length || !connected) return;
+    api("POST", "/api/clip/copy", { kind: kind, place: place || "", files: names, cut: cut }).then(function (res) {
+      setClip(res.clip);
+      toast((cut ? "Cut " : "Copied ") + count(names.length, clipNoun(kind, 1), clipNoun(kind, 2)) + ". Open another instance" +
+        (kind === "datapacks" ? " or world" : "") + " and paste there (Ctrl+V)." + (cut ? " They move when you paste." : ""));
+    }, function (e) { toast(e.message); });
+  }
+
+  function clipPaste(kind, place) {
+    if (!clipNow() || !connected) return;
+    track("Pasting", api("POST", "/api/clip/paste", { kind: kind, place: place || "" })).then(function (res) {
+      if (server) server.clip = res.clip;
+      var n = res.pasted.length;
+      toast([n ? (res.moved ? "Moved " : "Pasted ") + count(n, clipNoun(kind, 1), clipNoun(kind, 2)) + " from " + res.from + "." : "Nothing was pasted."].concat(res.notes || []).join(" "));
+      inst.data = null;
+      return kind === "mods" ? refresh(true) : loadPacks(false);
+    }, function (e) { toast(e.message); });
+  }
+
+  function packClipHere(d) { var c = clipNow(); return !!(c && d && d.path && String(c.dir).toLowerCase() === String(d.path).toLowerCase()); }
+
+  function clipForget() {
+    api("POST", "/api/clip/clear", {}).then(function () { setClip(null); }, function (e) { toast(e.message); });
+  }
+
+  // For a selection bar: Paste, while the clipboard holds that kind and came from somewhere else.
+  function pasteControls(kind, place, here) {
+    var c = clipNow();
+    if (!c || c.kind !== kind || here) return null;
+    return h("span", { class: "clip-paste" },
+      h("button", { type: "button", class: "btn primary", disabled: !connected, title: (c.cut ? "Move here: " : "Copy here: ") + c.names.join(", ") + " (Ctrl+V)",
+        onclick: function () { clipPaste(kind, place); } }, icon("paste"), " Paste " + count(c.count, clipNoun(kind, 1), clipNoun(kind, 2))),
+      h("span", { class: "note" }, (c.cut ? " cut from " : " from ") + c.from + " "),
+      h("button", { type: "button", class: "linkish", title: "Empty the clipboard", onclick: clipForget }, "Forget"));
+  }
+
+  // Ctrl+C / Ctrl+X / Ctrl+V. Not while text is selected on the page, so copying text still works.
+  function clipKeys(e, kind, place, names, here) {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return false;
+    var k = e.key.toLowerCase();
+    if (k !== "c" && k !== "x" && k !== "v") return false;
+    var textPicked = window.getSelection && String(window.getSelection()).length > 0;
+    if (k === "v") {
+      var c = clipNow();
+      if (!c || c.kind !== kind || here) return false;
+      e.preventDefault();
+      clipPaste(kind, place);
+      return true;
+    }
+    if (!names.length || textPicked) return false;
+    e.preventDefault();
+    clipCopy(kind, place, names, k === "x");
+    return true;
+  }
 
 
   $("inst-btn").addEventListener("click", openInstances);
@@ -11482,6 +11571,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var pd = packs.data && packs.data.kind === packs.kind ? packs.data : null;
       if (!pd) return;
       var psel = selectedPacks(pd), plocked = !connected || pd.gameRunning || pd.serverRunning;
+      if (connected && clipKeys(e, pd.kind, pd.place, psel.map(function (p) { return p.name; }), packClipHere(pd))) return;
       if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) {
         e.preventDefault();
         var ps = packSel(pd);
@@ -11509,6 +11599,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       return;
     }
     if (typing || (currentView !== "mods" && currentView !== "libraries")) return;
+    if (currentView === "mods" && connected && clipKeys(e, "mods", null,
+      selectedRows().filter(function (r) { return r.status !== "missing"; }).map(function (r) { return r.file; }), clipNow() && clipNow().fromHere)) return;
     if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) {
       e.preventDefault();
       var rows = visible();

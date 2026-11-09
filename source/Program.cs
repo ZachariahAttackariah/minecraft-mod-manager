@@ -854,6 +854,16 @@ namespace MinecraftModManager
                         SendJson(ctx, 200, string.IsNullOrEmpty(sharedKind) || sharedKind == "mods" ? AddAlwaysFiles() : AddSharedPackFiles(sharedKind));
                         return;
                     }
+                    case "/api/clip/copy":
+                        SendJson(ctx, 200, ClipCopy(Str(body, "kind") ?? "mods", Str(body, "place"), StrList(body, "files"), Bool(body, "cut")));
+                        return;
+                    case "/api/clip/paste":
+                        SendJson(ctx, 200, ClipPaste(Str(body, "kind") ?? "mods", Str(body, "place")));
+                        return;
+                    case "/api/clip/clear":
+                        ClipClear();
+                        SendJson(ctx, 200, Obj("ok", true, "clip", null));
+                        return;
                     case "/api/always/add-packs":
                         SendJson(ctx, 200, AddSharedPacksFromPlace(Str(body, "kind"), Str(body, "place"), StrList(body, "names")));
                         return;
@@ -1072,7 +1082,7 @@ namespace MinecraftModManager
                 "paths", Obj("server", serverDir, "data", dataDir, "app", AppDir.TrimEnd('\\')),
                 "prism", Obj("installed", FindPrism() != null, "instanceId", prism == null ? null : prism[0], "instanceName", prism == null ? null : prism[1]),
                 "server", Obj("configured", serverDir != null, "state", serverState, "players", PlayerCount()),
-                "bisect", BisectSummary(), "always", AlwaysMarks());
+                "bisect", BisectSummary(), "always", AlwaysMarks(), "clip", ClipInfo());
         }
 
         // ---------- Prism Launcher (Play) ----------
