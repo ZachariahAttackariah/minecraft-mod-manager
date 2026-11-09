@@ -142,7 +142,7 @@ pre.game-log .e { color: var(--danger); }
 @font-face { font-family: "Minecraft"; src: url("data:font/otf;base64,__FONT_MINECRAFT__") format("opentype"); font-weight: 400; font-display: swap; }
 html[data-blocky="on"] .wordmark { font-family: var(--font-blocky); font-weight: 400; font-synthesis: none; font-size: 27px; letter-spacing: 0; }
 @media (max-width: 900px) { html[data-blocky="on"] .wordmark { font-size: 18px; } }
-.eyebrow { margin: 0; display: flex; align-items: center; gap: 8px; font: 600 12px/1.2 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.eyebrow { margin: 0; display: flex; align-items: center; gap: 8px; min-width: 10px; font: 600 12px/1.2 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .live-dot.on { background: var(--c-worldgen); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-worldgen) 22%, transparent); }
 h1 { margin: 0; }
@@ -508,7 +508,7 @@ button.chip[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 32%, 
 .feat-list { --cols: 22px minmax(0, 1.25fr) minmax(0, 0.8fr) 100px minmax(0, 1.6fr) 124px 34px; }
 .feat-toolbar { margin-inline: 0; padding-inline: 0; }
 .feat-toolbar .search { flex: 1 1 220px; }
-.feat-lead { margin: 0 0 8px; max-width: 900px; }
+.feat-lead { margin-bottom: 8px; }
 .feat-notes { display: grid; gap: 8px; margin-bottom: 4px; }
 .feat-notes:empty { display: none; }
 .feat-notes > * { margin: 0; }
@@ -730,11 +730,11 @@ html[data-anim="on"] :is(.tag-card, .legend-item, .btn, .pill, .act, .check, .ro
 .dot.starting, .dot.stopping { background: var(--c-server); }
 .dot.crashed { background: var(--danger); }
 .view-nav { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 16px; border-bottom: 2px solid var(--line); }
-.view-nav button { position: relative; padding: 10px 14px 12px; font: 700 13.5px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: none; border: 0; cursor: pointer; }
+.view-nav button { position: relative; padding: 10px 12px 12px; font: 700 13.5px/1 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: none; border: 0; cursor: pointer; }
 .view-nav button:hover { color: var(--ink); }
 .view-nav button[aria-current="page"] { color: var(--ink); }
 .view-nav button[aria-current="page"]::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -2px; height: 3px; background: var(--accent-hover); }
-.view-nav .nav-right { display: inline-flex; align-items: center; gap: 12px; margin-left: auto; padding-bottom: 6px; }
+.view-nav .nav-right { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 10px; margin-left: auto; padding-bottom: 6px; }
 .view-nav .server-chip { padding: 7px 12px; font-size: 13px; }
 /* Jobs */
 .jobbar { position: relative; height: 2px; margin-top: -2px; overflow: hidden; }
@@ -932,7 +932,7 @@ details.fine > .set-row:first-of-type { border-top: 1px solid var(--line); }
 .set-grid { columns: 2 440px; column-gap: 16px; }
 .set-card { display: grid; gap: 4px; break-inside: avoid; margin: 0 0 16px; }
 .set-card h2 { margin: 0 0 6px; font: 700 15px/1.2 var(--font-display); }
-html[data-blocky="on"] .set-card h2 { font-family: var(--font-blocky); font-weight: 400; font-synthesis: none; font-size: 18px; letter-spacing: 0; }
+html[data-blocky="on"] :is(.set-card h2, .card h2) { font-family: var(--font-blocky); font-weight: 400; font-synthesis: none; font-size: 18px; letter-spacing: 0; }
 .set-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
 .set-row:first-of-type { border-top: 0; }
 .set-row .l { font-weight: 600; font-size: 14px; }
@@ -955,7 +955,7 @@ html[data-blocky="on"] .set-card h2 { font-family: var(--font-blocky); font-weig
 .set-key { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
 .set-key input { flex: 1 1 220px; min-width: 0; padding: 7px 9px; font: 400 13px/1.2 var(--font-mono); color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; }
 .view-nav .nav-n { margin-left: 6px; font: 600 11px/1 var(--font-mono); letter-spacing: 0; color: var(--muted); }
-.lib-note { margin: -4px 0 14px; font-size: 13px; color: var(--muted); }
+.lib-note { margin-top: -4px; }
 .view-nav .badge-n { margin-left: 6px; padding: 1px 6px; font: 600 11px/1.4 var(--font-body); color: var(--danger-ink); background: var(--danger); border-radius: 8px; }
 .view { padding-top: 2px; }
 .subnav { display: inline-flex; margin-bottom: 12px; }
@@ -973,7 +973,8 @@ html[data-blocky="on"] .set-card h2 { font-family: var(--font-blocky); font-weig
 .cards { display: grid; gap: 14px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 16px; min-width: 0; }
 .card h2 { margin: 0 0 4px; font: 700 17px/1.25 var(--font-display); }
-.card .lead { margin: 0 0 12px; font-size: 13.5px; color: var(--muted); }
+/* Every page's and card's intro text looks the same. */
+p.lead, .lib-note { margin: 0 0 12px; max-width: 920px; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
 .row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 5px 14px; margin: 0; font-size: 13.5px; }
 .kv dt { color: var(--muted); }
@@ -1409,7 +1410,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     </div>
     <nav class="view-nav" id="view-nav" aria-label="Sections">
       <button type="button" data-view="mods" aria-current="page">Mods</button>
-      <button type="button" data-view="libraries" title="Mods tagged library: the ones other mods need. They're kept out of the Mods list.">Libraries<span class="nav-n" id="lib-count"></span></button>
+      <button type="button" data-view="libraries" title="Mods tagged library: dependencies of other mods. They're kept out of the Mods list.">Libraries<span class="nav-n" id="lib-count"></span></button>
       <button type="button" data-view="features" title="The structures, mobs, ores, biomes, items and recipes your mods add, with switches to turn them off">Features</button>
       <button type="button" data-view="packs">Packs</button>
       <button type="button" data-view="shared" title="Mods and packs shared across every instance the app manages">Shared</button>
@@ -1494,7 +1495,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     </div>
     <div style="height:16px"></div>
 
-    <p class="lib-note" id="lib-note" hidden>Libraries are mods that other mods need. Anything tagged <strong>library</strong> lives here instead of in the Mods list; tag a mod library (or take the tag off) to move it.</p>
+    <p class="lib-note" id="lib-note" hidden>Libraries are mods other mods depend on. Anything tagged <strong>library</strong> lives here instead of in the Mods list; tag a mod library (or take the tag off) to move it.</p>
 
   <!-- The mod list with its filters on either side: where jars install on the left, tags on the right. -->
   <div class="mods-layout">
@@ -1627,7 +1628,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <div class="packs-where" id="packs-where"></div>
       <div class="row-actions">
         <button class="btn primary" type="button" id="packs-search" title="Search Modrinth and CurseForge">Add packs</button>
-        <button class="btn" type="button" id="packs-add">Add files…</button>
+        <button class="btn" type="button" id="packs-add">Add .zip files…</button>
         <button class="btn" type="button" id="packs-open">Open folder</button>
         <button class="btn" type="button" id="packs-check">Check for updates</button>
         <button class="btn primary" type="button" id="packs-update-all" hidden>Update all</button>
@@ -1720,7 +1721,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <div class="row-actions" id="always-actions">
           <button class="btn primary" type="button" id="always-add">Add .jar files…</button>
           <button class="btn" type="button" id="always-sync" hidden>Add the missing ones now</button>
-          <button class="btn quiet" type="button" id="always-open">Open folder</button>
+          <button class="btn" type="button" id="always-open">Open folder</button>
           <span class="hint" id="always-count"></span>
           <span class="hint" id="always-status"></span>
         </div>
@@ -2454,7 +2455,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     line.replaceChildren();
     stats.replaceChildren();
     if (!server) { line.textContent = hasToken ? "Connecting…" : "Not connected"; return; }
-    $("eyebrow").textContent = connected ? "Connected" : "Offline";
+    // Connected is the normal state, so it's just the green dot (named on hover); Offline is spelled out.
+    $("eyebrow").textContent = connected ? "" : "Offline";
+    $("eyebrow").parentNode.title = connected ? "Connected to the app" : "Not connected to the app";
     // The last three folders ("Pack › minecraft › mods") say which folder this is; the full path is on hover.
     var segs = server.modsDir.split(/[\\/]+/).filter(Boolean), shown = segs.slice(-3);
     shown.forEach(function (s, i) {
@@ -2714,7 +2717,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (isAlways(r)) badges.push(h("span", { class: "mark always", title: "Shared: the app adds this mod to every instance it manages (see the Shared tab)" }, icon("layers")));
       if (r.status !== "missing" && isNewRow(r)) badges.push(h("span", { class: "badge new", title: "Added or changed in the last " + NEW_DAYS + " days" }, "new"));
       if (r.status !== "missing" && currentView === "libraries" && !r.requiredBy)
-        badges.push(h("span", { class: "badge unneeded", title: "No mod that's on lists it as required. It may still be used optionally, so check before removing it. (Search is:unneeded to list them.)" }, "not needed"));
+        badges.push(h("span", { class: "badge unneeded", title: "No mod that's on lists it as a required dependency. It may still be an optional one, so check before removing it. (Search is:unneeded to list them.)" }, "no dependants"));
       // Tags being filtered on come first; past the Settings limit the rest fold into "+N" (hover lists them).
       var limit = pref("tagsPerRow") === "all" ? Infinity : Number(pref("tagsPerRow"));
       var topics = r.topics.slice().sort(function (a, b) { return (state.tags.indexOf(b) >= 0) - (state.tags.indexOf(a) >= 0); });
@@ -2878,7 +2881,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     bar.classList.toggle("is-empty", !rows.length);
     if (!rows.length) {
       bar.append(
-        h("span", { class: "sel-count", title: "Click a mod to select it (Ctrl+click: several, Shift+click: a range)" }, "No mods selected", h("span", { class: "note" }, " · right-click a mod for actions")),
+        h("span", { class: "sel-count", title: "Click a mod to select it (Ctrl+click: several, Shift+click: a range)" }, "None selected", h("span", { class: "note" }, " · click to select, Shift+click for a range, right-click for actions")),
         h("span", { class: "sel-actions" },
           pasteControls("mods", null, clipNow() && clipNow().fromHere),
           h("button", { type: "button", class: "btn", disabled: true }, "Tags…"),
@@ -3779,7 +3782,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var noun = function (n) { return count(n, PACK_NOUNS[d.kind].replace(/s$/, ""), PACK_NOUNS[d.kind]); };
     var tail = h("span", { class: "count-label", style: "margin-left:auto" }, rows.length + " of " + d.packs.length + " shown");
     if (!picked.length) {
-      bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click packs to act on several at once")),
+      bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, Shift+click for a range, right-click for actions")),
         h("span", { class: "sel-actions" }, pasteControls(d.kind, d.place, packClipHere(d))), tail);
       return bar;
     }
@@ -6045,7 +6048,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       return;
     }
     if (!picked.length) {
-      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click rows to act on several at once")), tail);
+      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, Shift+click for a range, right-click for actions")), tail);
       return;
     }
     var on = picked.filter(function (r) { return r.off; }), off = picked.filter(function (r) { return !r.off; });
@@ -6687,7 +6690,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     bar.classList.toggle("is-empty", !picked.length);
     var tail = h("span", { class: "count-label", style: "margin-left:auto" }, d ? shown.length + " of " + d.binds.length + " shown" : "");
     if (!picked.length) {
-      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click rows to act on several at once")), tail);
+      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, Shift+click for a range, right-click for actions")), tail);
       return;
     }
     var bound = picked.filter(function (b) { return b.key !== UNBOUND; }), resettable = picked.filter(function (b) { return b.changed; });
@@ -10609,7 +10612,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       bar.classList.toggle("is-empty", !picked.length);
       var tail = h("span", { class: "count-label", style: "margin-left:auto" }, list.length + " of " + mods.length + " shown");
       if (!picked.length) {
-        bar.append(h("span", { class: "sel-count" }, "No mods selected", h("span", { class: "note" }, " · click a row to select it, Shift+click for a range")), tail);
+        bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, Shift+click for a range")), tail);
         return;
       }
       var on = picked.filter(function (k) { return k.state === "on"; }), off = picked.filter(function (k) { return k.state === "off"; });
@@ -11287,7 +11290,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var rounds = 0;
       for (var n = on; n > 1; n = Math.ceil(n / 2)) rounds++;
       var sel = selectedRows().filter(function (r) { return r.status === "enabled"; });
-      c.append(h("p", { class: "lead" }, "For a crash, lag or a strange bug when you don't know which mod causes it. Each round turns off half of the suspects; you play and say whether the problem is still there, and the suspects halve. With " + on + " mods on that takes about " + count(rounds, "round", "rounds") + ". Libraries stay on while a mod that's still on needs them. At the end everything goes back the way it was."),
+      c.append(h("p", { class: "lead" }, "For a crash, lag or a strange bug when you don't know which mod causes it. Each round turns off half of the suspects; you play and say whether the problem is still there, and the suspects halve. With " + on + " mods on that takes about " + count(rounds, "round", "rounds") + ". Libraries stay on while a mod that's still on depends on them. At the end everything goes back the way it was."),
         h("div", { class: "row-actions" },
           btn("Start with all " + on + " mods that are on", function () { startBisect([]); }, "primary", { disabled: !connected || on < 2 }),
           sel.length >= 2 ? btn("Only the " + sel.length + " selected mods", function () { startBisect(sel.map(function (r) { return r.file; })); }) : null),
