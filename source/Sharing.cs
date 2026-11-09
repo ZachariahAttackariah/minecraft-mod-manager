@@ -1,11 +1,15 @@
-// Sharing between instances. Each instance opts in or out of each part separately:
+// Settings shared between instances, all chosen in the Shared tab. Each instance opts in or out of each one:
 //  - Java arguments: the launcher's own global ones (JvmArgs in prismlauncher.cfg). An instance uses
 //    them unless its instance.cfg overrides them (OverrideJavaArgs plus its own JvmArgs).
-//  - Shader packs and resource packs: the instance's folder becomes a directory junction to
-//    <data>\shared\shaderpacks or \resourcepacks, so every sharing instance sees the same packs.
 //  - Game settings (options.txt): merged into <data>\shared\options.txt, and handed back out to every
 //    sharing instance each time Play is pressed. Keys one game doesn't know (another version's, or the
 //    key binds of a mod it doesn't have) are kept, so instances with different mods don't wipe each other's.
+//    Which resource packs are on stays each instance's own, since each has its own packs.
+//  - Mod configs: ConfigSharing.cs.
+// Packs used to be shared by turning an instance's shaderpacks / resourcepacks folder into a junction to
+// <data>\shared\<kind>. They're shared like mods now (SharedPacks.cs): MigrateLinkedPackFolders turns each
+// such link back into a folder of the instance's own, with the packs in it, and moves the packs into the
+// Shared tab's collection.
 
 using System;
 using System.Collections.Generic;
@@ -215,10 +219,7 @@ namespace MinecraftModManager
                                 changes.Add(java);
                             }
                         }
-                        // A pack folder that's already a link somewhere else was set up on purpose (or by another copy
-                        // of this app with its own data folder): only the person's own switch re-points it.
-                        foreach (string kind in SharedFolders)
-                            if (!SharesFolder(info, kind) && !IsLink(Path.Combine(GameDirOf(info), kind))) changes.Add(ApplyFolderSharing(info, kind, true));
+                        // Packs reach it through the Shared tab's ticks (instances are ticked from the start).
                         string options = ShareGameSettings(info, true);
                         if (options != null) changes.Add(options);
                     }
@@ -298,103 +299,77 @@ namespace MinecraftModManager
             return target != null && shared != null && SamePath(target, shared);
         }
 
-        // Moves the instance's packs into the shared folder, then turns its folder into a link to it.
-        // A pack that's already shared (same name, same bytes) is dropped from the instance; a different
-        // pack with a taken name gets the instance's name added. Returns { moved, renamed }.
-        static int[] ShareFolder(InstanceInfo info, string kind)
+        // ---------- Moving linked pack folders over to the Shared tab ----------
+        // For each instance whose shaderpacks / resourcepacks folder is a junction to <data>\shared\<kind>:
+        // the link becomes a folder of its own holding copies of everything that was in the shared folder
+        // (packs, folder packs, shader settings), so the game sees exactly what it saw before. The shared
+        // .zip packs join the Shared tab's collection, recorded as the app's own copies in each instance
+        // (so a newer file in Shared updates them) and as already turned on once (so nothing is switched on
+        // that wasn't). A game that's running is done next time. Once no instance links to the old folder,
+        // it goes to the Recycle Bin.
+        static void MigrateLinkedPackFolders()
         {
-            string shared = Path.Combine(SharedDir(), kind);
-            Directory.CreateDirectory(shared);
-            string local = Path.Combine(GameDirOf(info), kind);
-            int moved = 0, renamed = 0;
-            if (IsLink(local))
-            {
-                if (SharesFolder(info, kind)) return new[] { 0, 0 };
-                Directory.Delete(local); // a link to somewhere else: only the link goes
-            }
-            if (Directory.Exists(local))
-            {
-                foreach (string entry in Directory.GetFileSystemEntries(local))
-                {
-                    string name = Path.GetFileName(entry);
-                    string dest = Path.Combine(shared, name);
-                    if (SameContent(entry, dest))
+            lock (SharingLock)
+                lock (AlwaysLock)
+                    foreach (string kind in SharedFolders)
                     {
-                        if (File.Exists(entry)) File.Delete(entry); else Directory.Delete(entry, true);
-                        continue;
+                        string old = Path.Combine(SharedDir(), kind);
+                        if (!Directory.Exists(old)) continue;
+                        List<InstanceInfo> linked = PrismInstances().Where(i => SharesFolder(i, kind)).ToList();
+                        string collection = SharedPackDir(kind);
+                        Directory.CreateDirectory(collection);
+                        var zips = new DirectoryInfo(old).GetFiles("*.zip");
+                        foreach (FileInfo zip in zips)
+                        {
+                            string dest = Path.Combine(collection, zip.Name);
+                            if (!File.Exists(dest)) File.Copy(zip.FullName, dest);
+                            string settings = zip.FullName + ".txt";
+                            if (kind == "shaderpacks" && File.Exists(settings) && !File.Exists(dest + ".txt")) File.Copy(settings, dest + ".txt");
+                        }
+                        SharedPackState state = LoadSharedPackState();
+                        if (kind == "resourcepacks")
+                            foreach (AlwaysTarget t in AlwaysTargets(LoadAlwaysState()).Where(t => t.GameDir != null))
+                            {
+                                string gameKey = AlwaysKey(t.GameDir);
+                                List<string> once;
+                                if (!state.TurnedOn.TryGetValue(gameKey, out once)) state.TurnedOn[gameKey] = once = new List<string>();
+                                foreach (FileInfo zip in zips)
+                                    if (!once.Any(n => string.Equals(n, zip.Name, StringComparison.OrdinalIgnoreCase))) once.Add(zip.Name);
+                            }
+                        bool waiting = false;
+                        foreach (InstanceInfo info in linked)
+                        {
+                            if (GameRunning(GameDirOf(info))) { waiting = true; continue; }
+                            string local = Path.Combine(GameDirOf(info), kind);
+                            string temp = local + ".mmm-unlinking";
+                            try
+                            {
+                                if (Directory.Exists(temp)) Directory.Delete(temp, true);
+                                CopyTree(old, temp);      // copied first: if anything fails, the link is still there
+                                Directory.Delete(local);   // removes the link only, not what it points at
+                                Directory.Move(temp, local);
+                                Dictionary<string, string> placed = PlacedPacks(state, kind, DestKey(local));
+                                foreach (FileInfo zip in zips) placed[zip.Name] = FileSha1(new FileInfo(Path.Combine(local, zip.Name)));
+                                Log("Shared    " + info.Name + ": its " + PackLabel(kind) + " folder is its own again (" + Plural(zips.Length, "pack", "packs") +
+                                    " shared in the Shared tab now)");
+                            }
+                            catch (Exception ex)
+                            {
+                                waiting = true;
+                                Log("Shared    couldn't give " + info.Name + " its own " + PackLabel(kind) + " folder yet: " + ex.Message);
+                                try { if (Directory.Exists(temp)) Directory.Delete(temp, true); } catch { }
+                            }
+                        }
+                        SaveSharedPackState(state);
+                        if (waiting || PrismInstances().Any(i => SharesFolder(i, kind))) continue;
+                        if (RecyclePaths(new List<string> { old })) Log("Shared    the old linked " + PackLabel(kind) + " folder went to the Recycle Bin (its packs are in the Shared tab)");
                     }
-                    if (File.Exists(dest) || Directory.Exists(dest))
-                    {
-                        dest = FreeName(shared, name, info.Name);
-                        renamed++;
-                    }
-                    MoveEntry(entry, dest);
-                    moved++;
-                }
-                Directory.Delete(local);
-            }
-            Directory.CreateDirectory(GameDirOf(info)); // a new instance may not have its game folder yet
-            MakeJunction(local, shared);
-            return new[] { moved, renamed };
         }
 
-        // The instance gets a folder of its own again, starting with a copy of the shared packs.
-        static void UnshareFolder(InstanceInfo info, string kind)
+        static void TryMigrateLinkedPackFolders()
         {
-            if (!SharesFolder(info, kind)) return;
-            string local = Path.Combine(GameDirOf(info), kind);
-            Directory.Delete(local); // removes the link, not the shared packs
-            Directory.CreateDirectory(local);
-            CopyTree(Path.Combine(SharedDir(), kind), local);
-        }
-
-        static string ApplyFolderSharing(InstanceInfo info, string kind, bool share)
-        {
-            try
-            {
-                if (!share)
-                {
-                    UnshareFolder(info, kind);
-                    return "own " + PackLabel(kind) + " (a copy of the shared ones)";
-                }
-                int[] result = ShareFolder(info, kind);
-                return PackLabel(kind) + " shared" + (result[0] > 0 ? " (" + Plural(result[0], "pack", "packs") + " moved into the shared folder" +
-                    (result[1] > 0 ? ", " + result[1] + " renamed because a different pack had the same name" : "") + ")" : "");
-            }
-            catch (UserError) { throw; }
-            catch (Exception ex)
-            {
-                throw new UserError("Couldn't " + (share ? "share" : "unshare") + " the " + PackLabel(kind) + " of " + info.Name + ": " + ex.Message +
-                    " Close anything that's using them and try again.");
-            }
-        }
-
-        static string FreeName(string dir, string name, string instanceName)
-        {
-            string tag = Regex.Replace(instanceName, @"[<>:""/\\|?*\x00-\x1f]", "").Trim();
-            bool isFile = Path.HasExtension(name) && !Directory.Exists(Path.Combine(dir, name));
-            string stem = isFile ? Path.GetFileNameWithoutExtension(name) : name, ext = isFile ? Path.GetExtension(name) : "";
-            for (int n = 1; ; n++)
-            {
-                string candidate = stem + " (" + tag + (n > 1 ? " " + n : "") + ")" + ext;
-                string full = Path.Combine(dir, candidate);
-                if (!File.Exists(full) && !Directory.Exists(full)) return full;
-            }
-        }
-
-        static void MoveEntry(string from, string to)
-        {
-            bool isFile = File.Exists(from);
-            try
-            {
-                if (isFile) File.Move(from, to); else Directory.Move(from, to);
-            }
-            catch (IOException)
-            {
-                // Another drive: copy, then remove the original.
-                if (isFile) { File.Copy(from, to); File.Delete(from); }
-                else { CopyTree(from, to); Directory.Delete(from, true); }
-            }
+            try { MigrateLinkedPackFolders(); }
+            catch (Exception ex) { Log("Shared    couldn't move the linked pack folders over: " + ex.Message); }
         }
 
         static void CopyTree(string from, string to)
@@ -630,7 +605,7 @@ namespace MinecraftModManager
                     state.Seen.TryGetValue(i.Id, out seen);
                     if (OptionsTime(i) <= seen) continue;
                     OptionLines theirs = OptionLines.Read(OptionsPathOf(i));
-                    bool changed = MergeOptions(shared, theirs, SharesFolder(i, "resourcepacks"), false);
+                    bool changed = MergeOptions(shared, theirs, false, false);
                     if (theirs.Values.ContainsKey("version")) shared.Set("version", theirs.Values["version"]);
                     if (changed) pickedUp.Add(i.Name);
                 }
@@ -641,7 +616,7 @@ namespace MinecraftModManager
                 {
                     string path = OptionsPathOf(i);
                     OptionLines mine = OptionLines.Read(path);
-                    bool changed = MergeOptions(mine, shared, SharesFolder(i, "resourcepacks"), false);
+                    bool changed = MergeOptions(mine, shared, false, false);
                     // A game that hasn't run yet gets a data version, so it doesn't treat the file as ancient.
                     if (!mine.Values.ContainsKey("version") && shared.Values.ContainsKey("version")) { mine.Set("version", shared.Values["version"]); changed = true; }
                     if (changed)
@@ -678,7 +653,7 @@ namespace MinecraftModManager
                 {
                     OptionLines shared = OptionLines.Read(SharedOptionsPath());
                     OptionLines mine = OptionLines.Read(OptionsPathOf(info));
-                    bool changed = MergeOptions(shared, mine, SharesFolder(info, "resourcepacks"), true);
+                    bool changed = MergeOptions(shared, mine, false, true);
                     if (!shared.Values.ContainsKey("version") && mine.Values.ContainsKey("version")) { shared.Set("version", mine.Values["version"]); changed = true; }
                     if (changed)
                     {
@@ -706,8 +681,44 @@ namespace MinecraftModManager
             List<string> cfg;
             try { cfg = ReadInstanceCfg(info); } catch { cfg = new List<string>(); }
             return Obj("java", !OwnJavaArgs(cfg), "javaArgs", IniGet(cfg, "JvmArgs") ?? "",
-                "shaderpacks", SharesFolder(info, "shaderpacks"), "resourcepacks", SharesFolder(info, "resourcepacks"),
                 "options", state.Options.Contains(info.Id), "configs", SharesConfigs(info));
+        }
+
+        // The Shared tab's switch for one instance and one setting (options, configs or java).
+        static Dictionary<string, object> SetInstanceSharing(string id, string kind, bool on)
+        {
+            InstanceInfo info = PrismInstances().FirstOrDefault(i => i.Id == id);
+            if (info == null) throw new UserError("That instance isn't in the launcher any more.");
+            string change;
+            if (kind == "options")
+            {
+                if (on == SharesGameSettings(info)) throw new UserError("Nothing was changed.");
+                change = ShareGameSettings(info, on);
+            }
+            else if (kind == "configs")
+            {
+                if (on == SharesConfigs(info)) throw new UserError("Nothing was changed.");
+                change = ShareConfigs(info, on);
+            }
+            else if (kind == "java")
+            {
+                RequirePrismClosed();
+                string cfgPath = Path.Combine(InstanceDir(info), "instance.cfg");
+                List<string> cfg = File.ReadAllLines(cfgPath).ToList();
+                change = SetInstanceJava(cfg, on, on ? null : IniGet(cfg, "JvmArgs") ?? "");
+                if (change == null) throw new UserError("Nothing was changed.");
+                File.Copy(cfgPath, cfgPath + ".bak", true);
+                File.WriteAllLines(cfgPath, cfg, new UTF8Encoding(false));
+            }
+            else throw new UserError("Unknown shared setting.");
+            MarkInstanceKnown(info.Id); // chosen by hand, so the defaults don't apply to it again
+            Log("Shared    " + info.Name + ": " + change);
+            return Obj("ok", true, "change", change);
+        }
+
+        static int SharedOptionCount()
+        {
+            try { return OptionLines.Read(SharedOptionsPath()).Order.Count(k => k != "version"); } catch { return 0; }
         }
 
         static Dictionary<string, object> SharingInfo()
@@ -721,23 +732,17 @@ namespace MinecraftModManager
                 o["current"] = SamePath(i.Mods, modsDir);
                 return (object)o;
             }).ToList();
-            var folders = new Dictionary<string, object>();
-            foreach (string kind in SharedFolders)
-            {
-                string dir = Path.Combine(SharedDir(), kind);
-                folders[kind] = Obj("path", dir, "count", Directory.Exists(dir) ? Directory.GetFileSystemEntries(dir).Length : 0);
-            }
             return Obj("ok", true, "javaArgs", SharedJavaArgs(), "launcherSetUp", File.Exists(LauncherConfigPath()), "prismRunning", PrismRunning(),
-                "shareByDefault", state.ShareByDefault,
-                "folders", folders, "hasOptions", File.Exists(SharedOptionsPath()), "instances", instances,
+                "shareByDefault", state.ShareByDefault, "optionCount", SharedOptionCount(),
+                "hasOptions", File.Exists(SharedOptionsPath()), "instances", instances,
                 "configCount", Directory.Exists(SharedConfigDir()) ? ShareableConfigs(SharedConfigDir()).Count : 0, "configsPath", SharedConfigDir(),
                 "serverConfigsAuto", PrefFlag("serverConfigsAuto", true), "lastServerConfigSync", lastServerConfigSync);
         }
 
         static void OpenSharedFolder(string kind)
         {
-            if (Array.IndexOf(SharedFolders, kind) < 0 && kind != "config") throw new UserError("Unknown shared folder.");
-            string dir = Path.Combine(SharedDir(), kind);
+            if (kind != "config" && kind != "options") throw new UserError("Unknown shared folder.");
+            string dir = kind == "options" ? SharedDir() : Path.Combine(SharedDir(), kind);
             Directory.CreateDirectory(dir);
             try { Process.Start("explorer.exe", "\"" + dir + "\""); } catch { }
         }

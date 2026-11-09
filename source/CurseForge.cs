@@ -316,7 +316,7 @@ namespace MinecraftModManager
                     Dictionary<string, object> latest = dep == null ? null : CfLatestIndex(dep);
                     if (latest == null) { notes.Add(title + " needs a mod CurseForge has no " + LoaderName() + " " + gameVersion + " file of."); continue; }
                     string saved = CfDownloadFile(dep, CfId(Get(latest, "fileId")), dir, false, null, notes);
-                    if (saved != null) { Log("Installed " + saved + " from CurseForge (needed by " + title + ")"); notes.Add("Also added " + S(dep, "name") + ", which " + title + " needs."); }
+                    if (saved != null) { Log("Installed " + saved + " from CurseForge (needed by " + title + ")"); notes.Add("Also added " + S(dep, "name") + ", a dependency of " + title + "."); }
                 }
                 catch (UserError ex) { notes.Add(ex.Message); }
             }

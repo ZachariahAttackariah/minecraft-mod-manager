@@ -68,6 +68,21 @@ namespace MinecraftModManager
                         }
                         prefs[p.Key] = clean;
                     }
+                    else if (p.Key == "tagSlots")
+                    {
+                        // Which automatic colour each tag got, the first time it was seen ({ tag: n }), so a tag
+                        // keeps its colour from one start to the next, in every folder.
+                        var map = p.Value as Dictionary<string, object>;
+                        if (map == null) throw new UserError("Tag colour slots have to be a list of tag: number.");
+                        var clean = new Dictionary<string, object>();
+                        foreach (KeyValuePair<string, object> kv in map)
+                        {
+                            int n;
+                            if (kv.Key.Length > 64 || kv.Value == null || !int.TryParse(Convert.ToString(kv.Value, System.Globalization.CultureInfo.InvariantCulture), out n) || n < 0 || n > 4096) continue;
+                            clean[kv.Key] = n;
+                        }
+                        prefs[p.Key] = clean;
+                    }
                     else if (p.Key == "accentColor")
                     {
                         string v = p.Value as string;

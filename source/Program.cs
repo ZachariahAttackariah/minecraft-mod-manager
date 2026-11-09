@@ -707,6 +707,13 @@ namespace MinecraftModManager
                         SendJson(ctx, 200, Obj("ok", true));
                         return;
                     }
+                    case "/api/packs/reveal":
+                    {
+                        string packPath = ResolvePack(FindPlace(Str(body, "kind"), Str(body, "place")), Str(body, "name"));
+                        Process.Start("explorer.exe", "/select,\"" + packPath + "\"");
+                        SendJson(ctx, 200, Obj("ok", true));
+                        return;
+                    }
                     case "/api/zoom":
                     {
                         // Text size (Settings > Look): the window's own zoom, so menus and clicks stay lined up.
@@ -845,6 +852,9 @@ namespace MinecraftModManager
                     case "/api/sharing/defaults":
                         SendJson(ctx, 200, SetShareByDefault(Bool(body, "on")));
                         return;
+                    case "/api/sharing/instance":
+                        SendJson(ctx, 200, SetInstanceSharing(Str(body, "id"), Str(body, "kind"), Bool(body, "on")));
+                        return;
                     case "/api/always/add-from-list":
                         SendJson(ctx, 200, AddAlwaysFromList(StrList(body, "files")));
                         return;
@@ -891,6 +901,18 @@ namespace MinecraftModManager
                         if (string.IsNullOrEmpty(Str(body, "kind")) || Str(body, "kind") == "mods") OpenAlwaysFolder(); else OpenSharedPackFolder(Str(body, "kind"));
                         SendJson(ctx, 200, Obj("ok", true));
                         return;
+                    case "/api/always/reveal":
+                    {
+                        string kind = Str(body, "kind");
+                        if (kind != "mods") CheckPackKind(kind);
+                        string dir = kind == "mods" ? AlwaysDir() : SharedPackDir(kind);
+                        string name = Path.GetFileName(Str(body, "file") ?? "");
+                        string sharedFile = Path.Combine(dir, name);
+                        if (name.Length == 0 || !File.Exists(sharedFile)) throw new UserError(name + " isn't shared any more. Reopen the list.");
+                        Process.Start("explorer.exe", "/select,\"" + sharedFile + "\"");
+                        SendJson(ctx, 200, Obj("ok", true));
+                        return;
+                    }
                     case "/api/sharing/open":
                         OpenSharedFolder(Str(body, "kind"));
                         SendJson(ctx, 200, Obj("ok", true));
@@ -1624,7 +1646,7 @@ namespace MinecraftModManager
             {
                 string message = "Modrinth has no version of " + title + " for Minecraft " + gameVersion + " with " + LoaderName() + ".";
                 if (requiredBy == null) throw new UserError(message);
-                notes.Add(message + " " + requiredBy + " needs it.");
+                notes.Add(message + " It's a dependency of " + requiredBy + ".");
                 return;
             }
             plan.Add(new PlanItem { Version = version, Title = title, RequiredBy = requiredBy });

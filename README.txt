@@ -53,10 +53,10 @@ Top right (like the Minecraft Launcher)
   Instance picker ... next to PLAY. Lists every instance with its Minecraft version, loader
                       and mod count, plus other mods folders you've used. Choosing an instance also
                       sets the Minecraft version and loader that Modrinth looks for.
-                      "Shared settings..." is what instances can share (see below). "Other mods folder..."
+                      "Shared..." opens the Shared tab (see below). "Other mods folder..."
                       picks any folder; "Open launcher" opens the launcher.
   New instance... ... at the bottom of the list. Name, Minecraft version, loader (NeoForge, Fabric, Forge,
-                      Quilt), loader version, memory and what it shares, starting empty or as a copy of another instance
+                      Quilt), loader version and memory, starting empty or as a copy of another instance
                       (mods, configs, resource and shader packs and settings; worlds only if you tick it).
                       Minecraft and the loader are downloaded the first time you press Play.
   ... on an instance  Open folder, Settings... (rename, Minecraft version, loader, loader version, memory,
@@ -215,26 +215,28 @@ Configs
                       to this page).
 
 Sharing between instances
-  Shared settings... in the instance list shows what's shared. Each instance ticks what it shares in its
-  own Settings. "New instances share everything" (on by default) applies to instances made here and to ones
-  the app sees for the first time (made in the launcher, imported, or there before sharing existed): each is
-  set up once, and anything you untick later stays unticked. The New instance dialog starts with every
-  box ticked (copies and modpack imports included); untick what an instance should keep to itself.
+  Everything shared is in the Shared tab: mods and packs (copied into each ticked place, see Shared), then
+  Game settings, Mod configs and Java arguments, each with a tick per instance. "New instances share game
+  settings and Java arguments" (on by default) applies to instances made here and to ones the app sees for
+  the first time (made in the launcher, imported, or there before sharing existed): each is set up once,
+  and anything you untick later stays unticked.
   When the shared Java arguments are still empty, the most recently played instance's own ones become them,
   so switching it over doesn't change how it runs.
-  Java arguments .... one set for every instance that ticks it. An instance that doesn't keeps its own arguments
-                      (edited in its Settings). Memory stays per instance, so -Xmx / -Xms aren't accepted.
+  Java arguments .... one set for every instance that ticks it, edited in the Shared tab. An instance that
+                      doesn't keeps its own (edited in its Settings). Memory stays per instance, so
+                      -Xmx / -Xms aren't accepted.
                       These are the launcher's global Java arguments, so close the launcher before saving them.
   Shader packs,
-  Resource packs .... one shared folder each. Ticking moves the instance's packs into it (a pack that's already
-                      there is dropped, a different pack with the same name gets the instance's name added) and
-                      links the instance's folder to it. Unticking gives the instance its own folder again, with
-                      a copy of the shared packs. Deleting an instance never touches the shared packs.
+  Resource packs .... shared like mods, in the Shared tab (copied into each instance). They used to be shared by
+                      linking each instance's folder to one shared folder; the app turns each such link back
+                      into a folder of the instance's own with the same packs, moves the packs into the Shared
+                      tab, and puts the old folder in the Recycle Bin once nothing links to it. A shader pack's
+                      own settings are shared with it (the newest change wins).
   Game settings ..... video, sound, controls and key binds (options.txt). A change made in one game reaches the
                       others each time you press Play here (and when the app starts). Key binds for mods an
                       instance doesn't have are kept for the instances that have them. Which resource packs are
-                      turned on only travels between instances that share resource packs.
-  Mod configs ....... opt-in per instance (its Settings; new instances don't share configs by themselves).
+                      on stays each instance's own.
+  Mod configs ....... opt-in per instance (in the Shared tab; new instances don't share configs by themselves).
                       A config whose settings changed in one game (newest change wins; a mod rewriting the
                       same values or a comment doesn't count) reaches the other sharing instances each time
                       you press Play here (and when the app starts), but only instances that have that mod
@@ -304,7 +306,7 @@ Mod details
   your version. Its details say "Matched by mod id and name". It's offered an update only when one of
   the site's files has the jar's own version number, so the app knows where it stands.
   Under the buttons: where its updates come from (see Updates), Pin this version, and a note.
-  Needs & needed by has a Tree view: everything it requires, and what those require, with missing and
+  Dependencies lists its dependencies and dependants, and has a Tree view: its required dependencies and theirs, with missing and
   turned-off ones marked; click a name to open that mod.
 
 Notes, pins and skipped updates (right-click a mod)
@@ -532,7 +534,7 @@ Files
   source\Program.cs                       Core: the internal web server, Modrinth, tags.
   source\Window.cs                        The window, its tabs and the title bar they sit in.
   source\Instances.cs                     The instance picker, and creating / changing / deleting instances.
-  source\Sharing.cs                       Sharing Java arguments, shader / resource packs and game settings.
+  source\Sharing.cs                       Sharing Java arguments and game settings; moving old linked pack folders over.
   source\Packs.cs                         Resource, shader and data packs (and adding Iris / Paxi when needed).
   source\CurseForgePacks.cs               Searching and installing packs from CurseForge.
   source\Server.cs                        Starting, stopping and talking to the Minecraft server.

@@ -4,10 +4,13 @@
 //  - Resource packs go into the game's resourcepacks folder and are turned on once in each instance
 //    (the first time that instance has the pack and has an options.txt). Turned off later, they stay off.
 //  - Shader packs go into shaderpacks, only where Iris or Oculus is on. The chosen shader isn't changed.
+//    A shader's own settings (<pack>.zip.txt, which Iris writes next to it) are shared too: the newest
+//    one, in Shared or in any instance that isn't running, goes everywhere else.
 //  - Data packs go into the every-world Paxi folder when the instance has Paxi on, otherwise into each
 //    of its worlds (a world made later gets them the next time this runs). A server folder gets them in
 //    its world; it gets no resource or shader packs.
-//  - A pack folder linked to the shared one (Sharing.cs) counts once, however many instances use it.
+//  - A pack folder still linked the old way (Sharing.cs moves those over) counts once, however many
+//    instances use it.
 //  - A place already has a pack when it has a file or folder of that name, or a zip with the same
 //    contents. The app's own unchanged copy is swapped when the shared file changes; a copy someone
 //    replaced is left alone.
@@ -192,6 +195,7 @@ namespace MinecraftModManager
                 AlwaysState ticks = LoadAlwaysState();
                 SharedPackState state = LoadSharedPackState();
                 var done = new HashSet<string>();
+                var shaderDirs = new List<string>();
                 foreach (AlwaysTarget t in AlwaysTargets(ticks))
                 {
                     if (!t.On || (onlyDir != null && !SamePath(onlyDir, t.Dir))) continue;
@@ -215,6 +219,7 @@ namespace MinecraftModManager
                                 Directory.CreateDirectory(dest.Dir);
                                 string key = DestKey(dest.Dir);
                                 if (!done.Add(kind + "|" + key)) continue; // a linked folder already done for another instance
+                                if (kind == "shaderpacks") shaderDirs.Add(dest.Dir);
                                 Dictionary<string, string> placed = PlacedPacks(state, kind, key);
                                 foreach (FileInfo source in collection)
                                 {
@@ -254,7 +259,38 @@ namespace MinecraftModManager
                     }
                 }
                 SaveSharedPackState(state);
+                SyncShaderSettings(collections["shaderpacks"], shaderDirs, report);
             }
+        }
+
+        // Each shared shader pack's settings file: the newest copy (Shared's or an idle instance's) goes to
+        // the others that have the pack. Instances that are running aren't in dirs, so a game can't be
+        // changed under it; what it saves is picked up next time.
+        static void SyncShaderSettings(List<FileInfo> collection, List<string> dirs, List<string> report)
+        {
+            int copied = 0;
+            foreach (FileInfo source in collection)
+            {
+                string name = source.Name + ".txt";
+                var places = new List<string> { Path.Combine(source.DirectoryName, name) };
+                places.AddRange(dirs.Where(d => File.Exists(Path.Combine(d, source.Name))).Select(d => Path.Combine(d, name)));
+                FileInfo newest = places.Select(p => new FileInfo(p)).Where(f => f.Exists).OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault();
+                if (newest == null) continue;
+                byte[] content = File.ReadAllBytes(newest.FullName);
+                foreach (string p in places)
+                {
+                    if (SamePath(p, newest.FullName)) continue;
+                    try
+                    {
+                        if (File.Exists(p) && File.ReadAllBytes(p).SequenceEqual(content)) continue;
+                        File.WriteAllBytes(p, content);
+                        File.SetLastWriteTimeUtc(p, newest.LastWriteTimeUtc); // the same time, so neither looks newer next time
+                        copied++;
+                    }
+                    catch (Exception ex) { Log("Shared    couldn't copy the settings of " + source.Name + " to " + p + ": " + ex.Message); }
+                }
+            }
+            if (copied > 0) Log("Shared    shader settings copied to " + Plural(copied, "place", "places"));
         }
 
         // A shared resource pack is turned on the first time an instance has it, once (so turning it off sticks).
@@ -336,6 +372,8 @@ namespace MinecraftModManager
                     bool replacing = File.Exists(dest);
                     if (replacing && FileSha1(new FileInfo(dest)) == FileSha1(file)) { notes.Add(file.Name + " is already shared."); continue; }
                     CopyIn(file.FullName, dest);
+                    // A shader's settings come along, and become the shared ones.
+                    if (kind == "shaderpacks" && File.Exists(file.FullName + ".txt")) File.Copy(file.FullName + ".txt", dest + ".txt", true);
                     Log("Shared    " + (replacing ? "updated " : "added ") + file.Name + " (" + KindNoun(kind) + " for every instance)");
                     added.Add(Obj("file", file.Name, "name", PackDisplayName(file.Name), "replaced", replacing));
                 }
@@ -404,7 +442,7 @@ namespace MinecraftModManager
                 else
                     foreach (Dictionary<string, string> placed in byDir.Values)
                         foreach (FileInfo f in gone) placed.Remove(f.Name); // the copies stay, now as the instance's own
-                if (!RecyclePaths(gone.Select(f => f.FullName).ToList())) throw new UserError("Windows couldn't move everything to the Recycle Bin (a file may be in use). Reopen the list to see what's left.");
+                if (!RecyclePaths(gone.Select(f => f.FullName).Concat(gone.Select(f => f.FullName + ".txt").Where(File.Exists)).ToList())) throw new UserError("Windows couldn't move everything to the Recycle Bin (a file may be in use). Reopen the list to see what's left.");
                 SaveSharedPackState(state);
                 Log("Shared    " + string.Join(", ", gone.Select(f => f.Name)) + " no longer shared" + (everywhere ? ", with the copies it added" : "; the copies stay where they are"));
             }
@@ -421,13 +459,12 @@ namespace MinecraftModManager
             {
                 PackMeta meta = CachedPackMeta(f);
                 return (object)Obj("file", f.Name, "name", PackDisplayName(f.Name), "description", meta.Description, "format", meta.Format, "icon", meta.Icon,
-                    "size", f.Length, "tags", new List<string>());
+                    "size", f.Length, "tags", new List<string>(), "settings", kind == "shaderpacks" && File.Exists(f.FullName + ".txt"));
             }).ToList();
             AlwaysState ticks = LoadAlwaysState();
             SharedPackState state = LoadSharedPackState();
             Dictionary<string, Dictionary<string, string>> byDir;
             if (!state.Placed.TryGetValue(kind, out byDir)) byDir = new Dictionary<string, Dictionary<string, string>>();
-            string sharedFolder = Directory.Exists(Path.Combine(SharedDir(), kind)) ? DestKey(Path.Combine(SharedDir(), kind)) : null;
             var targets = AlwaysTargets(ticks).Select(t =>
             {
                 string why, waiting;
@@ -457,8 +494,7 @@ namespace MinecraftModManager
                 string where = why != null ? null
                     : dests.Count == 0 ? waiting
                     : kind == "datapacks" && dests.Count > 1 ? "into " + dests.Count + " worlds"
-                    : kind == "datapacks" ? "into " + dests[0].Label
-                    : sharedFolder != null && dests.Any(d => Directory.Exists(d.Dir) && DestKey(d.Dir) == sharedFolder) ? "uses the shared " + KindNoun(kind) + " folder" : null;
+                    : kind == "datapacks" ? "into " + dests[0].Label : null;
                 return (object)Obj("path", t.Dir, "name", t.Name, "prism", t.Prism, "on", t.On, "minecraft", t.Minecraft, "loader", t.Loader == null ? null : LoaderName(t.Loader),
                     "guessed", t.Guessed, "current", SamePath(t.Dir, modsDir), "running", t.GameDir != null && GameRunning(t.GameDir),
                     "present", present, "missing", missing, "stale", stale, "misfits", misfits, "where", where, "waiting", dests.Count == 0 && why == null);

@@ -332,6 +332,7 @@ namespace MinecraftModManager
         {
             try { SyncAlwaysMods(onlyDir, null); }
             catch (Exception ex) { Log("Always    couldn't add the mods every instance gets: " + ex.Message); }
+            TryMigrateLinkedPackFolders(); // pack folders linked the old way become the instances' own (Sharing.cs)
             try { SyncSharedPacks(onlyDir, null); } // and the shared packs (SharedPacks.cs)
             catch (Exception ex) { Log("Shared    couldn't add the shared packs: " + ex.Message); }
         }

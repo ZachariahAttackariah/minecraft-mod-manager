@@ -21,17 +21,17 @@
   --ink: #eef1f3;
   --muted: #9da3aa;
   --line: #33373c;
-  --accent: #2fb465;
-  --accent-fg: #5fe39a;
+  --accent: #1ec85a;
+  --accent-fg: #3ef07d;
   --accent-hover: color-mix(in srgb, var(--accent) 86%, #fff);
   --accent-deep: color-mix(in srgb, var(--accent) 52%, #000);
   --accent-ink: #ffffff;
   --btn: #33373c;
   --btn-hover: #3e4248;
-  --danger: #d9443b;
-  --danger-fg: #ff8f86;
+  --danger: #ec3a32;
+  --danger-fg: #ff6e63;
   --danger-ink: #ffffff;
-  --warn: #f5b83d;
+  --warn: #ffb31a;
   --scrim: rgba(6, 8, 10, 0.68);
   --slot-ink: #101214;
   --bevel-hi: rgba(255, 255, 255, 0.09);
@@ -40,15 +40,15 @@
   --glow-a: color-mix(in srgb, var(--accent) 13%, transparent);
   --glow-b: rgba(74, 168, 255, 0.07);
   /* Vivid, shader-lit colours, kept for things that mean something. */
-  --c-client: #4aa8ff;
-  --c-server: #ff9b42;
-  --c-worldgen: #4fdc7c;
-  --c-horses: #e0ad74;
-  --c-enchanting: #b98cff;
-  --c-x1: #3fd6d0;
-  --c-x2: #ff7fae;
-  --c-x3: #a9b6c6;
-  --c-x4: #c9e04a;
+  --c-client: #2f9bff;
+  --c-server: #ff8a1f;
+  --c-worldgen: #22d665;
+  --c-horses: #f0962a;
+  --c-enchanting: #a66bff;
+  --c-x1: #12d6cc;
+  --c-x2: #ff4f93;
+  --c-x3: #8fa6c4;
+  --c-x4: #b8e01a;
   --font-display: "Noto Sans", "Segoe UI", system-ui, sans-serif;
   --font-body: "Noto Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
@@ -60,10 +60,10 @@
   --bar-h: 0px; /* the old bottom bar is gone; kept for the toasts and sticky footers that leave room for it */
   color-scheme: dark;
 }
-html[data-accent="sky"] { --accent: #2b8ce0; --accent-fg: #6cc4ff; }
-html[data-accent="amethyst"] { --accent: #8b5cf6; --accent-fg: #c3a6ff; }
-html[data-accent="gold"] { --accent: #d4960f; --accent-fg: #ffd056; }
-html[data-accent="redstone"] { --accent: #d9443b; --accent-fg: #ff8f86; }
+html[data-accent="sky"] { --accent: #1a8cff; --accent-fg: #4db3ff; }
+html[data-accent="amethyst"] { --accent: #8a4dff; --accent-fg: #b28cff; }
+html[data-accent="gold"] { --accent: #f0a500; --accent-fg: #ffc933; }
+html[data-accent="redstone"] { --accent: #ef2f2f; --accent-fg: #ff6a5e; }
 html[data-theme="light"] {
   --bg: #eceff2;
   --surface: #ffffff;
@@ -82,15 +82,15 @@ html[data-theme="light"] {
   --shadow-lg: 0 16px 40px -16px rgba(20, 30, 40, 0.35), 0 2px 6px rgba(20, 30, 40, 0.12);
   --glow-a: color-mix(in srgb, var(--accent) 10%, transparent);
   --glow-b: rgba(43, 140, 224, 0.06);
-  --c-client: #1f86e8;
-  --c-server: #e8761a;
-  --c-worldgen: #1fae4e;
-  --c-horses: #b57a35;
-  --c-enchanting: #8452e0;
-  --c-x1: #0f9e98;
-  --c-x2: #d6437a;
+  --c-client: #0a7cf0;
+  --c-server: #f06a00;
+  --c-worldgen: #0fae45;
+  --c-horses: #c2741a;
+  --c-enchanting: #7a3ff0;
+  --c-x1: #00a39b;
+  --c-x2: #e62d75;
   --c-x3: #6f7d8f;
-  --c-x4: #7f9a12;
+  --c-x4: #789c00;
   color-scheme: light;
 }
 html[data-density="compact"] { --row-pad: 4px; --icon: 28px; }
@@ -1058,9 +1058,16 @@ html[data-blocky="on"] .set-card h2 { font-family: var(--font-blocky); font-weig
 .sr.cfg .detail { grid-column: 1 / -1; }
 .pop { position: fixed; z-index: 80; min-width: 200px; padding: 4px; background: var(--raised, var(--surface)); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35); }
 .pop button { display: block; width: 100%; padding: 7px 10px; font: 500 13.5px/1.2 var(--font-body); text-align: left; color: var(--ink); background: none; border: 0; border-radius: 4px; cursor: pointer; }
-.pop button:hover, .pop button:focus-visible { background: color-mix(in srgb, var(--ink) 8%, transparent); outline: none; }
+.pop button:hover, .pop button:focus-visible { background: var(--sunken); outline: none; }
 .pop button:disabled { opacity: 0.45; cursor: default; background: none; }
-.pop button.danger { color: var(--danger-fg); }
+.pop button.danger, .pop button.danger svg { color: var(--danger-fg); }
+/* A menu with icons looks like the Mods list's right-click menu. */
+.pop button.with-icon { display: flex; align-items: center; gap: 10px; }
+/* A divider in a row of segment buttons (the Shared tab: mods and packs | settings). */
+.seg-control .seg-sep { width: 1px; align-self: stretch; margin: 4px 6px; background: var(--line); }
+.always-default { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 10px 12px; border-top: 1px solid var(--line); }
+.always-default .hint { display: block; margin-top: 2px; }
+.pop button.with-icon svg { flex: none; color: var(--muted); }
 .pop .menu-head { max-width: 320px; }
 .pop hr { margin: 4px 2px; border: 0; border-top: 1px solid var(--line); }
 .sg-more { padding: 7px 10px; border-top: 1px solid var(--line); }
@@ -1345,7 +1352,8 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
 @media (max-width: 560px) { .inst-form .pair { grid-template-columns: minmax(0, 1fr); } }
 .packs-where { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; font-size: 13px; color: var(--muted); }
 .packs-where select { padding: 7px 9px; font: 400 13.5px/1.3 var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
-.packs-where code { font: 400 12px/1.4 var(--font-mono); color: var(--ink); overflow-wrap: anywhere; }
+/* The folder on one line, trimmed at the start so its end (instance\minecraft\resourcepacks) shows; the full path is its tooltip. */
+.packs-where code { min-width: 0; max-width: min(100%, 720px); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; direction: rtl; text-align: left; font: 400 12px/1.4 var(--font-mono); color: var(--ink); }
 .packs-status { display: grid; gap: 8px; margin: 12px 0 4px; }
 .packs-status:empty { display: none; }
 .packs-status .warnbox { margin: 0; }
@@ -1618,7 +1626,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <p class="lead" id="packs-lead"></p>
       <div class="packs-where" id="packs-where"></div>
       <div class="row-actions">
-        <button class="btn primary" type="button" id="packs-search">Search</button>
+        <button class="btn primary" type="button" id="packs-search" title="Search Modrinth and CurseForge">Add packs</button>
         <button class="btn" type="button" id="packs-add">Add files…</button>
         <button class="btn" type="button" id="packs-open">Open folder</button>
         <button class="btn" type="button" id="packs-check">Check for updates</button>
@@ -1691,19 +1699,25 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     </div>
   </section>
 
-  <!-- Shared: the mods and packs the app adds to every instance (AlwaysMods.cs, SharedPacks.cs). Packs is the per-instance manager. -->
+  <!-- Shared: everything shared across instances. Mods and packs are copied into each ticked place (AlwaysMods.cs,
+       SharedPacks.cs); game settings, mod configs and Java arguments are kept in step (Sharing.cs, ConfigSharing.cs).
+       Packs is the per-instance manager. -->
   <section class="view" id="view-shared" aria-label="Shared" hidden>
     <div class="seg-control subnav" id="shared-kinds" role="group" aria-label="What's shared">
       <button type="button" data-kind="mods" aria-pressed="true">Mods</button>
       <button type="button" data-kind="resourcepacks" aria-pressed="false">Resource packs</button>
       <button type="button" data-kind="shaderpacks" aria-pressed="false">Shader packs</button>
       <button type="button" data-kind="datapacks" aria-pressed="false">Data packs</button>
+      <span class="seg-sep" aria-hidden="true"></span>
+      <button type="button" data-kind="options" aria-pressed="false" title="options.txt: video, sound, controls and key binds">Game settings</button>
+      <button type="button" data-kind="configs" aria-pressed="false">Mod configs</button>
+      <button type="button" data-kind="java" aria-pressed="false">Java arguments</button>
     </div>
     <div class="cards always-cards">
       <div class="card">
         <h2 id="always-title">Mods shared across instances</h2>
         <p class="lead" id="always-lead"></p>
-        <div class="row-actions">
+        <div class="row-actions" id="always-actions">
           <button class="btn primary" type="button" id="always-add">Add .jar files…</button>
           <button class="btn" type="button" id="always-sync" hidden>Add the missing ones now</button>
           <button class="btn quiet" type="button" id="always-open">Open folder</button>
@@ -1713,7 +1727,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         <div class="always-list" id="always-list-mods"></div>
       </div>
       <div class="card">
-        <h2>Where they go</h2>
+        <h2 id="always-where-title">Where they go</h2>
         <p class="lead" id="always-where-lead"></p>
         <div class="always-list" id="always-list-targets"></div>
       </div>
@@ -1812,8 +1826,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   <div class="inst-list" id="inst-list"></div>
   <div class="inst-foot">
     <button class="btn primary" type="button" id="new-instance">New instance…</button>
-    <button class="btn" type="button" id="shared-settings">Shared settings…</button>
-    <button class="btn" type="button" id="always-mods">Shared mods &amp; packs</button>
+    <button class="btn" type="button" id="always-mods" title="Mods, packs and settings shared across instances">Shared…</button>
     <button class="btn" type="button" id="choose-folder">Other mods folder…</button>
     <button class="btn" type="button" id="open-prism">Open launcher</button>
   </div>
@@ -1854,7 +1867,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       <button type="button" role="tab" data-tab="overview" aria-selected="true">Overview</button>
       <button type="button" role="tab" data-tab="gallery" aria-selected="false" id="det-gallery-tab" hidden>Gallery</button>
       <button type="button" role="tab" data-tab="versions" aria-selected="false">Versions</button>
-      <button type="button" role="tab" data-tab="deps" aria-selected="false">Needs &amp; needed by</button>
+      <button type="button" role="tab" data-tab="deps" aria-selected="false">Dependencies</button>
       <button type="button" role="tab" data-tab="configs" aria-selected="false">Config files</button>
     </div>
     <div class="det-body" id="det-body"></div>
@@ -2028,23 +2041,45 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
   function smallIcon(name) { var s = icon(name); s.setAttribute("width", "12"); s.setAttribute("height", "12"); return s; }
   fillIcons();
-  // Every other tag gets its own colour: hues a golden angle apart in tag-list order (so neighbours
-  // never look alike), alternating lighter and deeper, all light enough to read on the dark theme.
+  // Every other tag gets its own colour: hues a golden angle apart (so tags given colours one after another
+  // never look alike), alternating lighter and deeper. Each tag keeps the colour slot it got the first time
+  // it was seen (saved as tagSlots), so its colour is the same every time the app opens, in every folder.
+  var tagSlotsDraft = null, tagSlotsTimer = 0;
+  function tagSlot(tag) {
+    var saved = pref("tagSlots") || {};
+    if (tagSlotsDraft && tagSlotsDraft[tag] != null) return tagSlotsDraft[tag];
+    if (saved[tag] != null) return saved[tag];
+    // A new tag: the slot it had in the tag list (so colours don't change on the first run with slots),
+    // or else the lowest one that's free.
+    var used = {};
+    var all = tagSlotsDraft || saved;
+    Object.keys(all).forEach(function (t) { used[all[t]] = true; });
+    var i = model && model.colorTopics ? model.colorTopics.indexOf(tag) : -1;
+    if (i < 0 || used[i]) { i = 0; while (used[i]) i++; }
+    if (!tagSlotsDraft) tagSlotsDraft = Object.assign({}, saved);
+    tagSlotsDraft[tag] = i;
+    // Saved once things settle (a folder full of new tags is one save, not one per tag).
+    clearTimeout(tagSlotsTimer);
+    tagSlotsTimer = setTimeout(function () {
+      var draft = tagSlotsDraft;
+      if (!draft || !connected) return;
+      api("POST", "/api/prefs", { tagSlots: draft }).then(function (res) {
+        if (server) server.prefs = res.prefs;
+        if (tagSlotsDraft === draft) tagSlotsDraft = null;
+      }, function () {});
+    }, 1500);
+    return i;
+  }
   function colorOf(tag) {
     var own = pref("tagHues");
     if (own && own[tag]) return own[tag];
     if (TAG_COLORS[tag]) return "var(" + TAG_COLORS[tag] + ")";
-    var i = model && model.colorTopics ? model.colorTopics.indexOf(tag) : -1;
-    if (i < 0) {
-      var n = 0;
-      for (var k = 0; k < tag.length; k++) n = (n * 31 + tag.charCodeAt(k)) >>> 0;
-      i = n % 64;
-    }
+    var i = tagSlot(tag);
     var hue = (i * 137.508 + 185) % 360;
     // Vivid (the default) is saturated like the game under shaders; Soft is calmer. Light theme goes darker to read on white.
     var soft = pref("tagColors") === "soft", light = document.documentElement.getAttribute("data-theme") === "light";
-    var sat = soft ? (i % 3 === 2 ? 30 : 42) : (i % 3 === 2 ? 70 : 86);
-    var lig = light ? (i % 2 ? 36 : 44) : soft ? (i % 2 ? 66 : 74) : (i % 2 ? 60 : 68);
+    var sat = soft ? (i % 3 === 2 ? 32 : 44) : (i % 3 === 2 ? 84 : 96);
+    var lig = light ? (i % 2 ? 36 : 43) : soft ? (i % 2 ? 66 : 74) : (i % 2 ? 55 : 62);
     return "hsl(" + hue.toFixed(1) + " " + sat + "% " + lig + "%)";
   }
   function prettify(file) {
@@ -3147,7 +3182,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     $("search-target").textContent = kind === "mods" && fabricOn() ? "Showing Fabric mods for Minecraft " + server.target.gameVersion + ". They run on " + (LOADER_NAMES[server.target.loader] || server.target.loader) +
         " through Sinytra Connector, which is installed with the first one (with Forgified Fabric API)" + (search.dest === "server" ? ", into the server's mods folder." : ".")
       : search.dest === "server" ? "Showing mods for " + targetText() + ". They go into the server's mods folder (with the mods they need) and are kept there."
-      : kind === "mods" ? "Showing mods for " + targetText() + ". Installing also adds the mods it needs."
+      : kind === "mods" ? "Showing mods for " + targetText() + ". Installing also adds its dependencies."
       : kind === "shaderpacks" ? "Showing shader packs that work with Iris. Iris is installed too if it isn't yet."
       : kind === "datapacks" ? "Showing data packs for Minecraft " + (server && server.target ? server.target.gameVersion : "") + ". They go into " + packPlaceLabel() + "."
       : "Showing resource packs for Minecraft " + (server && server.target ? server.target.gameVersion : "") + ".";
@@ -3489,7 +3524,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       });
       var msg = res.added.length
         ? "Installed " + hit.title + (pick ? " " + pick.number : "") + (fellBack ? " from CurseForge (Modrinth has no file for " + targetText() + ")" : "") +
-          (deps.length ? " and " + deps.map(function (d) { return d.title; }).join(", ") + ", which it needs" : "") +
+          (deps.length ? " and its " + (deps.length === 1 ? "dependency " : "dependencies ") + deps.map(function (d) { return d.title; }).join(", ") : "") +
           (toServer ? " on the server, and kept there" + (res.serverRunning ? " (it loads when the server next starts)" : "") : "") + "."
         : "Nothing was installed.";
       if (res.notes && res.notes.length) msg += " " + res.notes.join(" ");
@@ -3579,12 +3614,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var select = h("select", { "aria-label": "Where the data packs go", onchange: function () { packs.places.datapacks = select.value; loadPacks(false); } });
       d.places.forEach(function (p) { select.append(h("option", { value: p.id }, p.label + " (" + p.count + ")")); });
       select.value = d.place;
-      where.append(h("span", null, "Folder:"), select, h("code", null, d.path));
-    } else {
-      where.append(h("span", null, "Folder:"), h("code", null, d.path));
-      if (d.sharedWith) where.append(h("span", null, d.sharedWith.length ? "Shared with " + d.sharedWith.join(", ") + "." : "The shared folder (no other instance uses it yet)."));
-      else where.append(h("span", null, "This instance's own."));
-    }
+      where.append(h("span", null, "Folder:"), select, h("code", { title: d.path }, h("bdi", null, d.path)));
+    } else where.append(h("span", null, "Folder:"), h("code", { title: d.path }, h("bdi", null, d.path)));
+    // Packs shared across instances are marked on their rows; this says how many and leads to the Shared tab.
+    var sharedHere = d.packs.filter(function (p) { return p.shared; }).length;
+    if (sharedHere) where.append(h("button", { type: "button", class: "linkish", onclick: function () { showShared(d.kind); } },
+      sharedHere + (sharedHere === 1 ? " is" : " are") + " shared across instances"));
 
     // Anything worth knowing first.
     var place = d.places.filter(function (x) { return x.id === d.place; })[0] || {};
@@ -3809,15 +3844,20 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var busyNow = !!packs.busy[p.name];
     var locked = !connected || busyNow || d.gameRunning || d.serverRunning;
     var m = p.modrinth;
+    // The same switch as a mod's: a resource pack on or off, or the shader pack in use (only one can be).
     var state = h("div", { class: "pack-state" });
     var off = false;
+    function packSwitch(on, label, title, fn) {
+      return h("button", { type: "button", class: "act sw-btn" + (on ? " on" : ""), role: "switch", "aria-checked": String(on), "aria-label": label, disabled: locked,
+        title: d.gameRunning ? "Close the game first" : title, onclick: function (e) { e.stopPropagation(); fn(); } }, h("span", { class: "sw", "aria-hidden": "true" }));
+    }
     if (d.kind === "resourcepacks") {
       off = p.on < 0;
-      state.append(btn(off ? "Turn on" : "On", function () { setResourcePack(p, off); }, off ? "" : "primary",
-        { disabled: locked, title: off ? "Turn this resource pack on" : "Turn this resource pack off", "aria-pressed": String(!off) }));
+      state.append(packSwitch(!off, packTitle(p) + " on", off ? "Off. Click to turn it on" : "On. Click to turn it off", function () { setResourcePack(p, off); }));
     } else if (d.kind === "shaderpacks" && d.shaderMod && !d.shaderModOff) {
-      if (p.on === true) state.append(h("span", { class: "chip" }, "in use"));
-      else state.append(btn("Use", function () { setShader(p.name); }, "", { disabled: locked }));
+      off = p.on !== true;
+      state.append(packSwitch(!off, "Use " + packTitle(p), off ? "Not in use. Click to use this one (only one shader pack can be on)" : "In use. Click to turn shaders off",
+        function () { setShader(off ? p.name : null); }));
     }
     var actions = h("div", { class: "pack-actions" },
       m && m.update ? btn("Update", function () { updatePacks([p.name]); }, "primary", { disabled: locked, title: "Update to " + m.update.versionNumber }) : null,
@@ -3852,7 +3892,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var on = list.filter(function (m) { return back.test(m); }).map(function (m) { return m.replace(back, ""); });
     var added = list.filter(function (m) { return !back.test(m); });
     var parts = [];
-    if (added.length) parts.push("Also installed " + added.join(" and ") + (added.length === 1 ? ", which is needed for it." : ", which are needed for it."));
+    if (added.length) parts.push("Also installed " + added.join(" and ") + (added.length === 1 ? " (a dependency)." : " (dependencies)."));
     if (on.length) parts.push("Turned " + on.join(" and ") + " back on, since it's needed.");
     return parts.join(" ");
   }
@@ -3966,26 +4006,37 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var locked = !connected || d.gameRunning || d.serverRunning;
     var noun = function (n) { return count(n, PACK_NOUNS[d.kind].replace(/s$/, ""), PACK_NOUNS[d.kind]); };
     var updatable = picked.filter(function (x) { return x.modrinth && x.modrinth.update; });
+    // The same actions, order and icons as the Mods list's menu.
     var items = [];
-    if (updatable.length) items.push([single ? "Update to " + one.modrinth.update.versionNumber : "Update " + updatable.length, function () { updatePacks(updatable.map(function (x) { return x.name; })); }, locked]);
+    if (updatable.length) items.push([single ? "Update to " + one.modrinth.update.versionNumber : "Update " + updatable.length, function () { updatePacks(updatable.map(function (x) { return x.name; })); }, locked, null, "up"]);
     if (d.kind === "resourcepacks") {
       var turnOn = picked.filter(function (x) { return x.on < 0; }), turnOff = picked.filter(function (x) { return x.on >= 0; });
-      if (turnOn.length) items.push([single ? "Turn on" : "Turn on " + turnOn.length, function () { if (single) setResourcePack(one, true); else setResourcePacks(turnOn, true); }, locked]);
-      if (turnOff.length) items.push([single ? "Turn off" : "Turn off " + turnOff.length, function () { if (single) setResourcePack(one, false); else setResourcePacks(turnOff, false); }, locked]);
+      if (turnOn.length) items.push([single ? "Turn on" : "Turn on " + turnOn.length, function () { if (single) setResourcePack(one, true); else setResourcePacks(turnOn, true); }, locked, null, "switchOn"]);
+      if (turnOff.length) items.push([single ? "Turn off" : "Turn off " + turnOff.length, function () { if (single) setResourcePack(one, false); else setResourcePacks(turnOff, false); }, locked, null, "switchOff"]);
     }
     if (d.kind === "shaderpacks" && single && d.shaderMod && !d.shaderModOff) {
-      if (one.on === true) items.push(["Turn shaders off", function () { setShader(null); }, locked]);
-      else items.push(["Use this shader pack", function () { setShader(one.name); }, locked]);
+      if (one.on === true) items.push(["Turn shaders off", function () { setShader(null); }, locked, null, "switchOff"]);
+      else items.push(["Use this shader pack", function () { setShader(one.name); }, locked, null, "switchOn"]);
     }
+    items.push([single ? "Delete…" : "Delete " + picked.length + "…", function () { askDeletePacks(d, picked); }, locked, "danger", "trash"]);
     items.push(null);
-    if (single && one.modrinth && one.modrinth.slug) items.push(["Open on Modrinth", function () { openTab("https://modrinth.com/" + MODRINTH_PATH[d.kind] + "/" + encodeURIComponent(one.modrinth.slug)); }]);
-    items.push([single ? "Copy file name" : "Copy " + picked.length + " file names", function () {
-      copyText(picked.map(function (x) { return x.name; }).join("\n"), single ? "Copied " + one.name : "Copied " + picked.length + " file names");
-    }]);
-    items.push(["Open folder", function () { $("packs-open").click(); }]);
-    items.push(null);
-    items.push([single ? "Delete…" : "Delete " + picked.length + "…", function () { askDeletePacks(d, picked); }, locked, "danger"]);
-    if (!single) items.push(["Clear selection", function () { packs.sel = {}; renderPacks(); }]);
+    items.push([single ? "Copy filename" : "Copy " + picked.length + " filenames", function () {
+      copyText(picked.map(function (x) { return x.name; }).join("\n"), single ? "Copied " + one.name : "Copied " + picked.length + " filenames");
+    }, false, null, "copy"]);
+    if (single) items.push(["Show in folder", function () {
+      api("POST", "/api/packs/reveal", { kind: d.kind, place: d.place, name: one.name }).then(null, function (e) { toast(e.message); });
+    }, false, null, "folder"]);
+    if (single && one.modrinth && one.modrinth.slug) items.push(["Open on Modrinth", function () { openTab("https://modrinth.com/" + MODRINTH_PATH[d.kind] + "/" + encodeURIComponent(one.modrinth.slug)); }, false, null, "link"]);
+    var names = picked.map(function (x) { return x.name; });
+    var shareable = picked.filter(function (x) { return !x.shared && !x.folder; });
+    if (picked.every(function (x) { return x.shared; })) items.push(["Show in Shared", function () { showShared(d.kind); }, false, null, "layers"]);
+    else if (shareable.length) items.push([single ? "Share across instances" : "Share " + shareable.length + " across instances", function () { sharePacks(d, shareable.map(function (x) { return x.name; })); }, !connected, null, "layers"]);
+    items.push([single ? "Copy (Ctrl+C)" : "Copy " + picked.length + " (Ctrl+C)", function () { clipCopy(d.kind, d.place, names, false); }, !connected, null, "copy"]);
+    items.push([single ? "Cut (Ctrl+X)" : "Cut " + picked.length + " (Ctrl+X)", function () { clipCopy(d.kind, d.place, names, true); }, locked, null, "cut"]);
+    var clip = clipNow();
+    if (clip && clip.kind === d.kind && !packClipHere(d))
+      items.push(["Paste " + count(clip.count, clipNoun(d.kind, 1), clipNoun(d.kind, 2)) + " from " + clip.from + " (Ctrl+V)", function () { clipPaste(d.kind, d.place); }, !connected, null, "paste"]);
+    if (!single) items.push(["Clear selection", function () { packs.sel = {}; renderPacks(); }, false, null, "clear"]);
     popMenu(null, items, { at: { x: x, y: y }, head: single ? packTitle(one) : noun(picked.length) + " selected", returnFocus: focusEl });
   }
   rowMenus($("packs-list"), function (t) {
@@ -4205,7 +4256,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   function neededLines(deps) {
     return deps.map(function (d) {
       var by = d.neededBy.length > 3 ? d.neededBy.slice(0, 3).join(", ") + " and " + (d.neededBy.length - 3) + " more" : d.neededBy.join(", ");
-      return d.name + " is needed by " + by;
+      return d.name + " is a dependency of " + by;
     });
   }
 
@@ -4220,7 +4271,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       dependentsThen(rows, function (deps) {
         if (!deps.length) { setEnabled(rows, false, true); return; }
         confirmDialog({
-          title: deps.length === 1 ? deps[0].name + " is needed by other mods" : deps.length + " of these are needed by other mods",
+          title: deps.length === 1 ? deps[0].name + " is a dependency of other mods" : deps.length + " of these are dependencies of other mods",
           items: neededLines(deps),
           body: "Turned off, the game won't start until those mods are turned off too or this is turned back on.",
           ok: rows.length === 1 ? "Turn it off anyway" : "Turn them off anyway",
@@ -4240,7 +4291,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       var label = labelFor(rows, ok.filter(function (x) { return !x.auto; }));
       if (auto.length) {
         var lib = model.rows.filter(function (r) { return r.file === auto[0].file; })[0];
-        label += ", plus " + (auto.length === 1 ? (lib ? lib.name : auto[0].file) : count(auto.length, "mod", "mods")) + " " + (rows.length === 1 ? "it needs" : "they need");
+        label += ", plus " + (auto.length === 1 ? "its dependency " + (lib ? lib.name : auto[0].file) : count(auto.length, "dependency", "dependencies"));
       }
       if (failed.length) {
         toast((ok.length ? verb + label + ". " : "") + count(failed.length, "mod", "mods") + " couldn't be changed: " + failed[0].error);
@@ -4860,7 +4911,6 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }
     $("open-prism").hidden = !d.prismInstalled;
     $("new-instance").disabled = !d.prismSetUp || !connected;
-    $("shared-settings").hidden = !d.prismSetUp;
   }
 
   // ---- New instance, duplicate, settings, delete ----
@@ -4896,40 +4946,19 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var loaderProp = h("label", { class: "prop" }, h("b", null, "Loader"), loaderSelect);
     var worldsProp = h("label", { class: "toggle" }, worlds, "Also copy the worlds (saves)");
 
-    // What this instance shares with the others. A new instance shares everything; a copy starts
-    // out like the instance it's copied from.
-    var shareJava = h("input", { type: "checkbox" });
-    var shareShaders = h("input", { type: "checkbox" });
-    var sharePacks = h("input", { type: "checkbox" });
-    var shareOptions = h("input", { type: "checkbox" });
-    var shareConfigs = h("input", { type: "checkbox" });
+    // What it shares with the other instances (mods, packs, game settings, mod configs, Java arguments) is
+    // chosen in the Shared tab. An instance that uses its own Java arguments changes them here.
+    var s0 = settings && source && source.sharing ? source.sharing : null;
+    var ownJava = !!(s0 && !s0.java);
     var ownArgs = h("textarea", { class: "args", rows: "2", spellcheck: "false", maxlength: "4000", placeholder: "For example -XX:+UseZGC -XX:+ZGenerational", "aria-label": "This instance's own Java arguments" });
+    ownArgs.value = s0 && s0.javaArgs || "";
     var ownArgsProp = h("label", { class: "prop" }, h("b", null, "This instance's own Java arguments"), ownArgs,
       h("span", null, "Set the memory above, so leave out -Xmx and -Xms."));
-    function setSharing(s) {
-      s = s || { java: true, javaArgs: "", shaderpacks: true, resourcepacks: true, options: true, configs: false };
-      shareJava.checked = !!s.java;
-      ownArgs.value = s.javaArgs || "";
-      shareShaders.checked = !!s.shaderpacks;
-      sharePacks.checked = !!s.resourcepacks;
-      shareOptions.checked = !!s.options;
-      shareConfigs.checked = !!s.configs;
-      ownArgsProp.hidden = shareJava.checked;
-    }
-    shareJava.addEventListener("change", function () { ownArgsProp.hidden = shareJava.checked; if (!shareJava.checked) ownArgs.focus(); });
-    var shareBox = h("fieldset", { class: "share-box" },
-      h("legend", null, "Shared with your other instances"),
-      h("label", { class: "toggle" }, shareJava, "Java arguments"),
-      ownArgsProp,
-      h("label", { class: "toggle" }, shareShaders, "Shader packs"),
-      h("label", { class: "toggle" }, sharePacks, "Resource packs"),
-      h("label", { class: "toggle" }, shareOptions, "Game settings (video, sound, controls, key binds)"),
-      h("label", { class: "toggle" }, shareConfigs, "Mod configs (only for the mods each instance has)"),
-      h("p", { class: "hint", style: "margin:0;line-height:1.4" }, "Ticked items are the same in every instance that ticks them. " +
-        "Ticking packs moves this instance's packs into the shared folder, and unticking gives it a copy of its own, so nothing is lost. " +
-        "Edit the shared Java arguments under Shared settings in the instance list."));
-    // A new instance (or a copy) starts out sharing everything; an existing one's settings show what it shares now.
-    setSharing(settings && source ? source.sharing : null);
+    var shareBox = h("div", { class: "share-box" },
+      ownJava ? ownArgsProp : null,
+      h("p", { class: "hint", style: "margin:0;line-height:1.4" }, (settings ? "What this instance shares" : "What a new instance shares") +
+        " with your other instances (mods, packs, game settings, mod configs" + (ownJava ? "" : ", Java arguments") + ") is set in the ",
+        h("button", { type: "button", class: "linkish", onclick: function () { closeBig(); showShared(ownJava ? "java" : "options"); } }, "Shared tab"), "."));
     form.append.apply(form, [
       h("label", { class: "prop" }, h("b", null, "Name"), nameInput),
       settings ? null : h("label", { class: "prop" }, h("b", null, "Start from"), copySelect),
@@ -4999,7 +5028,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         go.disabled = !res.loaderVersions.length || !connected;
         if (memorySelect.options.length === 0) fillMemory(res.ramMb, src ? src.memoryMb : 0);
         note.textContent = res.prismRunning ? (settings
-          ? "The launcher is open. Close it before changing the name, version, memory or Java arguments, or it will undo them. Sharing packs and game settings works either way."
+          ? "The launcher is open. Close it before changing the name, version, memory or Java arguments, or it will undo them."
           : "The launcher is open. If the new instance doesn't show up there, restart it.") : "";
       }, function (e) {
         if (mySeq !== seq) return;
@@ -5026,11 +5055,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       go.disabled = true;
       go.textContent = settings ? "Saving…" : "Creating…";
       var src = picked();
-      var sharing = { java: shareJava.checked, javaArgs: ownArgs.value, shaderpacks: shareShaders.checked, resourcepacks: sharePacks.checked, options: shareOptions.checked, configs: shareConfigs.checked };
       var body = settings
-        ? { id: source.id, name: name, memoryMb: Number(memorySelect.value) || 0, loaderVersion: versionSelect.value, minecraft: mcSelect.value || source.minecraft, loader: loaderSelect.value, sharing: sharing }
+        ? { id: source.id, name: name, memoryMb: Number(memorySelect.value) || 0, loaderVersion: versionSelect.value, minecraft: mcSelect.value || source.minecraft, loader: loaderSelect.value,
+            sharing: ownJava ? { java: false, javaArgs: ownArgs.value } : null }
         : { name: name, copyFrom: src ? src.id : null, minecraft: mcSelect.value, loader: loaderSelect.value, loaderVersion: versionSelect.value,
-            memoryMb: Number(memorySelect.value) || 0, copyWorlds: worlds.checked, sharing: sharing };
+            memoryMb: Number(memorySelect.value) || 0, copyWorlds: worlds.checked };
       api("POST", settings ? "/api/instances/settings" : "/api/instances/create", body).then(function (res) {
         closeBig();
         if (settings) {
@@ -5189,86 +5218,6 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     }, function (e) { endSwitching(); throw e; });
   }
 
-  // The settings instances can share: the Java arguments are edited here; the shared pack folders
-  // and game settings fill up from the instances that tick them in their own Settings.
-  function sharedSettingsDialog() {
-    var form = h("div", { class: "shared-form" }, h("p", { class: "hint" }, "Loading…"));
-    var args = h("textarea", { class: "args", rows: "3", spellcheck: "false", maxlength: "4000", placeholder: "No extra arguments", "aria-label": "Shared Java arguments" });
-    var error = h("p", { class: "tag-error", role: "alert", hidden: true });
-    var original = "";
-    var save = btn("Save", submit, "primary", { disabled: true });
-    function changed() { return args.value.replace(/\s+/g, " ").trim() !== original; }
-    args.addEventListener("input", function () { save.disabled = !changed() || !connected; });
-    openBig("Shared settings", "What your instances can share. Each instance picks what it shares in its own Settings (⋯ next to it in the list).",
-      form, [btn("Close", closeBig), save]);
-
-    api("GET", "/api/sharing").then(function (d) {
-      original = d.javaArgs.replace(/\s+/g, " ").trim();
-      args.value = d.javaArgs;
-      function sharing(key) { return d.instances.filter(function (i) { return i[key]; }).map(function (i) { return i.name; }); }
-      function who(key, what) {
-        var on = sharing(key);
-        return on.length ? "Shared by " + on.join(", ") + "." : "No instance shares its " + what + " yet.";
-      }
-      var own = d.instances.filter(function (i) { return !i.java; });
-      var startFrom = d.instances.filter(function (i) { return !i.java && i.javaArgs; }).slice(0, 4);
-      function folder(kind, title, what) {
-        var f = d.folders[kind];
-        return h("section", null, h("h3", null, title),
-          h("div", { class: "who" }, count(f.count, "pack", "packs") + " in the shared folder. " + who(kind, what)),
-          h("div", { class: "share-row" }, btn("Open folder", function () { api("POST", "/api/sharing/open", { kind: kind }).catch(function (e) { toast(e.message); }); })));
-      }
-      var byDefault = h("input", { type: "checkbox" });
-      byDefault.checked = d.shareByDefault;
-      byDefault.addEventListener("change", function () {
-        byDefault.disabled = true;
-        api("POST", "/api/sharing/defaults", { on: byDefault.checked }).then(function (res) {
-          inst.data = null;
-          toast(res.shareByDefault ? "New instances share everything." : "New instances share nothing until you tick it in their Settings.");
-        }, function (e) { byDefault.checked = !byDefault.checked; toast(e.message); }).then(function () { byDefault.disabled = false; });
-      });
-      form.replaceChildren(
-        h("section", null,
-          h("label", { class: "toggle" }, byDefault, "New instances share everything"),
-          h("div", { class: "who" }, "Covers instances made here and ones the app finds for the first time (made in the launcher or imported). You can still untick anything in an instance's Settings, and it stays that way.")),
-        h("section", null, h("h3", null, "Java arguments"),
-          args,
-          h("div", { class: "who" }, (sharing("java").length ? "Used by " + sharing("java").join(", ") + "." : "No instance uses them yet.") +
-            (own.length ? " " + own.map(function (i) { return i.name; }).join(", ") + (own.length === 1 ? " uses its own." : " use their own.") : "") +
-            " Memory is set for each instance, so leave out -Xmx and -Xms."),
-          startFrom.length ? h("div", { class: "share-row" }, h("span", { class: "who" }, "Start from:"),
-            startFrom.map(function (i) { return btn(i.name, function () { args.value = i.javaArgs; args.dispatchEvent(new Event("input")); args.focus(); }); })) : null,
-          d.prismRunning ? h("p", { class: "warnbox", style: "margin:0" }, "The launcher is open. Close it before saving these, or it will undo them.") : null),
-        folder("shaderpacks", "Shader packs", "shader packs"),
-        folder("resourcepacks", "Resource packs", "resource packs"),
-        h("section", null, h("h3", null, "Game settings"),
-          h("div", { class: "who" }, "Video, sound, controls and key binds (options.txt). " + who("options", "game settings") +
-            " A change made in one game reaches the others the next time you press Play here. Key binds for mods an instance doesn't have are kept for the ones that do.")),
-        h("section", null, h("h3", null, "Mod configs"),
-          h("div", { class: "who" }, count(d.configCount || 0, "config file", "config files") + " in the shared folder. " + who("configs", "mod configs") +
-            " A config changed in one game reaches the others the next time you press Play here (or the app starts), but only instances with that mod get it. Joining takes the shared configs and adds any only that instance has. Tick it in an instance's Settings; new instances don't share configs unless you do."),
-          h("div", { class: "share-row" }, btn("Open folder", function () { api("POST", "/api/sharing/open", { kind: "config" }).catch(function (e) { toast(e.message); }); }))),
-        error);
-    }, function (e) { form.replaceChildren(h("p", { class: "tag-error", role: "alert" }, e.message)); });
-
-    function submit() {
-      if (!changed()) return;
-      error.hidden = true;
-      save.disabled = true;
-      save.textContent = "Saving…";
-      api("POST", "/api/sharing/java", { javaArgs: args.value }).then(function (res) {
-        closeBig();
-        inst.data = null;
-        toast(res.javaArgs ? "Saved the shared Java arguments." : "Cleared the shared Java arguments.");
-      }, function (e) {
-        error.textContent = e.message;
-        error.hidden = false;
-        save.disabled = false;
-        save.textContent = "Save";
-      });
-    }
-  }
-
   // ---------- Shared: the mods and packs the app adds to every instance (AlwaysMods.cs, SharedPacks.cs) ----------
   // One collection of each kind that the app copies into every instance (and each other mods folder that's
   // ticked; the ticks are the same for every kind). The Packs tab is the per-instance manager.
@@ -5281,18 +5230,29 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       where: "Instances are ticked from the start; other mods folders only once you tick them (the ticks count for mods and packs alike). Each mod only goes where its loader and Minecraft version fit. A copy turned off stays off, and a deleted one comes back. Copies get the mod's tags from here, and a newer jar here replaces the copies the app added (ones you changed yourself are left alone). This runs when the app starts, before Play, and when you open or create an instance.",
       empty: "No mods yet. Add .jar files here, or right-click mods in your list and choose Share across instances." },
     resourcepacks: { noun: "resource pack", nouns: "resource packs", title: "Resource packs shared across instances", add: "Add .zip files…",
-      lead: "The app copies these into every instance's resource packs and turns each one on once there (on top of the others). Turned off in an instance later, it stays off. Instances that use the shared resource pack folder get them once, together. To share packs an instance already has, select them in the Packs tab and choose Share.",
+      lead: "The app copies these into every instance's resource packs and turns each one on once there (on top of the others). Turned off in an instance later, it stays off. To share packs an instance already has, select them in the Packs tab and choose Share.",
       where: "The same ticks as the mods. Servers don't get resource packs. A pack is in place when the folder has a pack of that name or the same file under another name. Changing the file here updates the copies the app added. Runs when the app starts, before Play, and when you open or create an instance.",
       empty: "No resource packs yet. Add .zip files here, or select packs in the Packs tab and choose Share." },
     shaderpacks: { noun: "shader pack", nouns: "shader packs", title: "Shader packs shared across instances", add: "Add .zip files…",
-      lead: "The app copies these into the shader packs of every instance that has Iris or Oculus on. The shader in use isn't changed: pick it in the Packs tab or in the game. Instances that use the shared shader pack folder get them once, together.",
+      lead: "The app copies these into the shader packs of every instance that has Iris or Oculus on. The shader in use isn't changed: pick it in the Packs tab or in the game. Each pack's own settings are shared too: the newest change, made in any instance, reaches the others.",
       where: "The same ticks as the mods. An instance without Iris or Oculus gets them once it has one. Changing the file here updates the copies the app added. Runs when the app starts, before Play, and when you open or create an instance.",
       empty: "No shader packs yet. Add .zip files here, or select packs in the Packs tab and choose Share." },
     datapacks: { noun: "data pack", nouns: "data packs", title: "Data packs shared across instances", add: "Add .zip files…",
       lead: "An instance with Paxi on gets these in its every-world folder, so new worlds start with them (worldgen packs need that). Without Paxi they go into each of its worlds, and a world made later gets them the next time this runs. A server folder you tick gets them in its world.",
       where: "The same ticks as the mods. Changing the file here updates the copies the app added. Runs when the app starts, before Play, and when you open or create an instance.",
-      empty: "No data packs yet. Add .zip files here, or select packs in the Packs tab and choose Share." }
+      empty: "No data packs yet. Add .zip files here, or select packs in the Packs tab and choose Share." },
+    // Settings kept in step between instances (Sharing.cs, ConfigSharing.cs): each instance is ticked on its own.
+    options: { settings: true, title: "Game settings shared across instances",
+      lead: "Video, sound, controls and key binds (options.txt) are the same in every instance ticked here. A change made in one game reaches the others the next time you press Play here. Key binds for mods an instance doesn't have are kept for the ones that do, and which resource packs are on stays each instance's own.",
+      where: "Ticking an instance merges its settings in: the shared ones win, and any only it has are added. Unticking keeps its current settings as its own." },
+    configs: { settings: true, title: "Mod configs shared across instances",
+      lead: "Each mod's config files are kept the same in every instance ticked here, but only instances with that mod get its configs. A config changed in one game reaches the others the next time you press Play here, or when the app starts.",
+      where: "Ticking an instance takes the shared configs and adds any only it has. New instances don't share configs until you tick them." },
+    java: { settings: true, title: "Java arguments shared across instances",
+      lead: "The launcher's global Java arguments, used by every instance ticked here. Memory is set for each instance in its settings, so leave out -Xmx and -Xms.",
+      where: "An unticked instance uses its own arguments, which you can change in its settings (⋯ next to it in the instance list). The launcher has to be closed to change these." }
   };
+  function sharedSettingsKind(kind) { return !!(SHARED_KINDS[kind] && SHARED_KINDS[kind].settings); }
 
   function isAlways(r) {
     var a = server && server.always;
@@ -5344,7 +5304,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (always.loading) return always.loading;
     var kind = always.kind;
     if (!always.data || always.data.kind !== kind) $("always-status").textContent = "Loading…";
-    always.loading = api("GET", "/api/always?kind=" + kind).then(function (d) {
+    // The settings kinds all come from one answer (who shares what), the mods and packs from their own.
+    always.loading = api("GET", sharedSettingsKind(kind) ? "/api/sharing" : "/api/always?kind=" + kind).then(function (d) {
+      if (sharedSettingsKind(kind)) d.kind = kind;
       if (kind === always.kind) always.data = d;
       $("always-status").textContent = "";
     }, function (e) { $("always-status").textContent = e.message; }).then(function () {
@@ -5373,12 +5335,16 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     $("always-title").textContent = k.title;
     $("always-lead").textContent = k.lead;
     $("always-where-lead").textContent = k.where;
-    $("always-add").textContent = k.add;
+    $("always-where-title").textContent = k.settings ? "Which instances share them" : "Where they go";
+    $("always-add").hidden = !!k.settings;
+    $("always-open").hidden = kind === "java";
+    if (!k.settings) $("always-add").textContent = k.add;
     var d = always.data && always.data.kind === kind ? always.data : null;
     var modsEl = $("always-list-mods"), targetsEl = $("always-list-targets");
     modsEl.replaceChildren();
     targetsEl.replaceChildren();
     $("always-add").disabled = !connected;
+    if (k.settings) { $("always-sync").hidden = true; $("always-count").textContent = ""; if (d) renderSharedSettings(kind, d, modsEl, targetsEl); return; }
     if (!d) { $("always-sync").hidden = true; $("always-count").textContent = ""; return; }
     var ticked = d.targets.filter(function (t) { return t.on; });
     var waiting = ticked.filter(function (t) { return !t.running && (t.missing.length || t.stale.length); });
@@ -5406,10 +5372,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         h("span", { class: "hint" }, meta || m.file),
         h("span", { class: "hint" }, reach.join(" · ")),
         m.tags.length ? h("span", { class: "always-tags" }, m.tags.map(function (t) { return h("span", { class: "chip", style: "--c:" + colorOf(t) }, t); })) : null);
-      modsEl.append(h("div", { class: "always-row" },
+      if (m.settings) main.append(h("span", { class: "hint" }, "Its shader settings are shared too."));
+      modsEl.append(h("div", { class: "always-row", "data-file": m.file, tabindex: "0" },
         kind === "mods" ? null : m.icon ? h("img", { class: "pack-icon", src: m.icon, alt: "" }) : h("span", { class: "pack-icon", "aria-hidden": "true" }),
         main,
-        btn("Remove…", function () { askRemoveAlways(m); }, "quiet", { disabled: !connected, "aria-label": "Remove " + m.name })));
+        h("button", { type: "button", class: "act delete", disabled: !connected, title: "Stop sharing…", "aria-label": "Stop sharing " + m.name, onclick: function () { askRemoveAlways(m); } }, icon("trash"))));
     });
 
     d.targets.forEach(function (t) {
@@ -5443,6 +5410,93 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
   }
 
+  // Right-click a shared mod or pack, like a row in the Mods list or the Packs tab.
+  rowMenus($("always-list-mods"), function (t) {
+    var el = t.closest && t.closest(".always-row[data-file]");
+    var d = always.data;
+    return el && d && d.items ? d.items.filter(function (m) { return m.file === el.getAttribute("data-file"); })[0] || null : null;
+  }, function (m, x, y, focusEl) {
+    var kind = always.kind;
+    popMenu(null, [
+      ["Stop sharing…", function () { askRemoveAlways(m); }, !connected, "danger", "trash"],
+      null,
+      ["Copy filename", function () { copyText(m.file, "Copied " + m.file); }, false, null, "copy"],
+      ["Show in folder", function () { api("POST", "/api/always/reveal", { kind: kind, file: m.file }).then(null, function (e) { toast(e.message); }); }, false, null, "folder"],
+      [kind === "mods" ? "Show in the Mods list" : "Show in Packs", function () {
+        if (kind === "mods") { setView("mods"); return; }
+        packs.kind = kind; packs.data = null; savePackPrefs(); setView("packs");
+      }, false, null, "search"]
+    ], { at: { x: x, y: y }, head: m.name, returnFocus: focusEl });
+  });
+
+  // Game settings, mod configs or Java arguments: what's shared on the left, a tick per instance on the right.
+  function renderSharedSettings(kind, d, mainEl, targetsEl) {
+    var flag = kind; // the instance objects carry options / configs / java
+    if (kind === "options") $("always-count").textContent = d.hasOptions ? count(d.optionCount, "setting", "settings") + " in the shared copy" : "Nothing shared yet";
+    if (kind === "configs") $("always-count").textContent = count(d.configCount || 0, "config file", "config files") + " in the shared copy";
+    var sharing = d.instances.filter(function (i) { return i[flag]; });
+    if (kind === "java") {
+      var original = d.javaArgs.replace(/\s+/g, " ").trim();
+      var args = h("textarea", { class: "args", rows: "3", spellcheck: "false", maxlength: "4000", placeholder: "No extra arguments", "aria-label": "Shared Java arguments" });
+      args.value = d.javaArgs;
+      var err = h("p", { class: "tag-error", role: "alert", hidden: true });
+      var save = btn("Save", function () {
+        save.disabled = true;
+        err.hidden = true;
+        api("POST", "/api/sharing/java", { javaArgs: args.value }).then(function (res) {
+          toast(res.javaArgs ? "Saved the shared Java arguments." : "Cleared the shared Java arguments.");
+          inst.data = null;
+          always.data = null;
+          loadAlways();
+        }, function (e) { err.textContent = e.message; err.hidden = false; save.disabled = false; });
+      }, "primary", { disabled: true });
+      args.addEventListener("input", function () { save.disabled = !connected || args.value.replace(/\s+/g, " ").trim() === original; });
+      var startFrom = d.instances.filter(function (i) { return !i.java && i.javaArgs; }).slice(0, 4);
+      mainEl.append.apply(mainEl, [args,
+        h("div", { class: "row-actions" }, save,
+          startFrom.length ? h("span", { class: "hint" }, "Start from:") : null,
+          startFrom.map(function (i) { return btn(i.name, function () { args.value = i.javaArgs; args.dispatchEvent(new Event("input")); args.focus(); }, "quiet"); })),
+        d.prismRunning ? h("p", { class: "warnbox" }, "The launcher is open. Close it before changing these, or it will undo them.") : null,
+        err].filter(Boolean));
+    } else {
+      mainEl.append(h("p", { class: "hint" }, sharing.length
+        ? "Shared by " + sharing.map(function (i) { return i.name; }).join(", ") + "."
+        : "No instance shares its " + (kind === "options" ? "game settings" : "mod configs") + " yet. Tick one on the right to start."));
+    }
+    d.instances.forEach(function (it) {
+      var box = h("input", { type: "checkbox", "aria-label": (it[flag] ? "Stop sharing with " : "Share with ") + it.name });
+      box.checked = !!it[flag];
+      box.disabled = !connected || (kind === "java" && d.prismRunning);
+      box.addEventListener("change", function () {
+        box.disabled = true;
+        var what = { options: "game settings", configs: "mod configs", java: "Java arguments" }[kind], on = box.checked;
+        track("Updating " + it.name, api("POST", "/api/sharing/instance", { id: it.id, kind: kind, on: on })).then(function () {
+          toast(on ? it.name + " uses the shared " + what + " now." : it.name + " keeps its own " + what + " now.");
+          inst.data = null;
+        }, function (e) { toast(e.message); }).then(function () { always.data = null; return loadAlways(); });
+      });
+      var note = kind === "java" && !it.java ? (it.javaArgs ? "its own: " + it.javaArgs : "its own: none") : it[flag] ? "shared" : "its own";
+      targetsEl.append(h("div", { class: "always-row" + (it[flag] ? "" : " off") },
+        h("label", { class: "toggle always-main" }, box, h("span", null,
+          h("strong", null, it.name + (it.current ? " (open now)" : "")),
+          h("span", { class: "hint" }, note)))));
+    });
+    if (!d.instances.length) targetsEl.append(h("p", { class: "hint" }, "No launcher instances found."));
+    if (kind !== "configs") {
+      var byDefault = h("input", { type: "checkbox" });
+      byDefault.checked = d.shareByDefault;
+      byDefault.disabled = !connected;
+      byDefault.addEventListener("change", function () {
+        byDefault.disabled = true;
+        api("POST", "/api/sharing/defaults", { on: byDefault.checked }).then(function (res) {
+          toast(res.shareByDefault ? "New instances share their game settings and Java arguments." : "New instances keep their own game settings and Java arguments.");
+        }, function (e) { byDefault.checked = !byDefault.checked; toast(e.message); }).then(function () { always.data = null; loadAlways(); });
+      });
+      targetsEl.append(h("label", { class: "toggle always-default" }, byDefault,
+        h("span", null, "New instances share game settings and Java arguments", h("span", { class: "hint" }, "Instances made here, and ones the app finds for the first time."))));
+    }
+  }
+
   Array.prototype.forEach.call($("shared-kinds").querySelectorAll("button"), function (b) {
     b.addEventListener("click", function () {
       if (b.dataset.kind === always.kind) return;
@@ -5454,7 +5508,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   });
   $("always-add").addEventListener("click", function () { alwaysAction(api("POST", "/api/always/add-files", { kind: always.kind }), "Adding to Shared"); });
   $("always-sync").addEventListener("click", function () { alwaysAction(api("POST", "/api/always/sync", {}), "Adding to every instance"); });
-  $("always-open").addEventListener("click", function () { api("POST", "/api/always/open", { kind: always.kind }).catch(function (e) { toast(e.message); }); });
+  $("always-open").addEventListener("click", function () {
+    var kind = always.kind;
+    var opening = sharedSettingsKind(kind) ? api("POST", "/api/sharing/open", { kind: kind === "configs" ? "config" : kind }) : api("POST", "/api/always/open", { kind: kind });
+    opening.catch(function (e) { toast(e.message); });
+  });
   $("always-mods").addEventListener("click", function () { closeInstances(false); setView("shared"); });
 
   // ---------- Copy, cut and paste between instances (Clipboard.cs) ----------
@@ -5527,7 +5585,6 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   $("inst-btn").addEventListener("click", openInstances);
   $("new-instance").addEventListener("click", function () { closeInstances(false); instanceDialog("new", null); });
-  $("shared-settings").addEventListener("click", function () { closeInstances(false); sharedSettingsDialog(); });
   $("open-prism").addEventListener("click", function () {
     closeInstances(true);
     api("POST", "/api/prism/open", {}).then(function () { toast("Opening the launcher."); }, function (e) { toast(e.message); });
@@ -7339,12 +7396,12 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
       if (needs.length && connected) {
         var fixOf = function (n) { return n.turnOn ? { action: "enable", file: n.turnOn } : { action: "install", id: n.id, "for": n["for"], query: n.id }; };
         var prompt = h("div", { class: "crash-needs" }, h("div", { class: "cn-title" },
-          needs.length === 1 ? (needs[0].turnOn ? "A mod it needs is turned off" : "A mod it needs isn't installed")
-            : count(needs.length, "mod it needs is", "mods it needs are") + " missing or turned off"));
+          needs.length === 1 ? (needs[0].turnOn ? "A dependency is turned off" : "A dependency isn't installed")
+            : count(needs.length, "dependency is", "dependencies are") + " missing or turned off"));
         needs.forEach(function (n) {
           var who = n.neededBy && n.neededBy.length ? n.neededBy.join(", ") : null;
-          var text = n.turnOn ? (n.name || n.id) + " is installed but turned off" + (who ? ", and " + who + (n.neededBy.length > 1 ? " need" : " needs") + " it." : ": the game needed its code.")
-            : n.id + " isn't installed" + (who ? ", and " + who + (n.neededBy.length > 1 ? " need" : " needs") + " it." : ".");
+          var text = n.turnOn ? (n.name || n.id) + " is installed but turned off" + (who ? ": a dependency of " + who + "." : ": the game needed its code.")
+            : n.id + " isn't installed" + (who ? ": a dependency of " + who + "." : ".");
           prompt.append(h("div", { class: "cn-row" }, h("span", { class: "cn-text" }, text), h("span", { class: "row-actions" },
             n.turnOn ? btn("Turn on " + (n.name || n.id), function () { closeBig(); addMissing([fixOf(n)]); }, "primary", { title: "Turns on " + n.turnOn })
               : btn("Install " + n.id, function () { closeBig(); addMissing([fixOf(n)]); }, "primary",
@@ -7669,7 +7726,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   // settings file) and sends it with every state. A copy in localStorage paints the right theme before
   // the first state arrives.
 
-  var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha", tagHide: "ctrl", accentColor: "#2fb465", background: "glow", corners: "round", textSize: "100", tagStyle: "tint",
+  var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha", tagHide: "ctrl", accentColor: "#1ec85a", background: "glow", corners: "round", textSize: "100", tagStyle: "tint",
     motion: "system", rowStyle: "lines", showIcons: true, colSide: true, colTags: true, colVersion: false, startPage: "mods", bgDim: "75", tagHues: {},
     worldBackups: false, updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false, hidePrism: true,
     serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false, autoLibraries: true, tagLibraries: true, tagSides: true, serverConfigsAuto: true };
@@ -7680,9 +7737,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     return p && p[k] !== undefined ? p[k] : PREF_DEFAULTS[k];
   }
   var ACCENTS = [
-    { key: "emerald", label: "Emerald", color: "#2fb465" }, { key: "sky", label: "Sky", color: "#2b8ce0" },
-    { key: "amethyst", label: "Amethyst", color: "#8b5cf6" }, { key: "gold", label: "Gold", color: "#d4960f" },
-    { key: "redstone", label: "Redstone", color: "#d9443b" }
+    { key: "emerald", label: "Emerald", color: "#1ec85a" }, { key: "sky", label: "Sky", color: "#1a8cff" },
+    { key: "amethyst", label: "Amethyst", color: "#8a4dff" }, { key: "gold", label: "Gold", color: "#f0a500" },
+    { key: "redstone", label: "Redstone", color: "#ef2f2f" }
   ];
   var systemDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
   var reducedMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
@@ -7893,11 +7950,11 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   // Quick looks: each sets the theme, accent and background together, nodding to a place in the game.
   var PRESETS = [
-    { key: "overworld", label: "Overworld", theme: "dark", accent: "emerald", background: "glow", colors: ["#2fb465", "#3b8c3a", "#6b4a2b"] },
-    { key: "nether", label: "Nether", theme: "dark", accent: "custom", accentColor: "#e0532f", background: "blocks", colors: ["#e0532f", "#7a1f1f", "#2b1414"] },
-    { key: "end", label: "The End", theme: "dark", accent: "amethyst", background: "glow", colors: ["#8b5cf6", "#e7e3a1", "#1c1530"] },
-    { key: "deepdark", label: "Deep Dark", theme: "dark", accent: "custom", accentColor: "#1fb3a8", background: "plain", colors: ["#1fb3a8", "#0f2a33", "#0b1114"] },
-    { key: "snowy", label: "Snowy", theme: "light", accent: "sky", background: "plain", colors: ["#2b8ce0", "#e8f2fb", "#ffffff"] }
+    { key: "overworld", label: "Overworld", theme: "dark", accent: "emerald", background: "glow", colors: ["#1ec85a", "#2f9e2a", "#7a4f24"] },
+    { key: "nether", label: "Nether", theme: "dark", accent: "custom", accentColor: "#ff4a1c", background: "blocks", colors: ["#ff4a1c", "#8f1a1a", "#2b1414"] },
+    { key: "end", label: "The End", theme: "dark", accent: "amethyst", background: "glow", colors: ["#8a4dff", "#f0e98a", "#1c1530"] },
+    { key: "deepdark", label: "Deep Dark", theme: "dark", accent: "custom", accentColor: "#0fd0c2", background: "plain", colors: ["#0fd0c2", "#0f2a33", "#0b1114"] },
+    { key: "snowy", label: "Snowy", theme: "light", accent: "sky", background: "plain", colors: ["#1a8cff", "#e8f2fb", "#ffffff"] }
   ];
   function presetControl() {
     var box = h("div", { class: "presets" });
@@ -8456,7 +8513,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
 
   var det = { seq: 0 };
   var KIND_NAMES = { neoforge: "NeoForge", forge: "Forge", fabric: "Fabric (through Connector)", quilt: "Quilt", none: "library (no mod metadata)" };
-  var SIDE_WORDS = { required: "needed", optional: "optional", unsupported: "not used" };
+  var SIDE_WORDS = { required: "required", optional: "optional", unsupported: "not used" };
 
   // The jar-only tabs (what it needs, its configs) don't apply to a search preview; Versions lists what can be installed.
   function detTabsForPreview(preview) {
@@ -8512,7 +8569,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     var add = function (k, v) { if (v !== null && v !== undefined && v !== "") kv.append(h("dt", null, k), h("dd", null, v)); };
     add("From", hit.source === "curseforge" ? "CurseForge" : hit.also ? "Modrinth and CurseForge (installs from Modrinth)" : "Modrinth");
     add("Would install", info.installVersion || (isMod ? "Nothing for " + targetText() + " yet" : p.kind === "shaderpacks" ? "No download listed" : "Nothing for Minecraft " + (server && server.target ? server.target.gameVersion : "") + " yet"));
-    if (isMod && info.clientSide) add("Where it's needed", "Client: " + (SIDE_WORDS[info.clientSide] || info.clientSide) + " · Server: " + (SIDE_WORDS[info.serverSide] || info.serverSide));
+    if (isMod && info.clientSide) add("Sides", "Client: " + (SIDE_WORDS[info.clientSide] || info.clientSide) + " · Server: " + (SIDE_WORDS[info.serverSide] || info.serverSide));
     if (info.categories && info.categories.length) add("Categories", info.categories.join(", "));
     add("License", info.license);
     add("Downloads", formatNum(info.downloads) + (info.followers ? " · " + formatNum(info.followers) + " followers" : ""));
@@ -8721,7 +8778,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     add("Loader", KIND_NAMES[d.kind] || d.kind);
     if (mr.found && mr.loose) add("Matched by", "Mod id and name. This jar isn't a file " + (mr.site === "curseforge" ? "CurseForge" : "Modrinth") + " publishes byte for byte (a different build or a repack), so it's matched by what it says it is.");
     if (mr.found && mr.site === "curseforge") add("From", "CurseForge" + (mr.author ? ", by " + mr.author : ""));
-    if (mr.found && mr.clientSide) add("Where it's needed", "Client: " + (SIDE_WORDS[mr.clientSide] || mr.clientSide) + " · Server: " + (SIDE_WORDS[mr.serverSide] || mr.serverSide) + " (Modrinth)");
+    if (mr.found && mr.clientSide) add("Sides", "Client: " + (SIDE_WORDS[mr.clientSide] || mr.clientSide) + " · Server: " + (SIDE_WORDS[mr.serverSide] || mr.serverSide) + " (Modrinth)");
     add("Your tags", r.tags.length ? r.tags.join(", ") : "none");
     if (mr.found) {
       add("License", mr.license);
@@ -8846,7 +8903,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
   }
 
   var DEP_STATUS = { ok: "installed", "built-in": "built in", off: "turned off", missing: "missing", "wrong-version": "wrong version" };
-  // The Needs tab: a list of what it needs and what needs it, or the whole tree of what it needs.
+  // The Dependencies tab: its dependencies and dependants as lists, or the whole tree of its dependencies.
   var depView = "list";
   function renderDeps(body, d) {
     var seg = h("div", { class: "seg-control", role: "group", "aria-label": "Show as", style: "margin-bottom:12px" });
@@ -8855,8 +8912,8 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     });
     body.append(seg);
     if (depView === "tree") { renderDepTree(body); return; }
-    body.append(h("h3", { style: "margin:0 0 4px;font:700 15px/1.3 var(--font-display)" }, "What it needs"));
-    if (!d.deps.length) body.append(h("p", { class: "hint" }, "It doesn't list any other mods."));
+    body.append(h("h3", { style: "margin:0 0 4px;font:700 15px/1.3 var(--font-display)" }, "Dependencies"));
+    if (!d.deps.length) body.append(h("p", { class: "hint" }, "None: it doesn't list any other mods."));
     d.deps.forEach(function (dep) {
       var optional = dep.type !== "required";
       var status = dep.status === "missing" && optional ? "optional" : dep.status;
@@ -8870,25 +8927,25 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
           h("div", { class: "sub" }, dep.id + " · " + dep.range + (optional ? " · " + dep.type : "") + (dep.side && dep.side !== "BOTH" ? " · " + dep.side.toLowerCase() + " only" : "") + (dep.file ? " · " + dep.file : ""))),
         h("div", { class: "row-actions" }, fix, h("span", { class: "st " + status }, status === "optional" ? "not installed (optional)" : DEP_STATUS[dep.status] || dep.status))));
     });
-    body.append(h("h3", { style: "margin:18px 0 4px;font:700 15px/1.3 var(--font-display)" }, "What needs it"));
-    if (!d.dependents.length) body.append(h("p", { class: "hint" }, "No other jar in this folder lists it."));
+    body.append(h("h3", { style: "margin:18px 0 4px;font:700 15px/1.3 var(--font-display)" }, "Dependants"));
+    if (!d.dependents.length) body.append(h("p", { class: "hint" }, "None: no other jar in this folder lists it."));
     var breaks = d.dependents.filter(function (x) { return x.type === "required" && x.enabled; });
     if (breaks.length && d.enabled) body.append(h("p", { class: "warnbox" }, "Turning this off stops " + count(breaks.length, "mod", "mods") + " from loading: " + breaks.map(function (x) { return x.name; }).join(", ") + "."));
     d.dependents.forEach(function (x) {
       body.append(h("div", { class: "dep" },
         h("div", null, h("div", null, x.name), h("div", { class: "sub" }, x.file)),
-        h("span", { class: "st " + (x.type === "required" ? "ok" : "optional") }, (x.type === "required" ? "requires it" : "optional") + (x.enabled ? "" : " · off"))));
+        h("span", { class: "st " + (x.type === "required" ? "ok" : "optional") }, (x.type === "required" ? "required" : "optional") + (x.enabled ? "" : " · off"))));
     });
   }
 
   function renderDepTree(body) {
-    var box = h("div", { class: "dtree" }, h("p", { class: "search-empty" }, "Following what it needs…"));
-    body.append(h("p", { class: "hint", style: "margin:0 0 8px" }, "Everything it requires, and what those require, from the jars in this folder. Optional mods aren't shown; a mod that appears again higher up isn't opened twice."), box);
+    var box = h("div", { class: "dtree" }, h("p", { class: "search-empty" }, "Reading its dependencies…"));
+    body.append(h("p", { class: "hint", style: "margin:0 0 8px" }, "Its required dependencies and theirs, from the jars in this folder. Optional dependencies aren't shown; a mod that appears again higher up isn't expanded twice."), box);
     var seq = det.seq;
     api("GET", "/api/mod/deptree?file=" + encodeURIComponent(det.row.file)).then(function (res) {
       if (seq !== det.seq) return;
       box.replaceChildren();
-      if (!res.children.length) { box.append(h("p", { class: "search-empty" }, "It doesn't require any other mod.")); return; }
+      if (!res.children.length) { box.append(h("p", { class: "search-empty" }, "No required dependencies.")); return; }
       var STATUS = { ok: "", off: "turned off", missing: "missing", bundled: "bundled in another jar" };
       var node = function (n) {
         var r = n.file ? rowsFor([n.file.replace(/\.disabled$/i, "")])[0] : null;
@@ -8900,7 +8957,7 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
         return li;
       };
       box.append(h("ul", { class: "dt-root" }, h("li", null, h("div", { class: "dt-row" }, h("strong", null, res.name)), h("ul", null, res.children.map(node)))));
-      box.append(h("p", { class: "hint" }, count(res.total, "mod in this folder is", "mods in this folder are") + " needed for it to load."));
+      box.append(h("p", { class: "hint" }, count(res.total, "jar in this folder is a required dependency", "jars in this folder are required dependencies") + "."));
     }, function (e) { box.replaceChildren(h("p", { class: "search-empty" }, e.message)); });
   }
 
@@ -9729,7 +9786,9 @@ textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5p
     if (opts.head) el.append(h("div", { class: "menu-head" }, opts.head));
     items.forEach(function (it) {
       if (!it) { if (el.lastChild && el.lastChild.tagName === "BUTTON") el.append(h("hr")); return; }
-      el.append(h("button", { type: "button", role: "menuitem", class: it[3] || null, disabled: !!it[2], onclick: function () { popReturn = null; closePop(); it[1](); } }, it[0]));
+      // [label, fn, disabled, class, icon]: with an icon it looks like the Mods list's menu.
+      el.append(h("button", { type: "button", role: "menuitem", class: (it[3] || "") + (it[4] ? " with-icon" : "") || null, disabled: !!it[2], onclick: function () { popReturn = null; closePop(); it[1](); } },
+        it[4] && ICONS[it[4]] ? icon(it[4]) : null, it[4] ? h("span", null, it[0]) : it[0]));
     });
     if (el.lastChild && el.lastChild.tagName === "HR") el.lastChild.remove();
     document.body.append(el);

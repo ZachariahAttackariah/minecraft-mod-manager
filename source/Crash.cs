@@ -291,7 +291,7 @@ namespace MinecraftModManager
                     if (deps.Count == 0 && guess != null && !s.Missing.Contains(guess))
                     {
                         s.Missing.Add(guess);
-                        note(s, 4, "It doesn't list the mod it needs; from the package, it's probably one called \"" + guess + "\"");
+                        note(s, 4, "It doesn't name its missing dependency; from the package, it's probably one called \"" + guess + "\"");
                     }
                 }
             }

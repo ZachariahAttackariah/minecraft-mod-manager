@@ -372,8 +372,10 @@ namespace MinecraftModManager
             int memoryMb = IntValue(body, "memoryMb");
             if (memoryMb != 0) CheckMemory(memoryMb);
             if (source != null && InstanceGameRunning(source)) throw new UserError("Close " + source.Name + " (the game) before copying it.");
-            // Without a choice (a modpack import, for one), a new instance shares everything, like the dialog's default.
-            Dictionary<string, object> sharing = D(Get(body, "sharing")) ?? Obj("java", true, "shaderpacks", true, "resourcepacks", true, "options", true);
+            // What a new instance shares follows "New instances share these" in the Shared tab (packs and mods
+            // reach it through the Shared tab's own ticks). A copy keeps its source's Java arguments either way.
+            bool byDefault = LoadSharingState().ShareByDefault;
+            Dictionary<string, object> sharing = D(Get(body, "sharing")) ?? Obj("java", byDefault, "options", byDefault, "configs", false);
             if (sharing != null) CleanJavaArgs(Str(sharing, "javaArgs"));
 
             string folder = NewInstanceFolder(root, name);
@@ -413,16 +415,15 @@ namespace MinecraftModManager
             InstanceInfo created = PrismInstances().FirstOrDefault(i => i.Id == folder);
             if (created != null)
             {
-                // Linked pack folders aren't copied (see CopyGameFolder): the copy shares them too, or gets
-                // its own copy of the shared packs.
+                // Linked pack folders (from before packs were shared through the Shared tab) aren't copied by
+                // CopyGameFolder, so the copy gets their packs here.
                 foreach (string kind in SharedFolders)
                 {
                     try
                     {
-                        if (sharing != null && Bool(sharing, kind)) ShareFolder(created, kind);
-                        else if (source != null && SharesFolder(source, kind)) CopyTree(Path.Combine(SharedDir(), kind), Path.Combine(GameDirOf(created), kind));
+                        if (source != null && SharesFolder(source, kind)) CopyTree(Path.Combine(SharedDir(), kind), Path.Combine(GameDirOf(created), kind));
                     }
-                    catch (Exception ex) { problems.Add("The " + PackLabel(kind) + " couldn't be shared: " + ex.Message); }
+                    catch (Exception ex) { problems.Add("The " + PackLabel(kind) + " couldn't be copied: " + ex.Message); }
                 }
                 try { if (sharing != null && Bool(sharing, "options")) ShareGameSettings(created, true); }
                 catch (Exception ex) { problems.Add("The game settings couldn't be shared: " + ex.Message); }
@@ -563,17 +564,10 @@ namespace MinecraftModManager
             }
 
             // Everything above lives in the instance's own files, which the launcher would overwrite if it's open.
-            // Sharing packs and game settings doesn't touch those, so it works with the launcher open.
+            // What it shares with the other instances is set in the Shared tab.
             bool instanceFiles = changes.Count > 0;
-            var folderChanges = SharedFolders.Where(kind => sharing != null && sharing.ContainsKey(kind) && Bool(sharing, kind) != SharesFolder(info, kind)).ToList();
-            bool optionsChange = sharing != null && sharing.ContainsKey("options") && Bool(sharing, "options") != SharesGameSettings(info);
-            bool configsChange = sharing != null && sharing.ContainsKey("configs") && Bool(sharing, "configs") != SharesConfigs(info);
-            if (!instanceFiles && folderChanges.Count == 0 && !optionsChange && !configsChange) throw new UserError("Nothing was changed.");
-            if (instanceFiles) RequirePrismClosed();
-
-            foreach (string kind in folderChanges) changes.Add(ApplyFolderSharing(info, kind, Bool(sharing, kind)));
-            if (optionsChange) changes.Add(ShareGameSettings(info, Bool(sharing, "options")));
-            if (configsChange) changes.Add(ShareConfigs(info, Bool(sharing, "configs")));
+            if (!instanceFiles) throw new UserError("Nothing was changed.");
+            RequirePrismClosed();
             if (packJson != null)
             {
                 File.Copy(packPath, packPath + ".bak", true);
