@@ -83,6 +83,13 @@ namespace MinecraftModManager
                         }
                         prefs[p.Key] = clean;
                     }
+                    else if (p.Key == "changelogSeen")
+                    {
+                        // The newest changelog entry shown so far ("yyyy-mm-dd#lines"), for What's new after an update.
+                        string v = p.Value as string;
+                        if (v == null || !System.Text.RegularExpressions.Regex.IsMatch(v, @"^\d{4}-\d{2}-\d{2}#\d{1,4}$")) throw new UserError("changelogSeen has to look like 2026-01-31#4.");
+                        prefs[p.Key] = v;
+                    }
                     else if (p.Key == "accentColor")
                     {
                         string v = p.Value as string;

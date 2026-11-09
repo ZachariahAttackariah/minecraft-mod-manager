@@ -23,6 +23,8 @@ Settings (the gear at the right end of the section tabs)
                       Reload it. Delete the file to undo it all.
                       Each tag's own colour: in Manage tags, click the tag's colour dot and pick any colour.
                       "automatic colour" next to it goes back to the usual one.
+  Changelog ......... what changed in each update of this app, newest first. The first time the app opens
+                      after an update, a note offers What's new: the changes since it was last opened.
   Folders ........... the mods folder and the server folder (open or change), the app's data folder
                       (snapshots, backups, notes, presets) and the app's own folder (settings, actions.log).
   Mod list .......... open on (Mods, Libraries, Packs, Server, Snapshots, or wherever you left off),

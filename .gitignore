@@ -4,6 +4,7 @@
 !/.gitignore
 !/README.md
 !/README.txt
+!/CHANGELOG.md
 !/source/
 
 # Build leftovers, and the optional local list of display names.

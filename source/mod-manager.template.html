@@ -761,6 +761,9 @@ html[data-anim="off"] :is(.spin, .jobbar span) { animation-duration: 3s; }
 .view-nav .nav-gear:hover, .view-nav .nav-gear[aria-current="page"] { color: var(--ink); background: var(--btn); }
 .view-nav .nav-gear[aria-current="page"]::after { display: none; }
 .wc-list { margin: 0; padding-left: 18px; font-size: 13.5px; }
+.changelog h3 { margin: 14px 0 4px; font-size: 14px; font-weight: 700; }
+.changelog h3:first-child { margin-top: 2px; }
+.changelog .wc-list li { margin: 2px 0; line-height: 1.45; }
 /* Dependency tree */
 .dtree ul { margin: 0; padding-left: 20px; list-style: none; border-left: 1px dashed var(--line); }
 .dtree ul.dt-root { padding-left: 0; border-left: 0; }
@@ -3047,6 +3050,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         if (check.data) { check.data = null; renderCheckBar(); }
       }
       renderCrashBanner();
+      whatsNew();
       if (!s.folderExists) showNotice(["The mods folder ", h("code", null, s.modsDir), " doesn't exist any more. Use Change folder to pick another one."]);
       else if (model.tagsProblem) showNotice(model.tagsProblem, "info");
       else hideNotice();
@@ -4517,7 +4521,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       if (menuEl.hidden) return;
       renderMenu();
       var target = focusAfter === "@new" ? $("new-tag") : menuEl.querySelector('.tag-opt[data-tag="' + focusAfter + '"]');
-      if (target) target.focus();
+      if (target) target.focus({ preventScroll: true });
     });
   }
 
@@ -4605,7 +4609,11 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     }
     if (!single) actions.append(menuItem("Clear selection", "clear", clearSelection));
     var wasOpen = !menuEl.hidden;
+    // A redraw (after ticking a tag) keeps the tag list scrolled where it was, so nothing moves under the pointer.
+    var oldList = wasOpen ? menuEl.querySelector(".tag-options") : null;
+    var listScroll = oldList ? oldList.scrollTop : 0;
     menuEl.replaceChildren(actions, renderTagPanel(rows));
+    if (oldList) { var newList = menuEl.querySelector(".tag-options"); if (newList) newList.scrollTop = listScroll; }
     menuEl.setAttribute("aria-label", single ? "Actions and tags for " + rows[0].name : "Actions and tags for " + rows.length + " mods");
     if (wasOpen) placeMenu();
   }
@@ -7063,6 +7071,64 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     });
   }
 
+  // ---------- Changelog: the app's own (CHANGELOG.md, put in by the build) ----------
+  // "## yyyy-mm-dd" sections, newest first, each a list of "- " lines. What's new shows once after an
+  // update: the entries newer than the last one seen, remembered as date#lines so a same-day addition counts.
+
+  var CHANGELOG = /*__CHANGELOG__*/"";
+  function changelogEntries() {
+    return CHANGELOG.split(/^## /m).slice(1).map(function (part) {
+      var nl = part.indexOf("\n");
+      var date = (nl < 0 ? part : part.slice(0, nl)).trim();
+      var items = (nl < 0 ? "" : part.slice(nl + 1)).split("\n").filter(function (l) { return /^- /.test(l); }).map(function (l) { return l.slice(2).trim(); });
+      return { date: date, items: items, id: date + "#" + items.length };
+    }).filter(function (e) { return /^\d{4}-\d{2}-\d{2}$/.test(e.date) && e.items.length; });
+  }
+  // A plain date, read as a local day (not UTC midnight, which can show as the day before).
+  function changelogDate(ymd) {
+    var p = ymd.split("-").map(Number);
+    return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  }
+  function changelogList(entries) {
+    var box = h("div", { class: "changelog" });
+    entries.forEach(function (e) {
+      box.append(h("h3", null, changelogDate(e.date)), h("ul", { class: "wc-list" }, e.items.map(function (x) { return h("li", null, x); })));
+    });
+    return box;
+  }
+  function changelogControl() {
+    var entries = changelogEntries();
+    if (!entries.length) return h("div", { class: "d" }, "This build has no changelog.");
+    var box = h("div", null, changelogList(entries.slice(0, 3)));
+    if (entries.length > 3) box.append(h("details", { class: "fine" }, h("summary", null, "Older changes"), changelogList(entries.slice(3))));
+    return box;
+  }
+  function showChangelogInSettings() {
+    setView("settings");
+    setTimeout(function () { var el = $("set-changelog"); if (el) el.scrollIntoView({ block: "start" }); }, 0);
+  }
+
+  var whatsNewDone = false;
+  function whatsNew() {
+    if (whatsNewDone || !hasToken || !server || !server.prefs) return;
+    whatsNewDone = true;
+    var entries = changelogEntries();
+    if (!entries.length) return;
+    var seen = pref("changelogSeen"), latest = entries[0].id;
+    if (seen === latest) return;
+    var firstRun = !seen && !Object.keys(server.prefs).length;
+    savePref("changelogSeen", latest, true);
+    if (firstRun) return; // a fresh install has nothing to compare with
+    var was = seen ? seen.split("#") : null;
+    var fresh = was ? entries.filter(function (e) { return e.date > was[0] || (e.date === was[0] && e.items.length > Number(was[1])); }) : entries.slice(0, 1);
+    if (!fresh.length) return;
+    var lines = fresh.reduce(function (n, e) { return n + e.items.length; }, 0);
+    toast("Mod Manager was updated: " + count(lines, "change", "changes") + ".", "What's new", function () {
+      openBig("What's new", was ? "Since the app was last opened." : "In this update.", changelogList(fresh),
+        [btn("All changes", function () { closeBig(); showChangelogInSettings(); }), btn("Close", closeBig, "primary")]);
+    });
+  }
+
   // ---------- Auto-tag: the sites' categories, mapped onto this folder's own tags, reviewed first ----------
 
   // A site category (lowercase, "&" as "and") -> the tags it can mean, first one that exists in this folder wins.
@@ -7926,6 +7992,9 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     ] },
     { id: "folders", title: "Folders", items: [
       { key: "folders", label: "", desc: "", custom: foldersControl }
+    ] },
+    { id: "changelog", title: "Changelog", items: [
+      { key: "changelog", label: "", desc: "", custom: changelogControl }
     ] }
   ];
   // Tags in one choice: vivid or soft tinted chips, or solid / outlined ones (stored as tagColors + tagStyle).

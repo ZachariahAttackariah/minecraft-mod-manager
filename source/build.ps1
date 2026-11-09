@@ -30,7 +30,12 @@ try {
     if (-not $template.Contains("__FONT_MINECRAFT__")) { throw "The template is missing the __FONT_MINECRAFT__ placeholder." }
     if (-not (Test-Path $fontFile)) { throw "Missing $fontFile" }
     $font = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($fontFile))
-    [System.IO.File]::WriteAllText($page, $template.Replace("/*__NAMES__*/{}", $names).Replace("__FONT_MINECRAFT__", $font), (New-Object System.Text.UTF8Encoding($false)))
+    # The changelog (..\CHANGELOG.md) goes in as a JavaScript string for Settings > Changelog and "What's new".
+    $changelogFile = Join-Path $appDir "CHANGELOG.md"
+    if (-not $template.Contains('/*__CHANGELOG__*/""')) { throw "The template is missing the /*__CHANGELOG__*/`"`" placeholder." }
+    if (-not (Test-Path $changelogFile)) { throw "Missing $changelogFile" }
+    $changelog = ConvertTo-Json ([System.IO.File]::ReadAllText($changelogFile).Replace("`r`n", "`n")) -Compress
+    [System.IO.File]::WriteAllText($page, $template.Replace("/*__NAMES__*/{}", $names).Replace("__FONT_MINECRAFT__", $font).Replace('/*__CHANGELOG__*/""', $changelog), (New-Object System.Text.UTF8Encoding($false)))
 
     # Syntax-check the page's script with Windows' own JavaScript engine (Chakra) so a typo can't ship.
     # That engine is older than the app's, so a few modern-but-valid spellings are rewritten in the check copy only.
