@@ -1164,10 +1164,6 @@ p.lead, .lib-note { margin: 0 0 12px; max-width: 920px; font-size: 13.5px; line-
 
 /* Server settings: sections */
 #server-settings-panel { display: grid; gap: 14px; }
-.prop-check { display: flex; align-items: flex-start; gap: 9px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
-.prop-check input { flex: none; width: 16px; height: 16px; margin: 1px 0 0; accent-color: var(--accent); }
-.prop-check b { display: block; margin-bottom: 2px; font-weight: 600; color: var(--ink); font-size: 13.5px; }
-.prop-check.changed b { color: var(--accent); }
 .set-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 16px; padding: 10px 0; border-top: 1px solid var(--line); }
 .set-line:first-of-type { border-top: 0; }
 .set-line .l { font-weight: 600; font-size: 13.5px; }
@@ -1220,16 +1216,12 @@ p.lead, .lib-note { margin: 0 0 12px; max-width: 920px; font-size: 13.5px; line-
 .dir-pick { display: inline-flex; }
 .dir-pick button { padding: 6px 9px; font-size: 12px; }
 
-.props-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px 16px; }
 .prop { display: grid; align-content: start; gap: 4px; font-size: 12.5px; color: var(--muted); }
 .prop b { font-weight: 600; color: var(--ink); font-size: 13.5px; }
-.prop input[type=text], .prop input[type=number], .prop select, .all-props input { padding: 7px 9px; font: 400 13.5px/1.3 var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
-.prop input.changed, .prop select.changed, .all-props input.changed { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.prop input[type=text], .prop input[type=number], .prop select { padding: 7px 9px; font: 400 13.5px/1.3 var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
+.prop input.changed, .prop select.changed { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--ink); font-size: 13.5px; }
 .toggle input { width: 16px; height: 16px; accent-color: var(--accent); }
-.all-props { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 6px 12px; align-items: center; margin-top: 10px; font: 400 12.5px/1.3 var(--font-mono); }
-.all-props label { overflow-wrap: anywhere; color: var(--muted); }
-.all-props input { font-family: var(--font-mono); font-size: 12.5px; padding: 5px 8px; }
 details.more > summary { cursor: pointer; font: 600 13.5px/1.3 var(--font-display); margin-top: 16px; }
 
 .snap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--line); }
@@ -11842,61 +11834,148 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
 
   // ---- Settings (server.properties, memory, restarts and backups) ----
 
-  var PROP_GROUPS = [["access", "Joining & access"], ["play", "Gameplay"], ["perf", "Performance"]];
+  // Laid out like Shared › Game settings: a folding box per group, a row per setting, sliders where there's a
+  // sensible range, a reset to Minecraft's default, and the save bar while something's changed. Every line of
+  // server.properties is here: the ones Minecraft 1.21.1 writes are grouped and named below, anything else
+  // (a mod's, a newer version's) shows under Other settings.
+  var PROP_GROUPS = [
+    ["access", "Joining & access", true], ["play", "Gameplay", true], ["world", "World", false, "Used when the server makes a new world: changing them doesn't alter the one it has."],
+    ["perf", "Performance", true], ["restarts", "Restarts & backups", true, "Done by this app while the server runs from here. These save straight away."],
+    ["pack", "Resource pack", false], ["remote", "Remote control (RCON & query)", false], ["other", "Other settings", false]
+  ];
+  var PERM_LEVELS = [["1", "1: bypass spawn protection"], ["2", "2: cheats and command blocks"], ["3", "3: kick, ban and op"], ["4", "4: everything, including stop"]];
   var PROP_FIELDS = [
     { key: "motd", group: "access", def: "A Minecraft Server", label: "Server name", type: "text", hint: "Shown under the server in the multiplayer list." },
     { key: "max-players", group: "access", def: "20", label: "Max players", type: "number", min: 1, max: 500 },
     { key: "server-port", group: "access", def: "25565", label: "Port", type: "number", min: 1024, max: 65535, hint: "Friends outside your network need this port forwarded." },
+    { key: "server-ip", group: "access", def: "", label: "Listen on address", type: "text", hint: "Blank: every network the PC is on." },
     { key: "white-list", group: "access", def: "false", label: "Whitelist", type: "bool", hint: "Only players on the whitelist can join." },
     { key: "enforce-whitelist", group: "access", def: "false", label: "Kick players who aren't on the whitelist", type: "bool", hint: "When the whitelist changes while they're online." },
     { key: "online-mode", group: "access", def: "true", label: "Check accounts with Microsoft (online mode)", type: "bool", hint: "Keep on. Off lets anyone join under any name." },
-    { key: "difficulty", group: "play", def: "easy", label: "Difficulty", type: "select", options: ["peaceful", "easy", "normal", "hard"] },
-    { key: "gamemode", group: "play", def: "survival", label: "Game mode for new players", type: "select", options: ["survival", "creative", "adventure", "spectator"] },
-    { key: "spawn-protection", group: "play", def: "16", label: "Spawn protection (blocks)", type: "number", min: 0, max: 64, hint: "Only operators can build this close to spawn. 0 turns it off." },
+    { key: "enforce-secure-profile", group: "access", def: "true", label: "Require signed chat", type: "bool", hint: "Players need a Mojang-signed chat key to join." },
+    { key: "prevent-proxy-connections", group: "access", def: "false", label: "Block proxies and VPNs", type: "bool" },
+    { key: "accepts-transfers", group: "access", def: "false", label: "Accept players sent from other servers", type: "bool" },
+    { key: "enable-status", group: "access", def: "true", label: "Answer the server list", type: "bool", hint: "Off: shows as offline in the multiplayer list, though players can still join." },
+    { key: "hide-online-players", group: "access", def: "false", label: "Hide who's online", type: "bool", hint: "From the server list." },
+    { key: "player-idle-timeout", group: "access", def: "0", label: "Kick idle players after", type: "number", min: 0, max: 120, unit: " min", zero: "Never" },
+    { key: "rate-limit", group: "access", def: "0", label: "Packet rate limit", type: "number", min: 0, max: 10000, hint: "Kicks players who send more packets a second than this. 0 turns it off." },
+    { key: "log-ips", group: "access", def: "true", label: "Log players' IP addresses", type: "bool" },
+    { key: "difficulty", group: "play", def: "easy", label: "Difficulty", type: "select", options: [["peaceful", "Peaceful"], ["easy", "Easy"], ["normal", "Normal"], ["hard", "Hard"]] },
+    { key: "gamemode", group: "play", def: "survival", label: "Game mode for new players", type: "select", options: [["survival", "Survival"], ["creative", "Creative"], ["adventure", "Adventure"], ["spectator", "Spectator"]] },
+    { key: "force-gamemode", group: "play", def: "false", label: "Put players in that game mode every time they join", type: "bool" },
+    { key: "hardcore", group: "play", def: "false", label: "Hardcore", type: "bool", hint: "One life: players who die become spectators." },
     { key: "pvp", group: "play", def: "true", label: "Players can hurt each other (PvP)", type: "bool" },
     { key: "allow-flight", group: "play", def: "false", label: "Allow flying", type: "bool", hint: "Keep on for modpacks: jetpacks and gliders otherwise get players kicked." },
-    { key: "hardcore", group: "play", def: "false", label: "Hardcore", type: "bool", hint: "One life: players who die become spectators." },
-    { key: "view-distance", group: "perf", def: "10", label: "View distance (chunks)", type: "number", min: 3, max: 32, hint: "Further looks better but costs the server CPU and memory." },
-    { key: "simulation-distance", group: "perf", def: "10", label: "Simulation distance (chunks)", type: "number", min: 3, max: 32, hint: "How far away crops grow and mobs move." }
+    { key: "allow-nether", group: "play", def: "true", label: "The Nether", type: "bool" },
+    { key: "spawn-monsters", group: "play", def: "true", label: "Hostile mobs", type: "bool" },
+    { key: "spawn-animals", group: "play", def: "true", label: "Animals", type: "bool" },
+    { key: "spawn-npcs", group: "play", def: "true", label: "Villagers", type: "bool" },
+    { key: "spawn-protection", group: "play", def: "16", label: "Spawn protection", type: "number", min: 0, max: 64, unit: " blocks", zero: "Off", hint: "Only operators can build this close to spawn." },
+    { key: "enable-command-block", group: "play", def: "false", label: "Command blocks", type: "bool" },
+    { key: "op-permission-level", group: "play", def: "4", label: "What operators can do", type: "select", options: PERM_LEVELS },
+    { key: "function-permission-level", group: "play", def: "2", label: "What data pack functions can do", type: "select", options: PERM_LEVELS },
+    { key: "broadcast-console-to-ops", group: "play", def: "true", label: "Show console commands to operators", type: "bool" },
+    { key: "broadcast-rcon-to-ops", group: "play", def: "true", label: "Show RCON commands to operators", type: "bool" },
+    { key: "level-name", group: "world", def: "world", label: "World folder", type: "text" },
+    { key: "level-seed", group: "world", def: "", label: "Seed", type: "text", hint: "Blank: a random one." },
+    { key: "level-type", group: "world", def: "minecraft:normal", label: "World type", type: "select", options: [["minecraft:normal", "Default"], ["minecraft:flat", "Superflat"], ["minecraft:large_biomes", "Large biomes"], ["minecraft:amplified", "Amplified"], ["minecraft:single_biome_surface", "Single biome"]] },
+    { key: "generate-structures", group: "world", def: "true", label: "Generate structures", type: "bool" },
+    { key: "generator-settings", group: "world", def: "{}", label: "Generator settings", type: "text", hint: "For superflat and single-biome worlds (JSON)." },
+    { key: "max-world-size", group: "world", def: "29999984", label: "World border radius", type: "number", min: 1, max: 29999984, unit: " blocks" },
+    { key: "initial-enabled-packs", group: "world", def: "vanilla", label: "Data packs turned on", type: "text" },
+    { key: "initial-disabled-packs", group: "world", def: "", label: "Data packs turned off", type: "text" },
+    { key: "view-distance", group: "perf", def: "10", label: "View distance", type: "number", min: 3, max: 32, unit: " chunks", hint: "Further looks better but costs the server CPU and memory." },
+    { key: "simulation-distance", group: "perf", def: "10", label: "Simulation distance", type: "number", min: 3, max: 32, unit: " chunks", hint: "How far away crops grow and mobs move." },
+    { key: "entity-broadcast-range-percentage", group: "perf", def: "100", label: "Entity display range", type: "number", min: 10, max: 1000, unit: "%", hint: "How far away players see mobs and items, compared with normal." },
+    { key: "max-tick-time", group: "perf", def: "60000", label: "Watchdog: stop the server after a tick takes", type: "number", min: -1, max: 600000, unit: " ms", hint: "-1 turns the watchdog off (modpacks often need that)." },
+    { key: "network-compression-threshold", group: "perf", def: "256", label: "Compress packets bigger than", type: "number", min: -1, max: 65536, unit: " bytes", hint: "-1: never compress. 0: compress everything." },
+    { key: "max-chained-neighbor-updates", group: "perf", def: "1000000", label: "Max chained block updates", type: "number", min: 1, max: 100000000 },
+    { key: "region-file-compression", group: "perf", def: "deflate", label: "World file compression", type: "select", options: [["deflate", "Deflate (normal)"], ["lz4", "LZ4 (faster, bigger)"], ["none", "None"]] },
+    { key: "sync-chunk-writes", group: "perf", def: "true", label: "Write chunks straight away", type: "bool", hint: "Safer if the PC crashes; off is a little faster." },
+    { key: "use-native-transport", group: "perf", def: "true", label: "Native network transport", type: "bool" },
+    { key: "enable-jmx-monitoring", group: "perf", def: "false", label: "JMX monitoring", type: "bool" },
+    { key: "require-resource-pack", group: "pack", def: "false", label: "Players must accept it", type: "bool", hint: "Players who decline are disconnected." },
+    { key: "resource-pack", group: "pack", def: "", label: "Download link", type: "text" },
+    { key: "resource-pack-id", group: "pack", def: "", label: "Pack ID (UUID)", type: "text" },
+    { key: "resource-pack-sha1", group: "pack", def: "", label: "SHA-1 checksum", type: "text" },
+    { key: "resource-pack-prompt", group: "pack", def: "", label: "Message when asking", type: "text" },
+    { key: "enable-rcon", group: "remote", def: "false", label: "RCON (remote console)", type: "bool" },
+    { key: "rcon.port", group: "remote", def: "25575", label: "RCON port", type: "number", min: 1, max: 65535 },
+    { key: "rcon.password", group: "remote", def: "", label: "RCON password", type: "password" },
+    { key: "enable-query", group: "remote", def: "false", label: "Query (GameSpy4 status)", type: "bool" },
+    { key: "query.port", group: "remote", def: "25565", label: "Query port", type: "number", min: 1, max: 65535 },
+    { key: "bug-report-link", group: "other", def: "", label: "Bug report link", type: "text" },
+    { key: "text-filtering-config", group: "other", def: "", label: "Text filtering config", type: "text" }
   ];
-  function markEdit(key, value, el) {
+
+  function markEdit(key, value) {
     var orig = srv.propsOriginal[key];
     if (String(value) === String(orig === undefined ? "" : orig)) delete srv.propsEdits[key]; else srv.propsEdits[key] = String(value);
-    el.classList.toggle("changed", key in srv.propsEdits);
     updatePropsFoot();
   }
   function updatePropsFoot() {
     var n = Object.keys(srv.propsEdits).length;
     if (!$("props-status")) return;
-    $("props-status").textContent = serverRunning() ? "Stop the server to change these: it rewrites server.properties while it runs."
-      : n ? count(n, "change", "changes") + " not saved yet." : "No changes.";
+    $("props-foot").hidden = !n;
+    $("props-status").textContent = serverRunning() ? "Stop the server to save these" : count(n, "unsaved change", "unsaved changes");
     $("props-save").disabled = !n || serverRunning() || !connected;
     $("props-undo").disabled = !n;
   }
-  function propControl(f, value, locked) {
+
+  // One server.properties line as a row. Controls carry .prop-in so they lock while the server runs.
+  function propRow(f, locked) {
+    var row = h("div", { class: "gopt-row" + (f.type === "bool" ? " is-bool" : "") });
+    var ctl = h("div", { class: "gopt-ctl" });
+    var cur = function () { var o = srv.propsOriginal[f.key]; return f.key in srv.propsEdits ? srv.propsEdits[f.key] : o === undefined ? "" : o; };
+    var reset = f.def == null ? null : h("button", { type: "button", class: "reset prop-in", disabled: locked, title: "Back to Minecraft's default (" + (f.def === "" ? "blank" : f.def) + ")", "aria-label": "Back to the default for " + f.label }, icon("refresh"));
+    var mark = function () {
+      row.classList.toggle("changed", f.key in srv.propsEdits);
+      if (reset) reset.classList.toggle("off", String(cur()) === String(f.def));
+    };
+    var set = function (v) { markEdit(f.key, v); mark(); };
+    var refresh;
     if (f.type === "bool") {
-      var cb = h("input", { type: "checkbox", class: "prop-in", checked: value === "true", disabled: locked });
-      var lab = h("label", { class: "prop-check" }, cb, h("span", null, h("b", null, f.label), f.hint || ""));
-      cb.addEventListener("change", function () { markEdit(f.key, cb.checked ? "true" : "false", lab); });
-      return lab;
-    }
-    var input;
-    if (f.type === "select") {
-      input = h("select", { class: "prop-in", disabled: locked });
+      var sw = h("button", { type: "button", class: "act sw-btn prop-in", role: "switch", disabled: locked, "aria-label": f.label }, h("span", { class: "sw", "aria-hidden": "true" }));
+      sw.addEventListener("click", function () { set(cur() === "true" ? "false" : "true"); refresh(); });
+      refresh = function () { var on = cur() === "true"; sw.classList.toggle("on", on); sw.setAttribute("aria-checked", String(on)); };
+      ctl.append(sw);
+    } else if (f.type === "select") {
+      var sel = h("select", { class: "prop-in", disabled: locked, "aria-label": f.label });
       var opts = f.options.slice();
-      if (value && opts.indexOf(value) < 0) opts.push(value);
-      opts.forEach(function (o) { input.append(h("option", { value: o }, o.charAt(0).toUpperCase() + o.slice(1))); });
-      input.value = value || f.options[0];
-      input.addEventListener("change", function () { markEdit(f.key, input.value, input); });
+      if (cur() && !opts.some(function (o) { return o[0] === cur(); })) opts.push([cur(), cur()]);
+      opts.forEach(function (o) { sel.append(h("option", { value: o[0] }, o[1])); });
+      sel.addEventListener("change", function () { set(sel.value); });
+      refresh = function () { sel.value = cur(); };
+      ctl.append(sel);
+    } else if (f.type === "number") {
+      var box = h("input", { type: "number", class: "prop-in", min: f.min, max: f.max, step: "1", disabled: locked, "aria-label": f.label, autocomplete: "off" });
+      box.addEventListener("input", function () { if (range && box.value !== "") range.value = box.value; set(box.value.trim()); });
+      // A slider as well when the range is small enough to drag through.
+      var range = f.max - f.min <= 1000 ? h("input", { type: "range", class: "prop-in", min: f.min, max: f.max, step: "1", disabled: locked, "aria-label": f.label }) : null;
+      if (range) {
+        range.addEventListener("input", function () { box.value = range.value; set(range.value); });
+        ctl.append(range);
+      }
+      ctl.append(box);
+      refresh = function () { box.value = cur(); if (range) { range.value = cur() === "" ? f.min : cur(); } };
     } else {
-      input = h("input", { type: f.type, class: "prop-in", min: f.min, max: f.max, maxlength: f.type === "text" ? 120 : null, disabled: locked, autocomplete: "off" });
-      input.value = value === undefined ? "" : value;
-      input.addEventListener("input", function () { markEdit(f.key, input.value, input); });
+      var text = h("input", { type: f.type === "password" ? "password" : "text", class: "prop-in", disabled: locked, maxlength: f.key === "motd" ? 120 : null, spellcheck: "false", autocomplete: "off", "aria-label": f.label });
+      text.addEventListener("input", function () { set(text.value); });
+      refresh = function () { text.value = cur(); };
+      ctl.append(text);
     }
-    return h("label", { class: "prop" }, h("b", null, f.label), input, f.hint ? h("span", null, f.hint) : null);
+    if (reset) {
+      reset.addEventListener("click", function () { set(f.def); refresh(); });
+      ctl.append(reset);
+    }
+    row.append(h("div", { class: "gopt-label" }, f.label, h("span", { class: "key" }, f.key), f.hint ? h("span", { class: "desc" }, f.hint) : null), ctl);
+    refresh();
+    mark();
+    return row;
   }
+
   // Memory lives in user_jvm_args.txt, not server.properties: saved straight away, used from the next start.
-  function memoryControl() {
+  function memoryRow() {
     var i = srv.info;
     var max = i.ramMb ? Math.max(2, Math.floor((i.ramMb - 2048) / 1024)) : 16;
     var cur = null;
@@ -11913,24 +11992,21 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         refreshServer();
       }, function (e) { toast(e.message); sel.value = cur ? String(cur) : ""; });
     });
-    return h("label", { class: "prop" }, h("b", null, "Memory"), sel,
-      h("span", null, "The most the server may use" + (i.ramMb ? " (this PC has " + Math.round(i.ramMb / 1024) + " GB)" : "") + ". Saved straight away, used from its next start."));
+    return h("div", { class: "gopt-row" }, h("div", { class: "gopt-label" }, "Memory", h("span", { class: "key" }, "user_jvm_args.txt"),
+      h("span", { class: "desc" }, "The most the server may use" + (i.ramMb ? " (this PC has " + Math.round(i.ramMb / 1024) + " GB)" : "") + ". Saved straight away, used from its next start.")),
+      h("div", { class: "gopt-ctl" }, sel));
   }
-  function setLine(label, desc, control) {
-    return h("div", { class: "set-line" }, h("div", null, h("div", { class: "l" }, label), h("div", { class: "d" }, desc)), control);
-  }
-  function scheduleCard() {
+  function restartRows() {
     var every = pref("serverRestart") || "off";
     var seg = h("div", { class: "seg-control", role: "group", "aria-label": "Restart on a schedule" });
-    var choices = [["off", "Off"], ["6", "6 h"], ["12", "12 h"], ["24", "24 h"]];
-    choices.forEach(function (c, k) {
+    [["off", "Off"], ["6", "6 h"], ["12", "12 h"], ["24", "24 h"]].forEach(function (c, k) {
       seg.append(h("button", { type: "button", "aria-pressed": String(every === c[0]), onclick: function () {
         Array.prototype.forEach.call(seg.children, function (b, n) { b.setAttribute("aria-pressed", String(n === k)); });
         savePref("serverRestart", c[0], true).then(refreshServer);
       } }, c[1]));
     });
     var on = !!pref("serverBackups");
-    var sw = h("button", { type: "button", class: "toggle sw-btn" + (on ? " on" : ""), role: "switch", "aria-checked": String(on), "aria-label": "Back up the server world" },
+    var sw = h("button", { type: "button", class: "act sw-btn" + (on ? " on" : ""), role: "switch", "aria-checked": String(on), "aria-label": "Back up the server world" },
       h("span", { class: "sw", "aria-hidden": "true" }));
     sw.addEventListener("click", function () {
       on = !on;
@@ -11938,11 +12014,13 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       sw.setAttribute("aria-checked", String(on));
       savePref("serverBackups", on, true);
     });
-    return h("section", { class: "card" }, h("h2", null, "Restarts & backups"),
-      h("p", { class: "lead" }, "Done by this app while the server runs from here. These save straight away."),
-      setLine("Restart on a schedule", "Warns players 5 and 1 minutes ahead, then stops the server and starts it again.", seg),
-      setLine("Back up the world", "At each scheduled restart, or once a day while it runs (saving is paused meanwhile). Backups are in the Backups tab.", sw));
+    var line = function (label, desc, control) {
+      return h("div", { class: "gopt-row" }, h("div", { class: "gopt-label" }, label, h("span", { class: "desc" }, desc)), h("div", { class: "gopt-ctl" }, control));
+    };
+    return [line("Restart on a schedule", "Warns players 5 and 1 minutes ahead, then stops the server and starts it again.", seg),
+      line("Back up the world", "At each scheduled restart, or once a day while it runs (saving is paused meanwhile). Backups are in the Backups tab.", sw)];
   }
+
   function renderSettings(force) {
     var p = $("server-settings-panel");
     var i = srv.info;
@@ -11955,40 +12033,57 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     }
     p.replaceChildren();
     srv.propsEdits = {};
+    if (!srv.propsFolded) srv.propsFolded = {};
+    if (srv.propsQ == null) srv.propsQ = "";
     if (!i || !i.configured || !i.exists) {
       p.append(h("p", { class: "search-empty" }, i ? "Choose the server folder first (above)." : "Loading…"));
       srv.settingsBuilt = false;
       return;
     }
     var props = propsMap(i.properties);
-    PROP_FIELDS.forEach(function (f) { if (!(f.key in props)) props[f.key] = f.def; });
+    PROP_FIELDS.forEach(function (f) { if (!(f.key in props)) props[f.key] = f.def; }); // missing lines read as Minecraft's default
     srv.propsOriginal = props;
+    var fields = PROP_FIELDS.slice(), known = {};
+    PROP_FIELDS.forEach(function (f) { known[f.key] = true; });
+    i.properties.forEach(function (kv) {
+      if (known[kv[0]]) return;
+      var v = kv[1];
+      fields.push({ key: kv[0], group: "other", def: null, label: humanKey(kv[0].replace(/[-.]+/g, " ")),
+        type: v === "true" || v === "false" ? "bool" : /password|secret/i.test(kv[0]) ? "password" : "text" });
+    });
     var note = h("p", { class: "warnbox", id: "props-note", style: "margin:0" }, "The server is running. Stop it to change the settings in server.properties: it rewrites that file while it runs. Memory, restarts and backups can change any time.");
     note.hidden = !serverRunning();
-    p.append(note);
-    PROP_GROUPS.forEach(function (g) {
-      var grid = h("div", { class: "props-grid" });
-      PROP_FIELDS.forEach(function (f) { if (f.group === g[0]) grid.append(propControl(f, props[f.key], locked)); });
-      if (g[0] === "perf") grid.append(memoryControl());
-      p.append(h("section", { class: "card" }, h("h2", null, g[1]),
-        g[0] === "access" ? h("p", { class: "lead" }, "From server.properties. Changes apply the next time the server starts, and the previous file is kept as server.properties.bak.") : null,
-        grid));
-    });
-    p.append(scheduleCard());
-    var known = PROP_FIELDS.map(function (f) { return f.key; });
-    var rest = i.properties.filter(function (kv) { return known.indexOf(kv[0]) < 0; });
-    var table = h("div", { class: "all-props" });
-    rest.forEach(function (kv) {
-      var input = h("input", { type: /password|secret/i.test(kv[0]) ? "password" : "text", class: "prop-in", "aria-label": kv[0], disabled: locked, autocomplete: "off", spellcheck: "false" });
-      input.value = kv[1];
-      input.addEventListener("input", function () { markEdit(kv[0], input.value, input); });
-      table.append(h("label", null, kv[0]), input);
-    });
-    p.append(h("section", { class: "card" }, h("details", { class: "more", style: "margin:0" }, h("summary", { style: "margin:0" }, "All other settings (" + rest.length + ")"),
-      h("p", { class: "hint" }, "Every other line of server.properties, as plain text. Change these only if you know what they do."), table)));
-    p.append(h("div", { class: "sticky-foot" }, h("span", { class: "grow", id: "props-status" }, "No changes."),
-      btn("Undo changes", function () { renderSettings(true); }, "", { id: "props-undo", disabled: true }),
-      btn("Save settings", saveProps, "primary", { id: "props-save", disabled: true })));
+    var search = h("input", { type: "search", placeholder: "Find a setting", "aria-label": "Find a server setting", spellcheck: "false", autocomplete: "off" });
+    search.value = srv.propsQ;
+    var body = h("div", { class: "always-list" });
+    var draw = function () {
+      var q = srv.propsQ.toLowerCase();
+      var match = function (label, key, hint) { return !q || (label + " " + key + " " + (hint || "")).toLowerCase().indexOf(q) >= 0; };
+      body.replaceChildren();
+      PROP_GROUPS.forEach(function (g) {
+        var rows = fields.filter(function (f) { return f.group === g[0] && match(f.label, f.key, f.hint); }).map(function (f) { return propRow(f, locked); });
+        if (g[0] === "perf" && match("Memory", "user_jvm_args.txt memory ram")) rows.push(memoryRow());
+        if (g[0] === "restarts") rows = rows.concat(match("Restart on a schedule back up the world backups", "") ? restartRows() : []);
+        if (!rows.length) return;
+        var det = h("details", { class: "gopt-sec" }, h("summary", null, g[1], h("span", { class: "k" }, count(rows.length, "setting", "settings"))));
+        det.open = !!q || (g[0] in srv.propsFolded ? !srv.propsFolded[g[0]] : g[2]);
+        det.addEventListener("toggle", function () { if (!q) srv.propsFolded[g[0]] = !det.open; });
+        if (g[3]) det.append(h("p", { class: "gopt-sec-d" }, g[3]));
+        rows.forEach(function (r) { det.append(r); });
+        body.append(det);
+      });
+      if (!body.children.length) body.append(h("p", { class: "hint" }, "No setting matches “" + srv.propsQ + "”."));
+    };
+    search.addEventListener("input", function () { srv.propsQ = search.value.trim(); draw(); });
+    search.addEventListener("keydown", function (e) { if (e.key === "Escape" && search.value) { e.stopPropagation(); search.value = ""; srv.propsQ = ""; draw(); } });
+    p.append(note,
+      h("div", { class: "gopt-tools" }, h("label", { class: "search" }, icon("search"), search),
+        h("span", { class: "hint" }, "From server.properties. Changes apply the next time the server starts; the previous file is kept as server.properties.bak.")),
+      body,
+      h("div", { class: "gopt-save", id: "props-foot", hidden: true }, h("span", { class: "n", id: "props-status" }),
+        btn("Discard", function () { renderSettings(true); }, "", { id: "props-undo", disabled: true }),
+        btn("Save", saveProps, "primary", { id: "props-save", disabled: true })));
+    draw();
     srv.settingsBuilt = true;
     updatePropsFoot();
   }

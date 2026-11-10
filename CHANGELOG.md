@@ -13,6 +13,7 @@ and after an update it offers what's new since the last time it was opened.
 - Shared → Game settings: every game setting in one place, grouped like the game's own menus (video, sound, controls, chat, accessibility, skin, language, online and more), with sliders, switches and lists, a search box and a reset to the game's default on each. Mods' own settings in options.txt (their sound volumes and switches) are there too. Saving writes them to every instance that shares its game settings.
 - Game settings also has the video pages mods add to the game's own menu: Sodium (quality, performance, advanced), Sodium Extra, More Culling and Iris's shader options, saved into those mods' own config files in each sharing instance.
 - Configs: every setting is laid out like Game settings, in folding boxes per section, with sliders where a mod gives a range, a reset to the mod's default on each, and the same save bar. Opening the app straight onto Configs shows the file list again.
+- Server › Settings in the same style: every line of server.properties named and grouped (joining & access, gameplay, world, performance, resource pack, remote control), with switches, sliders, lists, search and resets, plus memory, restarts and backups in their own sections.
 - Selecting no longer nudges anything: the list stays exactly where it is, and every selection bar keeps its height (its buttons wait greyed out until something is picked).
 
 ## 2026-11-08

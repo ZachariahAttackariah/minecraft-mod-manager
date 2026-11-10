@@ -280,8 +280,17 @@ namespace MinecraftModManager
             return Obj("ok", true, "changed", changes.Count);
         }
 
+        // Every setting Minecraft 1.21.1 writes, so the page can set one a file doesn't have yet.
         static readonly string[] KnownProperties = { "motd", "max-players", "difficulty", "gamemode", "pvp", "white-list", "enforce-whitelist",
-            "view-distance", "simulation-distance", "server-port", "spawn-protection", "allow-flight", "hardcore", "online-mode" };
+            "view-distance", "simulation-distance", "server-port", "spawn-protection", "allow-flight", "hardcore", "online-mode",
+            "server-ip", "enforce-secure-profile", "prevent-proxy-connections", "accepts-transfers", "enable-status", "hide-online-players",
+            "player-idle-timeout", "rate-limit", "log-ips", "force-gamemode", "allow-nether", "spawn-monsters", "spawn-animals", "spawn-npcs",
+            "enable-command-block", "op-permission-level", "function-permission-level", "broadcast-console-to-ops", "broadcast-rcon-to-ops",
+            "level-name", "level-seed", "level-type", "generate-structures", "generator-settings", "max-world-size", "initial-enabled-packs",
+            "initial-disabled-packs", "entity-broadcast-range-percentage", "max-tick-time", "network-compression-threshold",
+            "max-chained-neighbor-updates", "region-file-compression", "sync-chunk-writes", "use-native-transport", "enable-jmx-monitoring",
+            "require-resource-pack", "resource-pack", "resource-pack-id", "resource-pack-sha1", "resource-pack-prompt", "enable-rcon",
+            "rcon.port", "rcon.password", "enable-query", "query.port", "bug-report-link", "text-filtering-config" };
 
         static bool SecretProperty(string key) { return key.IndexOf("password", StringComparison.OrdinalIgnoreCase) >= 0 || key.IndexOf("secret", StringComparison.OrdinalIgnoreCase) >= 0; }
 
