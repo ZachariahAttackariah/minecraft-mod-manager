@@ -1034,6 +1034,20 @@ details.fine > .set-row:first-of-type { border-top: 1px solid var(--line); }
 .pv-font { font-size: 15px; font-weight: 600; color: var(--ink); white-space: nowrap; }
 .pv-mini { width: 15px; height: 8px; border-radius: 2px; }
 .pv-more { font: 600 9px/1 var(--font-body); color: var(--muted); }
+.pv-track { position: relative; flex: 1; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 15%, transparent); }
+.pv-slide { position: absolute; top: -3px; left: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+.pv-slide.moving { animation: pv-slide 1.6s ease-in-out infinite alternate; }
+@keyframes pv-slide { from { left: 0; } to { left: calc(100% - 12px); } }
+.bg-pic .look-cards { flex: 1 1 100%; }
+.gopt-ctl.pv-stack { flex-direction: column; align-items: stretch; gap: 8px; }
+.gopt-ctl.pv-stack .seg-control { align-self: flex-start; }
+.pv-sample { padding: 6px 8px; background: var(--sunken); border: 1px solid var(--line); border-radius: 4px; }
+.pv-modrow { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 12.5px; }
+.pv-modname { display: grid; flex: 1; min-width: 0; }
+.pv-modname b { font-weight: 600; }
+.pv-modname code { font: 400 11px/1.3 var(--font-mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv-col { flex: none; display: inline-flex; align-items: center; font: 400 11.5px/1 var(--font-mono); color: var(--muted); }
+.pv-slot { display: inline-grid; place-items: center; width: 16px; height: 16px; font: 600 9.5px/1 var(--font-body); color: var(--slot-ink); background: var(--c-client); border-radius: 2px; }
 .preset-card.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .preset-swatch { display: flex; height: 22px; border-radius: 3px; overflow: hidden; }
 .preset-swatch span { flex: 1; }
@@ -8668,7 +8682,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       { key: "contrast", label: "Contrast", desc: "High makes secondary text and lines easier to see.", choices: [["normal", "Normal"], ["high", "High"]], fine: true },
       { key: "density", label: "Row spacing", desc: "Compact fits more on screen.", choices: [["comfortable", "Comfortable"], ["compact", "Compact"]], fine: true },
       { key: "motion", label: "Animation", desc: "Follow Windows respects its animation setting.", choices: [["system", "Follow Windows"], ["on", "Always"], ["reduce", "Reduce"]], fine: true },
-      { key: "blockyTitle", label: "Pixel font", desc: "The title, PLAY and dialog titles in the game's pixel font.", fine: true },
+      { key: "blockyTitle", label: "Pixel font", desc: "The title, PLAY and dialog titles in the game's pixel font.", choices: [[false, "Plain"], [true, "Pixel"]], get: function () { return !!pref("blockyTitle"); }, fine: true },
       { key: "userCss", label: "Your own styles (user.css)", desc: "", custom: userCssControl, fine: true }
     ] },
     { id: "list", title: "Mod List", items: [
@@ -8735,10 +8749,14 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     }) : null;
     var dim = null;
     if (bg) {
-      dim = h("div", { class: "seg-control", role: "group", "aria-label": "How strongly the picture shows" });
-      [["40", "Bold"], ["60", "Clear"], ["75", "Soft"], ["90", "Faint"]].forEach(function (c) {
-        dim.append(h("button", { type: "button", title: "Dims the picture " + c[0] + "%", "aria-pressed": String(pref("bgDim") === c[0]), onclick: function () { savePref("bgDim", c[0]); } }, c[1]));
-      });
+      // The picture itself at each strength.
+      var picUrl = "url(\"/api/background-image?t=" + encodeURIComponent(TOKEN) + "&v=" + bg.version + "\")";
+      dim = previewCards("How strongly the picture shows", [["40", "Bold"], ["60", "Clear"], ["75", "Soft"], ["90", "Faint"]], pref("bgDim"),
+        function (v) { savePref("bgDim", v); },
+        function (v) {
+          var veil = "color-mix(in srgb, var(--bg) " + v + "%, transparent)";
+          return pvBox("background:linear-gradient(" + veil + ", " + veil + "), " + picUrl + " center / cover no-repeat", [h("span", { class: "pv-name", style: "color:var(--ink)" }, "Text")]);
+        });
     }
     return h("div", null,
       h("div", { class: "d" }, bg ? "Shown behind everything, dimmed so text stays readable. Bold shows it most, Faint barely." :
@@ -9023,14 +9041,39 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       return pvBox("flex-wrap:wrap;align-content:center;gap:3px", kids);
     }
   };
-  // A row of these cards in place of the plain buttons.
-  function lookCards(s, value, choose) {
-    var cards = h("div", { class: "look-cards", role: "group", "aria-label": s.label });
-    s.choices.forEach(function (c) {
+  LOOK_PREVIEWS.textSize = function (v) {
+    return pvBox("justify-content:center", [h("span", { class: "pv-font", style: "font-size:" + (13 * Number(v) / 100).toFixed(1) + "px" }, "Aa")]);
+  };
+  // Animation: a dot that slides, or stays put. Follow Windows shows what Windows' setting gives now.
+  LOOK_PREVIEWS.motion = function (v) {
+    var moves = v === "on" || (v === "system" && !(reducedMotion && reducedMotion.matches));
+    return pvBox("padding:5px 8px", [h("span", { class: "pv-track" }, h("span", { class: "pv-slide" + (moves ? " moving" : "") }))]);
+  };
+  LOOK_PREVIEWS.blockyTitle = function (v) {
+    return pvBox("justify-content:center", [h("span", { class: "pv-font", style: v ? "font-family:var(--font-blocky);font-weight:400;font-size:14px;letter-spacing:0.05em" : "" }, "PLAY")]);
+  };
+  // Cards in place of plain buttons: each choice with a small preview of what it does.
+  function previewCards(label, choices, value, choose, preview) {
+    var cards = h("div", { class: "look-cards", role: "group", "aria-label": label });
+    choices.forEach(function (c) {
       cards.append(h("button", { type: "button", class: "look-card", "aria-pressed": String(value === c[0]), onclick: function () { choose(c[0]); } },
-        LOOK_PREVIEWS[s.key](c[0]), h("span", null, c[1])));
+        preview(c[0]), h("span", null, c[1])));
     });
     return cards;
+  }
+  function lookCards(s, value, choose) { return previewCards(s.label, s.choices, value, choose, LOOK_PREVIEWS[s.key]); }
+
+  // Settings › Mod List › Show: a sample row with just the parts that are switched on.
+  function columnsPreview() {
+    var on = function (k) { return !!pref(k); };
+    var row = h("div", { class: "pv-modrow" });
+    if (on("showIcons")) row.append(h("span", { class: "pv-icon", style: "width:22px;height:22px" }));
+    row.append(h("span", { class: "pv-modname" }, h("b", null, "Sodium"), on("fileNames") ? h("code", null, "sodium-neoforge-0.6.13.jar") : null));
+    if (on("colVersion")) row.append(h("span", { class: "pv-col" }, "0.6.13"));
+    if (on("colSide")) row.append(h("span", { class: "pv-col" }, h("span", { class: "pv-slot" }, "C")));
+    if (on("colTags")) row.append(h("span", { class: "pv-col" }, pvChip("client", "var(--c-client)", tagLook() === "solid" || tagLook() === "outline" ? tagLook() : "tint")));
+    row.append(h("span", { class: "pv-sw" }));
+    return row;
   }
   var fineOpen = false;
   // Settings: the sections listed down the left (a click opens and scrolls to one), each a box like the ones in
@@ -9079,16 +9122,23 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
           picker.addEventListener("change", function () { savePref("accentColor", picker.value).then(function () { return savePref("accent", "custom"); }); });
           control.append(h("label", { class: "swatch-btn custom" + (pref("accent") === "custom" ? " on" : ""), style: "background:" + pref("accentColor"), title: "Any colour" }, picker));
         } else if (s.multi) {
-          // Several on/off settings side by side, each its own toggle.
+          // Several on/off settings side by side, each its own toggle (the columns with a sample row under them).
           control = h("div", { class: "seg-control", role: "group", "aria-label": s.label });
+          var sample = s.key === "columns" ? h("div", { class: "pv-sample" }, columnsPreview()) : null;
           s.multi.forEach(function (m) {
             var b = h("button", { type: "button", "aria-pressed": String(!!pref(m[0])), onclick: function () {
               var on = b.getAttribute("aria-pressed") !== "true";
               b.setAttribute("aria-pressed", String(on));
               savePref(m[0], on, true);
+              if (sample) sample.replaceChildren(columnsPreview());
             } }, m[1]);
             control.append(b);
           });
+          if (sample) {
+            into.append(h("div", { class: "gopt-row wide" }, h("div", { class: "gopt-label" }, s.label, s.desc ? h("span", { class: "desc" }, s.desc) : null),
+              h("div", { class: "gopt-ctl pv-stack" }, control, sample)));
+            return;
+          }
         } else if (s.choices) {
           control = h("div", { class: "seg-control", role: "group", "aria-label": s.label });
           s.choices.forEach(function (c) {
