@@ -18,6 +18,7 @@ and after an update it offers what's new since the last time it was opened.
 - Tabs with two words are in title case (Key Binds, Resource Packs, Game Settings, Mods & Configs…).
 - More looks: Copper, Prismarine and Cherry accents; a shade for the dark theme (Charcoal, Deepslate, Midnight, Spruce, Black) and for the light one (Snow, Birch, Stone); glass panels; a choice of font; high contrast; and Ocean and Cherry Grove quick looks.
 - Text sizes above 120% save again.
+- Look settings show a preview of every choice: theme, shades, tags, background, corners, panels, font, contrast, row spacing, rows, row buttons and tags per row are cards you can compare side by side.
 - Settings on a phone: the sections in one row you swipe, quick looks filling the width, and rows of buttons (like the shades) under their name instead of squeezing it.
 - Selecting no longer nudges anything: the list stays exactly where it is, and every selection bar keeps its height (its buttons wait greyed out until something is picked).
 

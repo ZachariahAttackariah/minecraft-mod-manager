@@ -1012,6 +1012,28 @@ details.fine > .set-row:first-of-type { border-top: 1px solid var(--line); }
 .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .preset-card { display: grid; gap: 6px; width: 104px; padding: 8px; text-align: left; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
 .preset-card:hover { border-color: var(--muted); }
+/* Look settings as cards, each with a small preview of what it does. */
+.gopt-row.wide > .gopt-ctl { justify-content: flex-start; }
+.look-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; width: 100%; margin-top: 2px; }
+.look-card { display: grid; gap: 6px; min-width: 0; padding: 7px; text-align: left; font: 600 12.5px/1.2 var(--font-body); color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 4px; cursor: pointer; }
+.look-card:hover { border-color: var(--muted); }
+.look-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.look-pv { display: flex; align-items: center; gap: 4px; height: 46px; padding: 5px; overflow: hidden; background: var(--bg); border: 1px solid var(--line); border-radius: 3px; }
+.pv-panel { display: grid; align-content: center; gap: 2px; flex: 1; min-width: 0; height: 100%; padding: 3px 6px; position: relative; border: 1px solid transparent; border-radius: 3px; }
+.pv-name { font: 700 10.5px/1.1 var(--font-body); }
+.pv-desc { font: 400 9.5px/1.1 var(--font-body); }
+.pv-dot { position: absolute; right: 5px; top: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.pv-chip { padding: 2px 4px; font: 600 9.5px/1 var(--font-body); white-space: nowrap; border: 1px solid; border-radius: 3px; }
+.pv-row { display: flex; align-items: center; gap: 4px; min-height: 0; }
+.pv-icon { flex: none; border-radius: 2px; background: color-mix(in srgb, var(--accent) 55%, var(--surface)); }
+.pv-bar { flex: 1; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 35%, transparent); }
+.pv-sw { flex: none; width: 13px; height: 7px; border-radius: 4px; background: var(--accent); }
+.pv-bin { flex: none; width: 6px; height: 7px; border-radius: 1px; background: var(--muted); }
+.pv-btn { padding: 4px 7px; font: 700 9.5px/1 var(--font-body); color: #fff; background: var(--accent); }
+.pv-card { flex: 1; height: 100%; background: var(--surface); border: 1px solid var(--line); }
+.pv-font { font-size: 15px; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.pv-mini { width: 15px; height: 8px; border-radius: 2px; }
+.pv-more { font: 600 9px/1 var(--font-body); color: var(--muted); }
 .preset-card.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .preset-swatch { display: flex; height: 22px; border-radius: 3px; overflow: hidden; }
 .preset-swatch span { flex: 1; }
@@ -8889,6 +8911,127 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     if (a && $("settings-body").contains(a) && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return;
     renderPrefs();
   }
+  // ---- Previews for the look settings: each choice is a small card showing what it does ----
+  // Drawn with inline styles, so every card shows its own option whatever is chosen now.
+  function pvBox(style, kids) {
+    var el = h("div", { class: "look-pv" });
+    if (style) el.setAttribute("style", style);
+    (kids || []).forEach(function (k) { el.append(k); });
+    return el;
+  }
+  // A tiny window: page colour, a panel, a name and a line of fainter text.
+  function pvWindow(c) {
+    return pvBox("background:" + c.bg, [h("div", { class: "pv-panel", style: "background:" + c.surface + ";border-color:" + c.line },
+      h("span", { class: "pv-name", style: "color:" + c.ink }, "Name"),
+      h("span", { class: "pv-desc", style: "color:" + c.muted }, "details"),
+      h("span", { class: "pv-dot" }))]);
+  }
+  var PV_DARK = { bg: "#1c1e21", surface: "#25282c", line: "#33373c", ink: "#eef1f3", muted: "#9da3aa" };
+  var PV_LIGHT = { bg: "#eceff2", surface: "#ffffff", line: "#d3d8de", ink: "#15181b", muted: "#59616a" };
+  var PV_SHADES = {
+    charcoal: PV_DARK,
+    deepslate: { bg: "#1a1d22", surface: "#22262d", line: "#323843", ink: "#eef1f3", muted: "#9da3aa" },
+    midnight: { bg: "#0f1420", surface: "#161d2c", line: "#28324a", ink: "#eef1f3", muted: "#9da3aa" },
+    spruce: { bg: "#1f1b18", surface: "#28231f", line: "#3a332c", ink: "#eef1f3", muted: "#9da3aa" },
+    black: { bg: "#000000", surface: "#0e0f10", line: "#26282b", ink: "#eef1f3", muted: "#9da3aa" },
+    snow: PV_LIGHT,
+    birch: { bg: "#efe9de", surface: "#fbf8f2", line: "#dad0bf", ink: "#15181b", muted: "#59616a" },
+    stone: { bg: "#dfe2e6", surface: "#eef0f2", line: "#c4cad1", ink: "#15181b", muted: "#59616a" }
+  };
+  function pvLight() { return document.documentElement.getAttribute("data-theme") === "light"; }
+  // Sample tags, coloured the way colorOf() colours tags with no colour of their own.
+  function pvTagColor(i, soft) {
+    var light = pvLight();
+    var sat = soft ? (i % 3 === 2 ? 32 : 44) : (i % 3 === 2 ? 84 : 96);
+    var lig = light ? (i % 2 ? 36 : 43) : soft ? (i % 2 ? 66 : 74) : (i % 2 ? 55 : 62);
+    return "hsl(" + ((i * 137.508 + 185) % 360).toFixed(1) + " " + sat + "% " + lig + "%)";
+  }
+  function pvChip(text, c, look) {
+    var css = look === "solid" ? "color:#fff;background:" + (pvLight() ? c : "color-mix(in srgb, " + c + " 78%, #000)") + ";border-color:transparent"
+      : "color:color-mix(in srgb, " + c + " 80%, var(--ink));background:" + (look === "outline" ? "transparent" : "color-mix(in srgb, " + c + " 13%, transparent)")
+        + ";border-color:color-mix(in srgb, " + c + " " + (look === "outline" ? 75 : 36) + "%, transparent)";
+    return h("span", { class: "pv-chip", style: css }, text);
+  }
+  function pvRows(n, gap, icon, extra) {
+    var box = pvBox("flex-direction:column;align-items:stretch;justify-content:center;gap:" + gap + "px;padding:2px 6px");
+    for (var i = 0; i < n; i++) {
+      var row = h("div", { class: "pv-row" }, h("span", { class: "pv-icon", style: "width:" + icon + "px;height:" + icon + "px" }), h("span", { class: "pv-bar" }));
+      if (extra) extra(row, i);
+      box.append(row);
+    }
+    return box;
+  }
+  var PV_FONTS = { noto: "\"Noto Sans\", \"Segoe UI\", sans-serif", grotesk: "\"Space Grotesk\", \"Segoe UI\", sans-serif",
+    system: "\"Segoe UI Variable Text\", \"Segoe UI\", system-ui, sans-serif", verdana: "Verdana, \"DejaVu Sans\", sans-serif" };
+  var LOOK_PREVIEWS = {
+    theme: function (v) {
+      if (v !== "system") return pvWindow(v === "light" ? PV_LIGHT : PV_DARK);
+      // Half dark, half light.
+      return pvBox("background:linear-gradient(90deg, " + PV_DARK.bg + " 50%, " + PV_LIGHT.bg + " 50%)", [PV_DARK, PV_LIGHT].map(function (c) {
+        return h("div", { class: "pv-panel", style: "background:" + c.surface + ";border-color:" + c.line }, h("span", { class: "pv-name", style: "color:" + c.ink }, "Aa"));
+      }));
+    },
+    darkShade: function (v) { return pvWindow(PV_SHADES[v]); },
+    lightShade: function (v) { return pvWindow(PV_SHADES[v]); },
+    tagLook: function (v) {
+      var look = v === "solid" || v === "outline" ? v : "tint", soft = v === "soft";
+      return pvBox("gap:3px", [pvChip("mob", pvTagColor(1, soft), look), pvChip("ore", pvTagColor(2, soft), look), pvChip("gui", pvTagColor(3, soft), look)]);
+    },
+    background: function (v) {
+      var tint = pvLight() ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.07)";
+      var glow = "radial-gradient(90px 40px at 15% -10%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 75%)";
+      var grid = "conic-gradient(" + tint + " 25%, transparent 0 50%, " + tint + " 0 75%, transparent 0) 0 0 / 12px 12px";
+      return pvBox("background:" + (v === "glow" ? glow + ", var(--bg)" : v === "blocks" ? grid + ", var(--bg)" : "var(--bg)"));
+    },
+    corners: function (v) {
+      var r = v === "square" ? "0" : "5px";
+      var btnEl = h("span", { class: "pv-btn" }, "PLAY"), boxEl = h("span", { class: "pv-card" });
+      [btnEl, boxEl].forEach(function (el) { el.style.setProperty("border-radius", r, "important"); });
+      return pvBox(null, [btnEl, boxEl]);
+    },
+    density: function (v) { return v === "compact" ? pvRows(4, 2, 6) : pvRows(3, 5, 9); },
+    panels: function (v) {
+      var panel = h("div", { class: "pv-panel" }, h("span", { class: "pv-name" }, "Panel"));
+      panel.setAttribute("style", v === "glass" ? "background:color-mix(in srgb, var(--surface) 50%, transparent);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)" : "background:var(--surface)");
+      return pvBox("background:radial-gradient(circle at 30% 50%, var(--accent) 0 28%, transparent 30%), radial-gradient(circle at 75% 40%, #ff4f93 0 22%, transparent 24%), var(--bg)", [panel]);
+    },
+    font: function (v) { return pvBox("justify-content:center", [h("span", { class: "pv-font", style: "font-family:" + PV_FONTS[v] }, "Aa Bb 123")]); },
+    contrast: function (v) {
+      var light = pvLight(), high = v === "high";
+      return pvWindow({ bg: "var(--bg)", surface: "var(--surface)",
+        ink: high ? (light ? "#000" : "#fff") : (light ? "#15181b" : "#eef1f3"),
+        muted: high ? (light ? "#353b42" : "#c6cbd1") : (light ? "#59616a" : "#9da3aa"),
+        line: high ? (light ? "#9aa2ab" : "#555c66") : (light ? "#d3d8de" : "#33373c") });
+    },
+    rowStyle: function (v) {
+      return pvRows(3, 0, 7, function (row, i) {
+        row.style.padding = "3px 2px";
+        if (v === "zebra") { if (i % 2) row.style.background = "color-mix(in srgb, var(--surface) 85%, var(--ink) 6%)"; }
+        else if (i < 2) row.style.borderBottom = "1px solid var(--line)";
+      });
+    },
+    rowActions: function (v) {
+      return pvRows(2, 7, 9, function (row) {
+        var faint = v === "hover" ? "opacity:0.25" : "";
+        row.append(h("span", { class: "pv-sw", style: faint }), h("span", { class: "pv-bin", style: faint }));
+      });
+    },
+    tagsPerRow: function (v) {
+      var n = v === "all" ? 7 : Number(v), kids = [];
+      for (var i = 0; i < n; i++) kids.push(h("span", { class: "pv-mini", style: "background:" + pvTagColor(i + 1, pref("tagColors") === "soft") }));
+      if (n < 7) kids.push(h("span", { class: "pv-more" }, "+" + (7 - n)));
+      return pvBox("flex-wrap:wrap;align-content:center;gap:3px", kids);
+    }
+  };
+  // A row of these cards in place of the plain buttons.
+  function lookCards(s, value, choose) {
+    var cards = h("div", { class: "look-cards", role: "group", "aria-label": s.label });
+    s.choices.forEach(function (c) {
+      cards.append(h("button", { type: "button", class: "look-card", "aria-pressed": String(value === c[0]), onclick: function () { choose(c[0]); } },
+        LOOK_PREVIEWS[s.key](c[0]), h("span", null, c[1])));
+    });
+    return cards;
+  }
   var fineOpen = false;
   // Settings: the sections listed down the left (a click opens and scrolls to one), each a box like the ones in
   // Shared › Game settings, with a row per setting. These save as soon as they're changed.
@@ -8920,6 +9063,11 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         var value = s.get ? s.get() : pref(s.key);
         var choose = function (v) { return s.set ? s.set(v) : savePref(s.key, v); };
         if (s.custom) { into.append(h("div", { class: "gopt-row wide" }, s.label ? h("div", { class: "gopt-label" }, s.label) : null, s.custom())); return; }
+        if (s.choices && LOOK_PREVIEWS[s.key]) {
+          into.append(h("div", { class: "gopt-row wide" }, h("div", { class: "gopt-label" }, s.label, s.desc ? h("span", { class: "desc" }, s.desc) : null),
+            h("div", { class: "gopt-ctl" }, lookCards(s, value, choose))));
+          return;
+        }
         var control;
         if (s.swatches) {
           control = h("div", { class: "swatches", role: "group", "aria-label": s.label });
