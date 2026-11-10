@@ -681,20 +681,194 @@ namespace MinecraftModManager
 
         static readonly Regex OptionKeyName = new Regex(@"^[A-Za-z0-9_.\-]+$");
 
+        // Mods that put their settings into the game's own Options menus (Sodium's video pages, the pages Sodium
+        // Extra and More Culling add to them, Iris's shader options). They keep them in their own config files,
+        // which the editor reads from and writes into each sharing instance's config folder.
+        static readonly string[] MenuConfigFiles = { "sodium-options.json", "sodium-extra-options.json", "moreculling.toml", "iris.properties" };
+
+        static string MenuConfigFormat(string file)
+        {
+            return file.EndsWith(".json") ? "json" : file.EndsWith(".toml") ? "toml" : "properties";
+        }
+
+        // Each setting as [path, value as the file writes it]: JSON paths are keys joined by "/", TOML ones the
+        // section, "/" and the key. Lists and empty groups are left out.
+        static List<object> ReadMenuConfig(string path, string format)
+        {
+            var list = new List<object>();
+            string text = File.ReadAllText(path, Encoding.UTF8);
+            if (format == "json")
+            {
+                var js = new JavaScriptSerializer();
+                Action<object, string> walk = null;
+                walk = (v, at) =>
+                {
+                    var d = v as Dictionary<string, object>;
+                    if (d != null) { foreach (KeyValuePair<string, object> kv in d) walk(kv.Value, at.Length == 0 ? kv.Key : at + "/" + kv.Key); return; }
+                    if (at.Length == 0 || v is object[] || v is System.Collections.ArrayList) return;
+                    list.Add(new object[] { at, v == null ? "null" : js.Serialize(v) });
+                };
+                walk(js.DeserializeObject(text), "");
+            }
+            else if (format == "toml")
+            {
+                foreach (TomlEntry e in ReadToml(path).Entries)
+                    if (e.Type != "list" && e.Type != "other") list.Add(new object[] { (e.Section.Length > 0 ? e.Section + "/" : "") + e.Key, e.Raw });
+            }
+            else
+            {
+                foreach (string line in text.Replace("\r\n", "\n").Split('\n'))
+                {
+                    string t = line.Trim();
+                    if (t.Length == 0 || t.StartsWith("#") || t.StartsWith("!")) continue;
+                    int at = t.IndexOfAny(new[] { '=', ':' });
+                    if (at > 0) list.Add(new object[] { t.Substring(0, at).Trim(), t.Substring(at + 1).Trim() });
+                }
+            }
+            return list;
+        }
+
+        static void WriteJsonPretty(StringBuilder sb, object v, string indent, JavaScriptSerializer js)
+        {
+            var d = v as Dictionary<string, object>;
+            var a = v as object[];
+            if (d != null)
+            {
+                if (d.Count == 0) { sb.Append("{}"); return; }
+                sb.Append("{\n");
+                int n = 0;
+                foreach (KeyValuePair<string, object> kv in d)
+                {
+                    sb.Append(indent).Append("  ").Append(js.Serialize(kv.Key)).Append(": ");
+                    WriteJsonPretty(sb, kv.Value, indent + "  ", js);
+                    sb.Append(++n < d.Count ? ",\n" : "\n");
+                }
+                sb.Append(indent).Append("}");
+            }
+            else if (a != null)
+            {
+                if (a.Length == 0) { sb.Append("[]"); return; }
+                sb.Append("[\n");
+                for (int i = 0; i < a.Length; i++)
+                {
+                    sb.Append(indent).Append("  ");
+                    WriteJsonPretty(sb, a[i], indent + "  ", js);
+                    sb.Append(i + 1 < a.Length ? ",\n" : "\n");
+                }
+                sb.Append(indent).Append("]");
+            }
+            else if (v == null) sb.Append("null");
+            else if (v is bool) sb.Append((bool)v ? "true" : "false");
+            else if (v is string) sb.Append(js.Serialize(v));
+            else sb.Append(Convert.ToString(v, CultureInfo.InvariantCulture));
+        }
+
+        // The new text of one config file with the edits in, or null when none of the settings is in it.
+        static string EditMenuConfig(string path, string format, List<KeyValuePair<string, string>> edits)
+        {
+            string text = File.ReadAllText(path, Encoding.UTF8);
+            // The line ending most of its lines use (some files mix them), and whether it ends with one.
+            int crlf = Regex.Matches(text, "\r\n").Count, lf = text.Count(c => c == '\n');
+            string nl = crlf * 2 > lf ? "\r\n" : "\n";
+            bool endNewline = text.EndsWith("\n");
+            bool any = false;
+            if (format == "json")
+            {
+                var js = new JavaScriptSerializer();
+                var root = js.DeserializeObject(text) as Dictionary<string, object>;
+                if (root == null) return null;
+                foreach (KeyValuePair<string, string> ed in edits)
+                {
+                    string[] parts = ed.Key.Split('/');
+                    Dictionary<string, object> at = root;
+                    for (int i = 0; i < parts.Length - 1 && at != null; i++)
+                    {
+                        object next;
+                        at = at.TryGetValue(parts[i], out next) ? next as Dictionary<string, object> : null;
+                    }
+                    if (at == null || !at.ContainsKey(parts[parts.Length - 1])) continue;
+                    at[parts[parts.Length - 1]] = ((object[])js.DeserializeObject("[" + ed.Value + "]"))[0];
+                    any = true;
+                }
+                if (!any) return null;
+                var sb = new StringBuilder();
+                WriteJsonPretty(sb, root, "", js);
+                return sb.ToString().Replace("\n", nl) + (endNewline ? nl : "");
+            }
+            var lines = text.Replace("\r\n", "\n").Split('\n').ToList();
+            if (format == "toml")
+            {
+                TomlDoc doc = ReadToml(path);
+                foreach (KeyValuePair<string, string> ed in edits.OrderByDescending(ed => ed.Key))
+                {
+                    TomlEntry e = doc.Entries.FirstOrDefault(x => (x.Section.Length > 0 ? x.Section + "/" : "") + x.Key == ed.Key);
+                    if (e == null || e.EndLine != e.Line) continue;
+                    lines[e.Line] = e.Prefix + ed.Value;
+                    any = true;
+                }
+            }
+            else
+            {
+                foreach (KeyValuePair<string, string> ed in edits)
+                {
+                    var key = new Regex(@"^\s*" + Regex.Escape(ed.Key) + @"\s*[=:]");
+                    int at = lines.FindIndex(l => key.IsMatch(l));
+                    if (at < 0) continue;
+                    lines[at] = ed.Key + "=" + ed.Value;
+                    any = true;
+                }
+            }
+            return any ? string.Join(nl, lines) : null;
+        }
+
+        // A value from the page checked against the file's format, so a mod never reads a broken file.
+        static void CheckMenuValue(string format, string path, string value)
+        {
+            if (value.IndexOfAny(new[] { '\r', '\n' }) >= 0) throw new UserError("A setting has to fit on one line: " + path);
+            if (format == "json")
+            {
+                try { new JavaScriptSerializer().DeserializeObject("[" + value + "]"); }
+                catch { throw new UserError(path + " isn't a valid value: " + value); }
+            }
+            else if (format == "toml")
+            {
+                string t = TomlType(value);
+                if (t == "list" || t == "other") throw new UserError(path + " isn't a valid value: " + value);
+            }
+        }
+
+        static string MenuConfigPath(InstanceInfo i, string file) { return Path.Combine(GameDirOf(i), "config", file); }
+
         // The shared copy, after picking up anything changed in a game since the last sync. Pairs in file order.
+        // The mod files come from the sharing instance that saved them last.
         static Dictionary<string, object> SharedOptionsInfo()
         {
             TrySyncGameSettings();
             SharingState state = LoadSharingState();
             OptionLines shared = OptionLines.Read(SharedOptionsPath());
             var values = shared.Order.Where(k => k != "version").Select(k => (object)new object[] { k, shared.Values[k] }).ToList();
-            var running = PrismInstances().Where(i => state.Options.Contains(i.Id) && GameRunning(GameDirOf(i))).Select(i => i.Name).ToList();
-            return Obj("ok", true, "exists", File.Exists(SharedOptionsPath()), "sharing", state.Options.Count, "values", values, "running", running);
+            List<InstanceInfo> sharing = PrismInstances().Where(i => state.Options.Contains(i.Id)).ToList();
+            var running = sharing.Where(i => GameRunning(GameDirOf(i))).Select(i => i.Name).ToList();
+            var mods = new List<object>();
+            foreach (string file in MenuConfigFiles)
+            {
+                FileInfo newest = sharing.Select(i => new FileInfo(MenuConfigPath(i, file))).Where(f => f.Exists).OrderByDescending(f => f.LastWriteTimeUtc).FirstOrDefault();
+                if (newest == null) continue;
+                try
+                {
+                    int copies = sharing.Count(i => File.Exists(MenuConfigPath(i, file)));
+                    mods.Add(Obj("file", file, "copies", copies, "values", ReadMenuConfig(newest.FullName, MenuConfigFormat(file))));
+                }
+                catch (Exception ex) { Log("Shared    couldn't read " + newest.FullName + ": " + ex.Message); }
+            }
+            return Obj("ok", true, "exists", File.Exists(SharedOptionsPath()), "sharing", state.Options.Count, "values", values, "running", running, "mods", mods);
         }
 
-        // changes: { key: the value as options.txt writes it }. Written to the shared copy and straight into every
-        // sharing instance's options.txt (a copy of each old file is kept first). Refused while a sharing game runs:
-        // it writes its settings back when it quits, and the next sync would take those as the newest.
+        // changes: { key: the value as the file writes it }. A key "file|path" is a mod's setting (MenuConfigFiles);
+        // any other is options.txt's. options.txt changes go into the shared copy and straight into every sharing
+        // instance's options.txt; a mod's into that file in every sharing instance that has it, and into the
+        // shared configs' copy if there is one. A copy of each old file is kept first. Refused while a sharing game
+        // runs: it writes its settings back when it quits, and the next sync would take those as the newest.
         static Dictionary<string, object> SetSharedOptions(Dictionary<string, object> changes)
         {
             if (changes == null || changes.Count == 0) throw new UserError("Nothing to change.");
@@ -709,9 +883,20 @@ namespace MinecraftModManager
                 SyncGameSettings();
                 OptionLines shared = OptionLines.Read(SharedOptionsPath());
                 var set = new Dictionary<string, string>();
+                var modEdits = new Dictionary<string, List<KeyValuePair<string, string>>>();
                 foreach (KeyValuePair<string, object> kv in changes)
                 {
                     string key = kv.Key, value = Convert.ToString(kv.Value, CultureInfo.InvariantCulture) ?? "";
+                    int bar = key.IndexOf('|');
+                    if (bar > 0)
+                    {
+                        string file = key.Substring(0, bar), path = key.Substring(bar + 1);
+                        if (Array.IndexOf(MenuConfigFiles, file) < 0 || path.Length == 0) throw new UserError("That setting can't be changed here: " + key);
+                        CheckMenuValue(MenuConfigFormat(file), path, value);
+                        if (!modEdits.ContainsKey(file)) modEdits[file] = new List<KeyValuePair<string, string>>();
+                        modEdits[file].Add(new KeyValuePair<string, string>(path, value));
+                        continue;
+                    }
                     if (!OptionKeyName.IsMatch(key) || key == "version" || key.StartsWith("key_") || Array.IndexOf(PackKeys, key) >= 0)
                         throw new UserError("That setting can't be changed here: " + key);
                     if (value.IndexOfAny(new[] { '\r', '\n' }) >= 0) throw new UserError("A setting has to fit on one line: " + key);
@@ -719,28 +904,50 @@ namespace MinecraftModManager
                     if (shared.Values.TryGetValue(key, out old) && old == value) continue;
                     set[key] = value;
                 }
-                if (set.Count == 0) return Obj("ok", true, "changed", 0, "instances", sharing.Count);
                 string stamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
-                BackUpConfig(SharedOptionsPath(), stamp, "shared", "options.txt");
-                foreach (KeyValuePair<string, string> kv in set) shared.Set(kv.Key, kv.Value);
-                Directory.CreateDirectory(SharedDir());
-                shared.Write(SharedOptionsPath());
-                state = LoadSharingState(); // the sync above saved its own
-                foreach (InstanceInfo i in sharing)
+                if (set.Count > 0)
                 {
-                    string path = OptionsPathOf(i);
-                    OptionLines mine = OptionLines.Read(path);
-                    BackUpConfig(path, stamp, i.Id, "options.txt");
-                    foreach (KeyValuePair<string, string> kv in set) mine.Set(kv.Key, kv.Value);
-                    if (!mine.Values.ContainsKey("version") && shared.Values.ContainsKey("version")) mine.Set("version", shared.Values["version"]);
-                    Directory.CreateDirectory(GameDirOf(i));
-                    mine.Write(path);
-                    state.Seen[i.Id] = OptionsTime(i);
+                    BackUpConfig(SharedOptionsPath(), stamp, "shared", "options.txt");
+                    foreach (KeyValuePair<string, string> kv in set) shared.Set(kv.Key, kv.Value);
+                    Directory.CreateDirectory(SharedDir());
+                    shared.Write(SharedOptionsPath());
+                    state = LoadSharingState(); // the sync above saved its own
+                    foreach (InstanceInfo i in sharing)
+                    {
+                        string path = OptionsPathOf(i);
+                        OptionLines mine = OptionLines.Read(path);
+                        BackUpConfig(path, stamp, i.Id, "options.txt");
+                        foreach (KeyValuePair<string, string> kv in set) mine.Set(kv.Key, kv.Value);
+                        if (!mine.Values.ContainsKey("version") && shared.Values.ContainsKey("version")) mine.Set("version", shared.Values["version"]);
+                        Directory.CreateDirectory(GameDirOf(i));
+                        mine.Write(path);
+                        state.Seen[i.Id] = OptionsTime(i);
+                    }
+                    SaveSharingState(state);
                 }
-                SaveSharingState(state);
-                Log("Shared    game settings changed: " + string.Join(", ", set.Take(8).Select(kv => kv.Key + " = " + kv.Value)) + (set.Count > 8 ? ", …" : "")
-                    + " (" + sharing.Count + " instance" + (sharing.Count == 1 ? "" : "s") + ")");
-                return Obj("ok", true, "changed", set.Count, "instances", sharing.Count);
+                int filesWritten = 0;
+                foreach (KeyValuePair<string, List<KeyValuePair<string, string>>> m in modEdits)
+                {
+                    string format = MenuConfigFormat(m.Key);
+                    var targets = sharing.Select(i => new KeyValuePair<string, string>(i.Id, MenuConfigPath(i, m.Key))).ToList();
+                    targets.Add(new KeyValuePair<string, string>("shared", Path.Combine(SharedConfigDir(), m.Key)));
+                    foreach (KeyValuePair<string, string> t in targets.Where(t => File.Exists(t.Value)))
+                    {
+                        string text = EditMenuConfig(t.Value, format, m.Value);
+                        if (text == null || text == File.ReadAllText(t.Value, Encoding.UTF8)) continue;
+                        BackUpConfig(t.Value, stamp, t.Key, m.Key);
+                        File.WriteAllText(t.Value + ".saving", text, new UTF8Encoding(false));
+                        File.Copy(t.Value + ".saving", t.Value, true);
+                        File.Delete(t.Value + ".saving");
+                        filesWritten++;
+                    }
+                }
+                int modChanged = modEdits.Values.Sum(l => l.Count);
+                if (set.Count + modChanged > 0)
+                    Log("Shared    game settings changed: " + string.Join(", ", set.Select(kv => kv.Key + " = " + kv.Value)
+                        .Concat(modEdits.SelectMany(m => m.Value.Select(e => m.Key + " " + e.Key + " = " + e.Value))).Take(8))
+                        + (set.Count + modChanged > 8 ? ", …" : "") + " (" + sharing.Count + " instance" + (sharing.Count == 1 ? "" : "s") + ")");
+                return Obj("ok", true, "changed", set.Count + modChanged, "instances", sharing.Count, "files", filesWritten);
             }
         }
 
