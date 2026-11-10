@@ -396,14 +396,18 @@ html[data-actions="always"] .act { opacity: 1; }
 .pill { --c: var(--c-x3); display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 8px; font: 600 12px/1 var(--font-body); color: color-mix(in srgb, var(--c) 80%, var(--ink)); background: color-mix(in srgb, var(--c) 13%, transparent); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent); border-radius: 4px; cursor: pointer; }
 .pill .x { display: inline-grid; place-items: center; opacity: 0.7; }
 
-.selection-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; width: 100%; padding: 7px 8px 7px 12px; background: color-mix(in srgb, var(--accent) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius: 6px; }
+/* min-height: a row of buttons, so a bar never grows when the first thing is picked. Each bar also keeps its
+   main buttons, greyed out, while nothing is picked. */
+.selection-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; width: 100%; min-height: 46px; padding: 7px 8px 7px 12px; background: color-mix(in srgb, var(--accent) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius: 6px; }
 .selection-bar.is-empty { background: var(--surface); border-color: var(--line); }
 .selection-bar.is-empty .sel-count { font-weight: 500; color: var(--muted); }
 .sel-count { font-size: 13.5px; font-weight: 600; }
 .sel-count .note { font-weight: 400; color: var(--muted); }
 .sel-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }
 
-.check { display: inline-grid; place-items: center; width: 20px; height: 20px; padding: 0; background: var(--surface); border: 1.5px solid color-mix(in srgb, var(--muted) 75%, transparent); border-radius: 5px; cursor: pointer; }
+/* vertical-align: the box's tick would otherwise become its text baseline once ticked, which made the line it
+   sits in (the list's header) 1px shorter and moved every row under it. */
+.check { display: inline-grid; place-items: center; vertical-align: middle; width: 20px; height: 20px; padding: 0; background: var(--surface); border: 1.5px solid color-mix(in srgb, var(--muted) 75%, transparent); border-radius: 5px; cursor: pointer; }
 .check:hover { border-color: var(--accent); }
 .check[aria-checked="true"], .check[aria-checked="mixed"] { background: var(--accent); border-color: var(--accent); }
 .check[aria-checked="true"]::after { content: ""; width: 9px; height: 5px; border-left: 2px solid var(--accent-ink); border-bottom: 2px solid var(--accent-ink); transform: translateY(-1px) rotate(-45deg); }
@@ -1533,16 +1537,14 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   .toasts { left: 12px; right: 12px; justify-items: stretch; max-width: none; }
   .toast { max-width: none; }
 
-  /* The selection bar: what's picked and the list tools on one line, its buttons in one row you swipe; nothing
-     greyed out while nothing is picked, so then it's one short line */
+  /* The selection bar: what's picked and the list tools on one line, its buttons in one row you swipe (kept,
+     greyed out, while nothing is picked, so picking the first mod doesn't push the list down) */
   .selection-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; padding: 6px 6px 6px 12px; }
   .selection-bar .sel-count { grid-column: 1; grid-row: 1; min-width: 0; }
   .selection-bar .tools { grid-column: 2; grid-row: 1; width: auto; margin: 0; padding: 0; border: 0; }
   .selection-bar .sel-actions { grid-column: 1 / -1; flex-wrap: nowrap; margin: 0; overflow-x: auto; scrollbar-width: none; }
   .selection-bar .sel-actions::-webkit-scrollbar { display: none; }
   .selection-bar .sel-actions .btn { flex: none; }
-  .selection-bar.is-empty .sel-actions > .btn:disabled { display: none; }
-  .selection-bar.is-empty .sel-actions:not(:has(> :not([hidden]):not(:disabled))) { display: none; }
 
   /* Folded panels: one slim line each, so the list starts sooner */
   .panel.folded { padding: 6px 8px 6px 12px; }
@@ -4025,7 +4027,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var tail = h("span", { class: "count-label", style: "margin-left:auto" }, rows.length + " of " + d.packs.length + " shown");
     if (!picked.length) {
       bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, SEL_HINT)),
-        h("span", { class: "sel-actions" }, pasteControls(d.kind, d.place, packClipHere(d))), tail);
+        h("span", { class: "sel-actions" }, pasteControls(d.kind, d.place, packClipHere(d)),
+          btn("Copy", null, "", { disabled: true }), btn("Cut", null, "", { disabled: true }), btn("Delete…", null, "danger-outline", { disabled: true })), tail);
       return bar;
     }
     var turnOn = d.kind === "resourcepacks" ? picked.filter(function (p) { return p.on < 0; }) : [];
@@ -6304,7 +6307,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       return;
     }
     if (!picked.length) {
-      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, SEL_HINT)), tail);
+      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, SEL_HINT)),
+        h("span", { class: "sel-actions" }, btn(jei ? "Hide in JEI" : "Turn off", null, "", { disabled: true })), tail);
       return;
     }
     var on = picked.filter(function (r) { return r.off; }), off = picked.filter(function (r) { return !r.off; });
@@ -6946,10 +6950,11 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     bar.classList.toggle("is-empty", !picked.length);
     var tail = h("span", { class: "count-label", style: "margin-left:auto" }, d ? shown.length + " of " + d.binds.length + " shown" : "");
     if (!picked.length) {
-      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, SEL_HINT)), tail);
+      bar.replaceChildren(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, SEL_HINT)),
+        h("span", { class: "sel-actions" }, btn("Unbind", null, "", { disabled: true }), btn("Reset", null, "", { disabled: true })), tail);
       return;
     }
-    var bound = picked.filter(function (b) { return b.key !== UNBOUND; }), resettable = picked.filter(function (b) { return b.changed; });
+    var bound =picked.filter(function (b) { return b.key !== UNBOUND; }), resettable = picked.filter(function (b) { return b.changed; });
     bar.replaceChildren(
       h("span", { class: "sel-count" }, count(picked.length, "bind", "binds") + " selected"),
       h("span", { class: "sel-actions" },
@@ -11037,7 +11042,9 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       bar.classList.toggle("is-empty", !picked.length);
       var tail = h("span", { class: "count-label", style: "margin-left:auto" }, list.length + " of " + mods.length + " shown");
       if (!picked.length) {
-        bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, Shift+click for a range")), tail);
+        bar.append(h("span", { class: "sel-count" }, "None selected", h("span", { class: "note" }, " · click to select, Shift+click for a range")),
+          h("span", { class: "sel-actions" }, h("button", { type: "button", class: "btn", disabled: true }, "Keep"),
+            h("button", { type: "button", class: "btn danger-outline", disabled: true }, "Delete…")), tail);
         return;
       }
       var on = picked.filter(function (k) { return k.state === "on"; }), off = picked.filter(function (k) { return k.state === "off"; });
