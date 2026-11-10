@@ -4,7 +4,7 @@ What changed in Minecraft Mod Manager, newest first. The app shows this under Se
 and after an update it offers what's new since the last time it was opened.
 
 ## 2026-11-10
-- Remote access: a paired phone stays paired when the page is opened from a link in another app (it used to ask for a code again), and each visit renews the pairing for another year. The pairing page also says what to check when a device that was paired before is asked again.
+- Remote access: a paired phone stays paired when the page is opened from a link in another app (it used to ask for a code again), and each visit renews the pairing for another year. A phone paired before this change is picked up again automatically (the pairing page reopens itself once so its old cookie comes along). The pairing page also says what to check when a device that was paired before is asked again.
 
 ## 2026-11-09
 - Changelog under Settings, and a "What's new" note the first time the app opens after an update.

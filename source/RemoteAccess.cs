@@ -268,7 +268,19 @@ namespace MinecraftModManager
             if (device == null)
             {
                 if (pathOnly.StartsWith("/api/")) RemoteReply(cs, 401, "application/json", "{\"error\":\"This device isn't paired with Minecraft Mod Manager. Reload the page to pair it.\"}");
-                else RemoteReply(cs, 200, "text/html; charset=utf-8", PairPage(null));
+                else
+                {
+                    // Why a device was shown the pairing page (never the key itself): no cookie, or one that's unknown.
+                    string key = RemoteKeyFrom(header("Cookie"));
+                    bool retried = target.Contains("pairretry=1");
+                    Log("Remote access: pairing page shown to " + ep.Address + " at " + (header("Host") ?? "?") + ", " +
+                        (key == null ? "no pairing cookie" : "unknown pairing cookie (" + key.Length + " chars)") +
+                        (retried ? " (after reopening itself)" : "") + ", " + GuessDeviceName(header("User-Agent")));
+                    // A device paired before this version holds a SameSite=Strict cookie, which browsers keep back when
+                    // the page was reached from another app, even on reload. Once, the page reopens itself from its own
+                    // address (same-site), so such a cookie comes along and is renewed as Lax.
+                    RemoteReply(cs, 200, "text/html; charset=utf-8", PairPage(null, retried ? null : "reopen"));
+                }
                 return;
             }
             if (pathOnly == "/remote/forget")
@@ -491,10 +503,11 @@ namespace MinecraftModManager
             return "Device";
         }
 
-        static string PairPage(string message)
+        static string PairPage(string message, string reopen = null)
         {
             string msg = message == null ? "" : "<p class=\"msg\">" + WebUtility.HtmlEncode(message) + "</p>";
-            return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" +
+            string again = reopen == null ? "" : "<script>location.replace('/?pairretry=1')</script>";
+            return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" + again +
                 "<title>Pair with Minecraft Mod Manager</title><style>" +
                 ":root{color-scheme:dark light}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#15181c;color:#e8eaed;font:16px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}" +
                 "main{width:min(380px,100% - 32px);padding:24px;border:1px solid #2c3138;border-radius:10px;background:#1c2026}" +
