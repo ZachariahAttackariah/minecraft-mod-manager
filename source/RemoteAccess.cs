@@ -44,7 +44,7 @@ namespace MinecraftModManager
             "/api/reveal", "/api/packs/reveal", "/api/packs/open", "/api/packs/add", "/api/always/reveal", "/api/always/open",
             "/api/always/add-files", "/api/user-css/open", "/api/zoom", "/api/crash/open", "/api/game/show-prism", "/api/prism/open",
             "/api/instances/open", "/api/sharing/open", "/api/server/folder", "/api/server/open-folder", "/api/server/pick-parent",
-            "/api/worlds/open-folder"
+            "/api/worlds/open-folder", "/api/quit"
         };
 
         // ---- settings -----------------------------------------------------------------------------------

@@ -1465,6 +1465,89 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   /* Rows: names, sides and tags; the file names are left to the PC so more mods fit on the screen. */
   .row .file { display: none; }
 }
+/* ---------- Phones, part 2: thumbs and a tall screen ----------
+   The section tabs become a bar along the bottom (Mods, Packs, Configs, Server, and More for the rest), the title
+   gives the list its room, menus, pickers and dialogs come up from the bottom as sheets with big rows, and
+   switches, buttons and checkboxes are finger-sized. Desktop-only help (keyboard shortcuts, Quit) is left out. */
+.nav-more, .more-sheet { display: none; }
+@media (hover: none) {
+  html { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .kb-hint { display: none; }
+  .act { width: 40px; height: 40px; }
+  .sw { width: 38px; height: 22px; border-radius: 11px; }
+  .sw::after { top: 3px; left: 3px; width: 16px; height: 16px; }
+  .sw-btn.on .sw::after { transform: translateX(16px); }
+  .check { width: 24px; height: 24px; border-radius: 6px; }
+}
+@media (max-width: 640px) {
+  :root { --bar-h: calc(58px + env(safe-area-inset-bottom, 0px)); }
+  body { padding-bottom: var(--bar-h); }
+  .wordmark, html[data-blocky="on"] .wordmark { display: none; }
+  .launch .check-bar { padding: 4px 6px 4px 10px; font-size: 13px; }
+  .btn { min-height: 44px; }
+  .toolbar .seg-control button { min-height: 40px; }
+
+  /* The tab bar */
+  .nav-tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 35; display: flex; overflow: visible; contain: none;
+    height: var(--bar-h); padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: color-mix(in srgb, var(--surface) 94%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--line); }
+  .nav-tabs button { flex: 1 1 0; min-width: 0; padding: 0 4px; font-size: 14.5px; text-align: center; }
+  .nav-tabs button[data-view]:not([data-view="mods"]):not([data-view="packs"]):not([data-view="configs"]):not([data-view="server"]) { display: none; }
+  .nav-tabs .nav-more { display: block; }
+  .view-nav .nav-tabs button[aria-current="page"]::after { top: 0; bottom: auto; left: 24%; right: 24%; height: 3px; border-radius: 0 0 3px 3px; }
+  .view-nav { margin-top: 6px; border-bottom: 0; }
+  .view-nav .nav-right { padding-bottom: 0; }
+  /* While a sheet is up it covers the bar (the More sheet sits just above it instead). */
+  body:has(.menu:not([hidden]), .pop:not([hidden]), .pop-menu:not([hidden]), .inst-pop:not([hidden]), #scrim:not([hidden]), #big-scrim:not([hidden])) .nav-tabs { visibility: hidden; }
+  body:has(.menu:not([hidden]), .pop:not([hidden]), .pop-menu:not([hidden]), .inst-pop:not([hidden]), .more-sheet:not([hidden])) { overflow: hidden; }
+
+  /* More: the other sections, two to a row, just above the bar */
+  .more-sheet:not([hidden]) { position: fixed; left: 0; right: 0; bottom: var(--bar-h); z-index: 34; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    padding: 16px 12px 12px; background: var(--raised); border-top: 1px solid var(--line); border-radius: 16px 16px 0 0;
+    box-shadow: 0 0 0 100vmax var(--scrim), 0 -8px 24px rgba(0, 0, 0, 0.3); }
+  .more-sheet button { min-height: 54px; padding: 8px 14px; font: 600 15px/1.2 var(--font-body); text-align: left; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  .more-sheet button[aria-current="page"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+  .more-sheet .k { display: block; margin-top: 3px; font: 400 12px/1.2 var(--font-body); color: var(--muted); }
+
+  /* Sheets: menus and pickers come up from the bottom, full width, over a dimmed page */
+  .menu:not([hidden]), .pop:not([hidden]), .pop-menu:not([hidden]), .inst-pop:not([hidden]) {
+    position: fixed !important; inset: auto 0 0 0 !important; width: auto !important; min-width: 0 !important; max-width: none !important;
+    max-height: 82vh; overflow-y: auto; overscroll-behavior: contain; z-index: 60;
+    border-width: 1px 0 0; border-radius: 16px 16px 0 0; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 0 0 100vmax var(--scrim), 0 -8px 24px rgba(0, 0, 0, 0.3); }
+  .menu-head { padding: 12px 12px 10px; font-size: 14px; }
+  .menu-actions button, .pop-menu button, .pop button { min-height: 48px; font-size: 15.5px; }
+  .tag-opt { min-height: 46px; font-size: 15px; }
+  .tag-opt .box { width: 20px; height: 20px; }
+  .tag-options { max-height: none; }
+
+  /* Dialogs: the same, with big full-width buttons (the main one on top) */
+  .scrim { place-items: end stretch; padding: 0; }
+  #scrim .dialog, .scrim > .dialog { width: 100%; max-height: 88vh; border-width: 1px 0 0; border-radius: 16px 16px 0 0;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+  .dialog .actions { flex-direction: column-reverse; align-items: stretch; }
+  .dialog .actions .btn { width: 100%; min-height: 48px; font-size: 16px; }
+
+  /* Notices sit above the bar, across the screen */
+  .toasts { left: 12px; right: 12px; justify-items: stretch; max-width: none; }
+  .toast { max-width: none; }
+
+  /* The selection bar: what's picked and the list tools on one line, its buttons in one row you swipe; nothing
+     greyed out while nothing is picked, so then it's one short line */
+  .selection-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; padding: 6px 6px 6px 12px; }
+  .selection-bar .sel-count { grid-column: 1; grid-row: 1; min-width: 0; }
+  .selection-bar .tools { grid-column: 2; grid-row: 1; width: auto; margin: 0; padding: 0; border: 0; }
+  .selection-bar .sel-actions { grid-column: 1 / -1; flex-wrap: nowrap; margin: 0; overflow-x: auto; scrollbar-width: none; }
+  .selection-bar .sel-actions::-webkit-scrollbar { display: none; }
+  .selection-bar .sel-actions .btn { flex: none; }
+  .selection-bar.is-empty .sel-actions > .btn:disabled { display: none; }
+  .selection-bar.is-empty .sel-actions:not(:has(> :not([hidden]):not(:disabled))) { display: none; }
+
+  /* Folded panels: one slim line each, so the list starts sooner */
+  .panel.folded { padding: 6px 8px 6px 12px; }
+  .panel.folded .btn { min-height: 36px; padding-block: 4px; }
+}
 </style>
 </head>
 <body>
@@ -1497,6 +1580,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       <button type="button" data-view="server">Server</button>
       <button type="button" data-view="snapshots">Snapshots</button>
       <button type="button" data-view="cleanup">Cleanup</button>
+      <button type="button" class="nav-more" id="nav-more" aria-haspopup="dialog" aria-expanded="false" aria-controls="more-sheet">More</button>
       </span>
       <span class="nav-right">
         <span class="jobs-wrap" id="jobs-wrap" hidden>
@@ -1645,9 +1729,9 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   </div>
 
   <p class="foot">
-    <span>Click a row to select it, <kbd>Ctrl</kbd>+click to add or remove one, <kbd>Shift</kbd>+click for a range, <kbd>Ctrl</kbd>+<kbd>A</kbd> for everything shown. Right-click for actions and tags.</span>
+    <span class="kb-hint">Click a row to select it, <kbd>Ctrl</kbd>+click to add or remove one, <kbd>Shift</kbd>+click for a range, <kbd>Ctrl</kbd>+<kbd>A</kbd> for everything shown. Right-click for actions and tags.</span>
     <span>Disabling renames a jar to <code>.jar.disabled</code>. Deleting moves it to the Recycle Bin.</span>
-    <button class="linkish" type="button" id="quit">Quit Minecraft Mod Manager</button>
+    <button class="linkish pc-only" type="button" id="quit">Quit Minecraft Mod Manager</button>
   </p>
   </section>
 
@@ -1690,7 +1774,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     <aside class="panel feat-side" id="feat-side" aria-label="Filter by biome" hidden></aside>
     </div>
     <p class="foot">
-      <span id="feat-foot-pick">Click a row to select it, <kbd>Shift</kbd>+click for a range, <kbd>Ctrl</kbd>+<kbd>A</kbd> for everything shown. The switch turns one on or off; <kbd>Space</kbd> turns the selected ones. Right-click for more.</span>
+      <span class="kb-hint" id="feat-foot-pick">Click a row to select it, <kbd>Shift</kbd>+click for a range, <kbd>Ctrl</kbd>+<kbd>A</kbd> for everything shown. The switch turns one on or off; <kbd>Space</kbd> turns the selected ones. Right-click for more.</span>
       <span id="feat-foot-jar">What's off is kept in <code>mod-manager-feature-toggles.jar</code>, a small data-only mod in the mods folder. Changes apply the next time the game starts.</span>
       <span id="feat-foot-jei" hidden>Hidden items are kept in JEI's own <code>config/jei/blacklist.json</code>, the same list its edit mode changes in game. Changes apply the next time the game starts.</span>
     </p>
@@ -1889,7 +1973,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       </div>
     </div>
     <p class="foot">
-      <span>Click a row to select it, <kbd>Shift</kbd>+click for a range, <kbd>Ctrl</kbd>+<kbd>A</kbd> for everything shown, <kbd>Delete</kbd> to unbind the selected ones. Right-click for more.</span>
+      <span class="kb-hint">Click a row to select it, <kbd>Shift</kbd>+click for a range, <kbd>Ctrl</kbd>+<kbd>A</kbd> for everything shown, <kbd>Delete</kbd> to unbind the selected ones. Right-click for more.</span>
       <span>Some binds only work in menus (JEI's, for one) and some only while playing, so two binds on one key don't always clash.</span>
       <span>Changes go into <code>options.txt</code> (a copy of the old one is kept first) and apply the next time the game starts.</span>
     </p>
@@ -1914,6 +1998,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
 </div>
 
 <div class="menu" id="menu" role="dialog" aria-label="Mod actions and tags" hidden></div>
+<!-- Phones: the sections that don't fit in the bottom tab bar (see the More button). -->
+<div class="more-sheet" id="more-sheet" role="dialog" aria-label="More sections" hidden></div>
 
 <div class="scrim" id="scrim" hidden>
   <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-title" aria-describedby="dlg-body">
@@ -2206,7 +2292,26 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   })();
 
   // The empty-selection hint, in the words of the device: a touch screen taps and holds (see longPress).
-  var SEL_HINT = window.matchMedia && window.matchMedia("(hover: none)").matches ? " · tap to select, hold for actions" : " · click to select, right-click for actions";
+  var TOUCH = !!(window.matchMedia && window.matchMedia("(hover: none)").matches);
+  var SEL_HINT = TOUCH ? " · tap to select, hold for actions" : " · click to select, right-click for actions";
+
+  // Phones (narrow screens): menus, pickers and dialogs are sheets along the bottom over a dimmed page (CSS).
+  function phoneSheets() { return !!(window.matchMedia && window.matchMedia("(max-width: 640px)").matches); }
+  var sheetWidth = window.innerWidth;
+  var PRIMARY_VIEWS = ["mods", "packs", "configs", "server"]; // the sections in a phone's bottom tab bar
+  // A tap on the dimmed page only closes the sheet; it doesn't also press whatever is under it.
+  (function sheetTaps() {
+    var swallow = 0;
+    document.addEventListener("mousedown", function (e) {
+      if (!phoneSheets() || !e.target.closest) return;
+      var open = document.querySelectorAll(".menu:not([hidden]), .pop:not([hidden]), .pop-menu:not([hidden]), .inst-pop:not([hidden]), .more-sheet:not([hidden])");
+      if (!open.length) return;
+      for (var i = 0; i < open.length; i++) if (open[i].contains(e.target)) return;
+      if (e.target.closest('[aria-expanded="true"], #nav-more')) return; // its own button closes it
+      swallow = Date.now() + 700;
+    }, true);
+    document.addEventListener("click", function (e) { if (Date.now() < swallow) { swallow = 0; e.preventDefault(); e.stopPropagation(); } }, true);
+  })();
 
   // Viewed from a phone or another computer through Remote access (RemoteAccess.cs): no PC windows or pickers.
   function isRemote() { return !!(server && server.remoteViewer); }
@@ -4612,6 +4717,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
 
   var menuEl = $("menu"), menuReturn = null, menuKeys = [], menuAt = { x: 0, y: 0 }, menuOpenedAt = 0, menuScrollY = 0;
   function menuItem(label, iconName, fn, cls) {
+    if (TOUCH) label = label.replace(/ \((Ctrl|Shift)\+[^)]*\)$/, ""); // no keyboard on a phone
     return h("button", { type: "button", class: cls || null, onclick: function () { closeMenu(); fn(); } }, icon(iconName), h("span", null, label));
   }
 
@@ -4629,6 +4735,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   }
 
   function placeMenu() {
+    if (phoneSheets()) return; // on a phone it is a sheet along the bottom (CSS)
     var rect = menuEl.getBoundingClientRect();
     menuEl.style.left = Math.max(8, Math.min(menuAt.x, window.innerWidth - rect.width - 8)) + "px";
     menuAt.y = Math.max(8, Math.min(menuAt.y, window.innerHeight - rect.height - 8));
@@ -7014,6 +7121,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     Array.prototype.forEach.call(document.querySelectorAll("#view-nav button"), function (b) {
       if (b.getAttribute("data-view") === name) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
     });
+    // On a phone, More stands for whichever section isn't in the bottom bar.
+    if (PRIMARY_VIEWS.indexOf(name) < 0) $("nav-more").setAttribute("aria-current", "page");
     if (!initial) {
       try { history.replaceState(null, "", name === "mods" ? location.pathname : "#" + name); } catch (e) {}
     }
@@ -7040,6 +7149,28 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   Array.prototype.forEach.call(document.querySelectorAll("#view-nav button[data-view]"), function (b) {
     b.addEventListener("click", function () { setView(b.getAttribute("data-view")); });
   });
+
+  // Phones: the bottom tab bar holds Mods, Packs, Configs and Server; More opens a sheet with the other sections.
+  (function moreSheet() {
+    var sheet = $("more-sheet"), more = $("nav-more");
+    function close() { sheet.hidden = true; more.setAttribute("aria-expanded", "false"); }
+    function open() {
+      sheet.replaceChildren();
+      Array.prototype.forEach.call(document.querySelectorAll("#view-nav button[data-view]"), function (b) {
+        var v = b.getAttribute("data-view");
+        if (PRIMARY_VIEWS.indexOf(v) >= 0) return;
+        var label = v === "settings" ? "Settings" : (b.childNodes[0] ? b.childNodes[0].textContent.trim() : v);
+        var n = b.querySelector(".nav-n");
+        sheet.append(h("button", { type: "button", "aria-current": currentView === v ? "page" : null, onclick: function () { close(); setView(v); window.scrollTo(0, 0); } },
+          label, n && n.textContent.trim() ? h("span", { class: "k" }, n.textContent.trim() + " mods") : null));
+      });
+      sheet.hidden = false;
+      more.setAttribute("aria-expanded", "true");
+    }
+    more.addEventListener("click", function () { if (sheet.hidden) open(); else close(); });
+    document.addEventListener("mousedown", function (e) { if (!sheet.hidden && !sheet.contains(e.target) && !more.contains(e.target)) close(); }, true);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !sheet.hidden) close(); });
+  })();
 
   // ---------- Jobs: what the app is busy with (a thin bar under the tabs, and a list by the server chip) ----------
 
@@ -11809,7 +11940,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     if (e.button === 2 && !e.shiftKey && $("rows").contains(e.target) && rowFor(e.target)) return;
     closeMenu();
   }, true);
-  window.addEventListener("resize", closeMenu);
+  // The keyboard coming up on a phone (typing a new tag) resizes the page: that mustn't close the sheet.
+  window.addEventListener("resize", function () { if (phoneSheets() && window.innerWidth === sheetWidth) return; sheetWidth = window.innerWidth; closeMenu(); });
 
   // A sticky side panel (tags, side chart) is only as tall as the room between where it starts on screen
   // and the bottom of the window, so its end is always visible and a long tag list scrolls on its own.
@@ -11843,7 +11975,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   // once it's scrolled right out of view. Scrolls inside the menu or in a side panel leave it as it is.
   // (Closing on any scroll lost the menu whenever the wheel strayed off it onto the page.)
   document.addEventListener("scroll", function (e) {
-    if (menuEl.hidden || menuEl.contains(e.target)) return;
+    if (menuEl.hidden || menuEl.contains(e.target) || phoneSheets()) return; // a sheet stays put at the bottom
     if (e.target !== document && e.target !== document.documentElement && e.target !== document.body) return;
     var dy = window.scrollY - menuScrollY;
     menuScrollY = window.scrollY;

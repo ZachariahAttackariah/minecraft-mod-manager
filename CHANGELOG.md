@@ -9,6 +9,7 @@ and after an update it offers what's new since the last time it was opened.
 - Remote access: use the app from a phone or another computer on your home network, or from anywhere through a private VPN such as Tailscale. Off until switched on in Settings; each device is paired once with a code shown on the PC.
 - Phones: the section tabs in one row you swipe, side panels start folded, finger-sized menus, hold a row for its menu, and nothing wider than the screen.
 - Dropping files on the window refreshes the list again afterwards.
+- Phones, made for a tall touch screen: the section tabs sit in a bar along the bottom (Mods, Packs, Configs, Server, and More for the rest), menus, pickers and dialogs come up from the bottom with big rows and full-width buttons, the title gives way to the list, switches, buttons and checkboxes are larger, and the selection bar is two short lines. Keyboard hints and Quit are left off phones; a tap beside a menu just closes it.
 
 ## 2026-11-08
 - Shared tab: mods, resource packs, shader packs and data packs kept once and copied into every ticked instance; game settings, configs and Java arguments shared per instance from the same tab.
