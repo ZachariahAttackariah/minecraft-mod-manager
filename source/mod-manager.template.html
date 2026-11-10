@@ -2418,6 +2418,20 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   // The empty-selection hint, in the words of the device: a touch screen taps and holds (see longPress).
   var TOUCH = !!(window.matchMedia && window.matchMedia("(hover: none)").matches);
   var SEL_HINT = TOUCH ? " · tap to select, hold for actions" : " · click to select, right-click for actions";
+  // On a touch screen, opening a menu, picker or dialog doesn't put the cursor in its text box: that would pull up
+  // the phone's keyboard over what just opened. The keyboard comes up when the box is tapped, or for a box marked
+  // data-keyboard (for a box where typing is the whole point of what was just tapped).
+  if (TOUCH) [window.HTMLInputElement, window.HTMLTextAreaElement].forEach(function (C) {
+    if (!C) return;
+    ["focus", "select"].forEach(function (m) {
+      var orig = C.prototype[m];
+      C.prototype[m] = function () {
+        var typing = this.tagName === "TEXTAREA" || /^(text|search|number|password|email|url|tel|)$/.test(this.type || "");
+        if (typing && document.activeElement !== this && !this.hasAttribute("data-keyboard")) return;
+        return orig.apply(this, arguments);
+      };
+    });
+  });
   // The "/" shortcut in the search boxes means nothing without a keyboard.
   if (TOUCH) ["q", "packs-q", "keys-q"].forEach(function (id) { var el = document.getElementById(id); if (el) el.placeholder = el.placeholder.replace(/\s*\(\s*\/\s*\)\s*$/, ""); });
 
