@@ -677,6 +677,73 @@ namespace MinecraftModManager
             return share ? "game settings shared" : "own game settings";
         }
 
+        // ---------- Editing the shared game settings (Shared > Game settings) ----------
+
+        static readonly Regex OptionKeyName = new Regex(@"^[A-Za-z0-9_.\-]+$");
+
+        // The shared copy, after picking up anything changed in a game since the last sync. Pairs in file order.
+        static Dictionary<string, object> SharedOptionsInfo()
+        {
+            TrySyncGameSettings();
+            SharingState state = LoadSharingState();
+            OptionLines shared = OptionLines.Read(SharedOptionsPath());
+            var values = shared.Order.Where(k => k != "version").Select(k => (object)new object[] { k, shared.Values[k] }).ToList();
+            var running = PrismInstances().Where(i => state.Options.Contains(i.Id) && GameRunning(GameDirOf(i))).Select(i => i.Name).ToList();
+            return Obj("ok", true, "exists", File.Exists(SharedOptionsPath()), "sharing", state.Options.Count, "values", values, "running", running);
+        }
+
+        // changes: { key: the value as options.txt writes it }. Written to the shared copy and straight into every
+        // sharing instance's options.txt (a copy of each old file is kept first). Refused while a sharing game runs:
+        // it writes its settings back when it quits, and the next sync would take those as the newest.
+        static Dictionary<string, object> SetSharedOptions(Dictionary<string, object> changes)
+        {
+            if (changes == null || changes.Count == 0) throw new UserError("Nothing to change.");
+            lock (SharingLock)
+            {
+                SharingState state = LoadSharingState();
+                if (state.Options.Count == 0) throw new UserError("No instance shares its game settings yet. Tick one first.");
+                List<InstanceInfo> sharing = PrismInstances().Where(i => state.Options.Contains(i.Id)).ToList();
+                List<string> running = sharing.Where(i => GameRunning(GameDirOf(i))).Select(i => i.Name).ToList();
+                if (running.Count > 0)
+                    throw new UserError("Close the game first (" + string.Join(", ", running) + "). It writes its settings back when it quits, which would undo this.");
+                SyncGameSettings();
+                OptionLines shared = OptionLines.Read(SharedOptionsPath());
+                var set = new Dictionary<string, string>();
+                foreach (KeyValuePair<string, object> kv in changes)
+                {
+                    string key = kv.Key, value = Convert.ToString(kv.Value, CultureInfo.InvariantCulture) ?? "";
+                    if (!OptionKeyName.IsMatch(key) || key == "version" || key.StartsWith("key_") || Array.IndexOf(PackKeys, key) >= 0)
+                        throw new UserError("That setting can't be changed here: " + key);
+                    if (value.IndexOfAny(new[] { '\r', '\n' }) >= 0) throw new UserError("A setting has to fit on one line: " + key);
+                    string old;
+                    if (shared.Values.TryGetValue(key, out old) && old == value) continue;
+                    set[key] = value;
+                }
+                if (set.Count == 0) return Obj("ok", true, "changed", 0, "instances", sharing.Count);
+                string stamp = DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
+                BackUpConfig(SharedOptionsPath(), stamp, "shared", "options.txt");
+                foreach (KeyValuePair<string, string> kv in set) shared.Set(kv.Key, kv.Value);
+                Directory.CreateDirectory(SharedDir());
+                shared.Write(SharedOptionsPath());
+                state = LoadSharingState(); // the sync above saved its own
+                foreach (InstanceInfo i in sharing)
+                {
+                    string path = OptionsPathOf(i);
+                    OptionLines mine = OptionLines.Read(path);
+                    BackUpConfig(path, stamp, i.Id, "options.txt");
+                    foreach (KeyValuePair<string, string> kv in set) mine.Set(kv.Key, kv.Value);
+                    if (!mine.Values.ContainsKey("version") && shared.Values.ContainsKey("version")) mine.Set("version", shared.Values["version"]);
+                    Directory.CreateDirectory(GameDirOf(i));
+                    mine.Write(path);
+                    state.Seen[i.Id] = OptionsTime(i);
+                }
+                SaveSharingState(state);
+                Log("Shared    game settings changed: " + string.Join(", ", set.Take(8).Select(kv => kv.Key + " = " + kv.Value)) + (set.Count > 8 ? ", …" : "")
+                    + " (" + sharing.Count + " instance" + (sharing.Count == 1 ? "" : "s") + ")");
+                return Obj("ok", true, "changed", set.Count, "instances", sharing.Count);
+            }
+        }
+
         // ---------- What the page shows ----------
 
         static Dictionary<string, object> InstanceSharingObj(InstanceInfo info, SharingState state)

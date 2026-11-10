@@ -460,6 +460,34 @@ a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--acce
 .clip-paste .note { color: var(--muted); }
 .always-row .hint { line-height: 1.35; overflow-wrap: anywhere; }
 .always-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+/* Shared > Game settings: every setting in the shared options.txt, grouped like the game's own menus. */
+.gopt-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 4px; }
+.gopt-tools .search { flex: 1 1 180px; }
+.gopt-sec { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.gopt-sec > summary { display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-weight: 600; font-size: 14px; cursor: pointer; list-style: none; user-select: none; }
+.gopt-sec > summary::-webkit-details-marker { display: none; }
+.gopt-sec > summary::before { content: ""; width: 6px; height: 6px; margin: 0 3px 0 1px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform 0.15s; }
+.gopt-sec[open] > summary::before { transform: rotate(45deg); }
+.gopt-sec > summary .k { margin-left: auto; font-weight: 400; font-size: 12.5px; color: var(--muted); }
+.gopt-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, 48%); align-items: center; gap: 6px 14px; min-height: 44px; padding: 6px 12px; border-top: 1px solid var(--line); }
+.gopt-row.changed { background: color-mix(in srgb, var(--accent) 8%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+.gopt-label { min-width: 0; font-size: 13.5px; }
+.gopt-label .key { display: block; margin-top: 1px; font: 400 11.5px/1.3 var(--font-mono); color: var(--muted); overflow-wrap: anywhere; }
+.gopt-ctl { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+.gopt-ctl input[type="range"] { flex: 1; min-width: 0; margin: 0; accent-color: var(--accent); }
+.gopt-ctl .val { flex: none; min-width: 72px; font: 500 12.5px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; color: var(--ink); }
+.gopt-ctl select, .gopt-ctl input[type="text"] { flex: 1; width: 100%; min-width: 0; padding: 6px 8px; font: inherit; font-size: 13px; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; }
+.gopt-ctl .act.sw-btn { opacity: 1; }
+.gopt-ctl .reset { flex: none; display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; color: var(--muted); background: none; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
+.gopt-ctl .reset:hover { color: var(--ink); background: var(--sunken); border-color: var(--line); }
+.gopt-ctl .reset.off { visibility: hidden; }
+.gopt-save { position: sticky; bottom: calc(var(--bar-h, 0px) + 10px); z-index: 4; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 8px 10px 8px 14px;
+  background: var(--raised); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius: 6px; box-shadow: var(--shadow-lg); }
+.gopt-save .n { margin-right: auto; font-size: 13.5px; font-weight: 600; }
+@media (max-width: 640px) {
+  .gopt-row { grid-template-columns: minmax(0, 1fr); gap: 4px; padding-block: 8px; }
+  .gopt-row.is-bool { grid-template-columns: minmax(0, 1fr) auto; }
+}
 /* A mod's note, shown when the cursor rests on its row. */
 .note-pop { position: fixed; z-index: 30; max-width: min(380px, calc(100vw - 24px)); padding: 8px 11px 9px; font-size: 13px; line-height: 1.45; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--c-client); border-radius: 6px; box-shadow: var(--shadow-lg); pointer-events: none; }
 .note-pop .k { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; font: 700 11px/1 var(--font-body); letter-spacing: 0.05em; text-transform: uppercase; color: var(--c-client); }
@@ -5501,7 +5529,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       empty: "No data packs yet. Add .zip files here, or select packs in the Packs tab and choose Share." },
     // Settings kept in step between instances (Sharing.cs, ConfigSharing.cs): each instance is ticked on its own.
     options: { settings: true, title: "Game settings shared across instances",
-      lead: "Video, sound, controls and key binds (options.txt) are the same in every instance ticked here. A change made in one game reaches the others the next time you press Play here. Key binds for mods an instance doesn't have are kept for the ones that do, and which resource packs are on stays each instance's own.",
+      lead: "Video, sound, controls and key binds (options.txt) are the same in every instance ticked here. Change them below, or in any of those games: a change made in a game reaches the others the next time you press Play here. Key binds for mods an instance doesn't have are kept for the ones that do, and which resource packs are on stays each instance's own.",
       where: "Ticking an instance merges its settings in: the shared ones win, and any only it has are added. Unticking keeps its current settings as its own." },
     configs: { settings: true, title: "Mod configs shared across instances",
       lead: "Each mod's config files are kept the same in every instance ticked here, but only instances with that mod get its configs. A config changed in one game reaches the others the next time you press Play here, or when the app starts.",
@@ -5723,6 +5751,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       mainEl.append(h("p", { class: "hint" }, sharing.length
         ? "Shared by " + sharing.map(function (i) { return i.name; }).join(", ") + "."
         : "No instance shares its " + (kind === "options" ? "game settings" : "mod configs") + " yet. Tick one on the right to start."));
+      if (kind === "options" && sharing.length) gameOptionsEditor(d, mainEl);
     }
     d.instances.forEach(function (it) {
       var box = h("input", { type: "checkbox", "aria-label": (it[flag] ? "Stop sharing with " : "Share with ") + it.name });
@@ -5731,6 +5760,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       box.addEventListener("change", function () {
         box.disabled = true;
         var what = { options: "game settings", configs: "mod configs", java: "Java arguments" }[kind], on = box.checked;
+        if (kind === "options") gopts.data = null;
         track("Updating " + it.name, api("POST", "/api/sharing/instance", { id: it.id, kind: kind, on: on })).then(function () {
           toast(on ? it.name + " uses the shared " + what + " now." : it.name + " keeps its own " + what + " now.");
           inst.data = null;
@@ -5756,6 +5786,316 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       targetsEl.append(h("label", { class: "toggle always-default" }, byDefault,
         h("span", null, "New instances share game settings and Java arguments", h("span", { class: "hint" }, "Instances made here, and ones the app finds for the first time."))));
     }
+  }
+
+  // ---------- Shared > Game settings: an editor for the shared options.txt (Sharing.cs) ----------
+  // Every setting Minecraft 1.21.1 keeps in options.txt, grouped like its own menus, with the value as the game
+  // writes it. A setting the file doesn't have yet shows the game's default; anything in the file that isn't
+  // listed here (a newer version's, or a mod's) shows under Other as plain text. Key binds have their own tab, and
+  // which resource packs are on stays each instance's own.
+  var goptPct = function (v) { return Math.round(v * 100) + "%"; };
+  var goptPctOff = function (v) { return v <= 0 ? "Off" : Math.round(v * 100) + "%"; };
+  function goB(key, label) { return { key: key, label: label, type: "bool", def: arguments.length > 2 ? arguments[2] : false }; }
+  function goE(key, label, def, opts, quoted) { return { key: key, label: label, type: "enum", def: def, opts: opts, quoted: !!quoted }; }
+  function goN(key, label, def, min, max, step, fmt, whole) { return { key: key, label: label, type: "num", def: def, min: min, max: max, step: step, fmt: fmt || goptPct, whole: !!whole }; }
+  function goT(key, label, def, quoted) { return { key: key, label: label, type: "text", def: def, quoted: !!quoted }; }
+  var GAME_OPTIONS = [
+    { id: "video", title: "Video", items: [
+      goE("graphicsMode", "Graphics", "1", [["0", "Fast"], ["1", "Fancy"], ["2", "Fabulous!"]]),
+      goN("renderDistance", "Render distance", 12, 2, 32, 1, function (v) { return v + " chunks"; }, true),
+      goN("simulationDistance", "Simulation distance", 12, 5, 32, 1, function (v) { return v + " chunks"; }, true),
+      goE("prioritizeChunkUpdates", "Chunk builder", "0", [["0", "Threaded"], ["1", "Semi blocking"], ["2", "Fully blocking"]]),
+      goN("maxFps", "Max framerate", 120, 10, 260, 10, function (v) { return v >= 260 ? "Unlimited" : v + " fps"; }, true),
+      goB("enableVsync", "VSync", true),
+      goB("fullscreen", "Fullscreen"),
+      goT("fullscreenResolution", "Fullscreen resolution", ""),
+      goN("guiScale", "GUI scale", 0, 0, 8, 1, function (v) { return v ? String(v) : "Auto"; }, true),
+      goN("gamma", "Brightness", 0.5, 0, 1, 0.01, function (v) { return v <= 0 ? "Moody" : v >= 1 ? "Bright" : Math.round(v * 100) + "%"; }),
+      goE("renderClouds", "Clouds", "true", [["true", "Fancy"], ["fast", "Fast"], ["false", "Off"]], true),
+      goE("particles", "Particles", "0", [["0", "All"], ["1", "Decreased"], ["2", "Minimal"]]),
+      goB("ao", "Smooth lighting", true),
+      goN("biomeBlendRadius", "Biome blend", 2, 0, 7, 1, function (v) { return v ? (2 * v + 1) + "×" + (2 * v + 1) : "Off"; }, true),
+      goN("mipmapLevels", "Mipmap levels", 4, 0, 4, 1, function (v) { return v ? String(v) : "Off"; }, true),
+      goB("entityShadows", "Entity shadows", true),
+      goN("entityDistanceScaling", "Entity distance", 1, 0.5, 5, 0.25, goptPct),
+      goE("attackIndicator", "Attack indicator", "1", [["0", "Off"], ["1", "Crosshair"], ["2", "Hotbar"]]),
+      goB("bobView", "View bobbing", true),
+      goN("menuBackgroundBlurriness", "Menu background blur", 5, 0, 10, 1, function (v) { return v ? String(v) : "Off"; }, true),
+      goB("showAutosaveIndicator", "Autosave indicator", true),
+      goN("fov", "Field of view", 0, -1, 1, 0.025, function (v) { var deg = Math.round(v * 40 + 70); return deg === 70 ? "Normal" : deg === 110 ? "Quake Pro" : deg + "°"; })] },
+    { id: "sound", title: "Music & sounds", items: [
+      goN("soundCategory_master", "Master volume", 1, 0, 1, 0.01, goptPctOff),
+      goN("soundCategory_music", "Music", 1, 0, 1, 0.01, goptPctOff),
+      goN("soundCategory_record", "Jukebox / note blocks", 1, 0, 1, 0.01, goptPctOff),
+      goN("soundCategory_weather", "Weather", 1, 0, 1, 0.01, goptPctOff),
+      goN("soundCategory_block", "Blocks", 1, 0, 1, 0.01, goptPctOff),
+      goN("soundCategory_hostile", "Hostile creatures", 1, 0, 1, 0.01, goptPctOff),
+      goN("soundCategory_neutral", "Friendly creatures", 1, 0, 1, 0.01, goptPctOff),
+      goN("soundCategory_player", "Players", 1, 0, 1, 0.01, goptPctOff),
+      goN("soundCategory_ambient", "Ambient / environment", 1, 0, 1, 0.01, goptPctOff),
+      goN("soundCategory_voice", "Voice / speech", 1, 0, 1, 0.01, goptPctOff),
+      goT("soundDevice", "Output device (blank: the system's)", "", true),
+      goB("showSubtitles", "Show subtitles"),
+      goB("directionalAudio", "Directional audio")] },
+    { id: "controls", title: "Controls & mouse", items: [
+      goN("mouseSensitivity", "Mouse sensitivity", 0.5, 0, 1, 0.005, function (v) { return v <= 0 ? "*yawn*" : v >= 1 ? "HYPERSPEED!!!" : Math.round(v * 200) + "%"; }),
+      goB("invertYMouse", "Invert mouse"),
+      goN("mouseWheelSensitivity", "Scroll sensitivity", 1, 0.01, 10, 0.01, function (v) { return v.toFixed(2); }),
+      goB("discrete_mouse_scroll", "Discrete scrolling"),
+      goB("rawMouseInput", "Raw input", true),
+      goB("touchscreen", "Touchscreen mode"),
+      goB("autoJump", "Auto-jump"),
+      goB("toggleCrouch", "Sneak: toggle (off: hold)"),
+      goB("toggleSprint", "Sprint: toggle (off: hold)"),
+      goB("operatorItemsTab", "Operator items tab")] },
+    { id: "chat", title: "Chat", items: [
+      goE("chatVisibility", "Chat", "0", [["0", "Shown"], ["1", "Commands only"], ["2", "Hidden"]]),
+      goB("chatColors", "Colors", true),
+      goB("chatLinks", "Web links", true),
+      goB("chatLinksPrompt", "Prompt on links", true),
+      goN("chatOpacity", "Chat text opacity", 1, 0, 1, 0.01, function (v) { return Math.round((v * 0.9 + 0.1) * 100) + "%"; }),
+      goN("textBackgroundOpacity", "Text background opacity", 0.5, 0, 1, 0.01, goptPct),
+      goN("chatScale", "Text size", 1, 0, 1, 0.01, goptPctOff),
+      goN("chatLineSpacing", "Line spacing", 0, 0, 1, 0.01, goptPct),
+      goN("chatDelay", "Chat delay", 0, 0, 6, 0.1, function (v) { return v <= 0 ? "None" : v.toFixed(1) + " s"; }),
+      goN("chatWidth", "Width", 1, 0, 1, 0.01, function (v) { return Math.round(v * 280 + 40) + " px"; }),
+      goN("chatHeightFocused", "Focused height", 1, 0, 1, 0.01, function (v) { return Math.round(v * 160 + 20) + " px"; }),
+      goN("chatHeightUnfocused", "Unfocused height", 0.4375, 0, 1, 0.01, function (v) { return Math.round(v * 160 + 20) + " px"; }),
+      goB("autoSuggestions", "Command suggestions", true),
+      goB("hideMatchedNames", "Hide matched names", true),
+      goB("onlyShowSecureChat", "Only show secure chat"),
+      goB("reducedDebugInfo", "Reduced debug info")] },
+    { id: "access", title: "Accessibility", items: [
+      goE("narrator", "Narrator", "0", [["0", "Off"], ["1", "Narrates all"], ["2", "Narrates chat"], ["3", "Narrates system"]]),
+      goB("narratorHotkey", "Narrator hotkey", true),
+      goB("highContrast", "High contrast"),
+      goB("backgroundForChatOnly", "Text background: chat only (off: everywhere)", true),
+      goN("notificationDisplayTime", "Notification time", 1, 0.5, 10, 0.1, function (v) { return v.toFixed(1) + "×"; }),
+      goN("screenEffectScale", "Distortion effects", 1, 0, 1, 0.01, goptPctOff),
+      goN("fovEffectScale", "FOV effects", 1, 0, 1, 0.01, goptPctOff),
+      goN("darknessEffectScale", "Darkness pulsing", 1, 0, 1, 0.01, goptPctOff),
+      goN("damageTiltStrength", "Damage tilt", 1, 0, 1, 0.01, goptPctOff),
+      goN("glintSpeed", "Glint speed", 0.5, 0, 1, 0.01, goptPctOff),
+      goN("glintStrength", "Glint strength", 0.75, 0, 1, 0.01, goptPctOff),
+      goB("hideLightningFlashes", "Hide lightning flashes"),
+      goB("darkMojangStudiosBackground", "Monochrome logo"),
+      goN("panoramaScrollSpeed", "Panorama scroll speed", 1, 0, 1, 0.01, goptPct),
+      goB("hideSplashTexts", "Hide splash texts")] },
+    { id: "skin", title: "Skin customization", items: [
+      goB("modelPart_cape", "Cape", true),
+      goB("modelPart_jacket", "Jacket", true),
+      goB("modelPart_left_sleeve", "Left sleeve", true),
+      goB("modelPart_right_sleeve", "Right sleeve", true),
+      goB("modelPart_left_pants_leg", "Left pants leg", true),
+      goB("modelPart_right_pants_leg", "Right pants leg", true),
+      goB("modelPart_hat", "Hat", true),
+      goE("mainHand", "Main hand", "right", [["left", "Left"], ["right", "Right"]], true)] },
+    { id: "lang", title: "Language", items: [
+      goT("lang", "Language code (en_us, de_de, …)", "en_us"),
+      goB("forceUnicodeFont", "Force Unicode font"),
+      goB("japaneseGlyphVariants", "Japanese glyph variants")] },
+    { id: "online", title: "Online & multiplayer", items: [
+      goB("allowServerListing", "Allow server listings", true),
+      goB("realmsNotifications", "Realms notifications", true),
+      goB("hideServerAddress", "Hide server address"),
+      goB("skipMultiplayerWarning", "Skip the multiplayer warning"),
+      goB("joinedFirstServer", "Has joined a server"),
+      goT("lastServer", "Last server (direct connect)", ""),
+      goB("telemetryOptInExtra", "Optional telemetry")] },
+    { id: "misc", title: "Game & technical", items: [
+      goB("pauseOnLostFocus", "Pause when the window loses focus", true),
+      goB("advancedItemTooltips", "Advanced tooltips (F3+H)"),
+      goB("hideBundleTutorial", "Hide the bundle tutorial"),
+      goE("tutorialStep", "Tutorial", "movement", [["movement", "Movement"], ["find_tree", "Find a tree"], ["punch_tree", "Punch a tree"], ["open_inventory", "Open the inventory"], ["craft_planks", "Craft planks"], ["none", "Done (none)"]]),
+      goB("onboardAccessibility", "Show the accessibility screen at first start", true),
+      goB("syncChunkWrites", "Sync chunk writes", true),
+      goB("useNativeTransport", "Native network transport", true),
+      goN("glDebugVerbosity", "OpenGL debug verbosity", 1, 0, 3, 1, function (v) { return String(v); }, true),
+      goN("overrideWidth", "Window width override (0: off)", 0, 0, 7680, 10, function (v) { return v ? v + " px" : "Off"; }, true),
+      goN("overrideHeight", "Window height override (0: off)", 0, 0, 4320, 10, function (v) { return v ? v + " px" : "Off"; }, true)] }
+  ];
+  var GOPT_SKIP = { version: 1, resourcePacks: 1, incompatibleResourcePacks: 1 };
+  var gopts = { data: null, loading: null, forInfo: null, edits: {}, q: "", open: { video: true }, el: null, saving: false };
+
+  function goptUnquote(raw) {
+    var m = /^"(.*)"$/.exec(raw);
+    return m ? m[1].replace(/\\(["\\])/g, "$1") : raw;
+  }
+  function goptRaw(e) { // what the file says, or null when it doesn't have it
+    var v = gopts.data && gopts.data.map[e.key];
+    return v == null ? null : v;
+  }
+  function goptValue(e) { // the value to show: an unsaved change, the file's, or the default (as the file would write it)
+    if (Object.prototype.hasOwnProperty.call(gopts.edits, e.key)) return gopts.edits[e.key];
+    var raw = goptRaw(e);
+    return raw != null ? raw : goptWrite(e, e.def);
+  }
+  // A value in the form options.txt keeps it: decimals with a point (1.0), quotes kept where the file has them.
+  function goptWrite(e, v) {
+    if (e.type === "bool") return v ? "true" : "false";
+    if (e.type === "num") {
+      if (e.whole) return String(Math.round(v));
+      var r = Math.round(v * 10000) / 10000;
+      return r % 1 === 0 ? r.toFixed(1) : String(r);
+    }
+    var raw = goptRaw(e), quote = raw != null ? /^".*"$/.test(raw) : e.quoted;
+    return quote ? "\"" + String(v).replace(/(["\\])/g, "\\$1") + "\"" : String(v);
+  }
+  function goptSet(e, raw) {
+    var file = goptRaw(e), base = file != null ? file : goptWrite(e, e.def);
+    if (raw === base) delete gopts.edits[e.key]; else gopts.edits[e.key] = raw;
+    goptSaveBar();
+  }
+
+  function loadGameOptions() {
+    if (gopts.loading) return gopts.loading;
+    gopts.loading = api("GET", "/api/sharing/options").then(function (d) {
+      d.map = {};
+      d.values.forEach(function (p) { d.map[p[0]] = p[1]; });
+      gopts.data = d;
+      // Changes the file has caught up with (made in a game, or saved) aren't pending any more.
+      Object.keys(gopts.edits).forEach(function (k) { if (d.map[k] === gopts.edits[k]) delete gopts.edits[k]; });
+    }, function (e) { gopts.data = { error: e.message, values: [], map: {}, running: [] }; }).then(function () {
+      gopts.loading = null;
+      renderGameOptions();
+    });
+    return gopts.loading;
+  }
+
+  // Called with each fresh answer about who shares what, so the settings are read again with it.
+  function gameOptionsEditor(info, mainEl) {
+    if (!gopts.el) gopts.el = h("div", { class: "always-list gopt" });
+    mainEl.append(gopts.el);
+    if (gopts.forInfo !== info) { gopts.forInfo = info; loadGameOptions(); }
+    else renderGameOptions();
+  }
+
+  function goptRow(e) {
+    var row = h("div", { class: "gopt-row" + (e.type === "bool" ? " is-bool" : "") });
+    var ctl = h("div", { class: "gopt-ctl" });
+    var reset = h("button", { type: "button", class: "reset", title: "Back to the game's default", "aria-label": "Back to the default for " + e.label }, icon("refresh"));
+    var refresh;
+    var raw = goptValue(e), shown = goptUnquote(raw);
+    if (e.type === "bool" && (shown === "true" || shown === "false")) {
+      var sw = h("button", { type: "button", class: "act sw-btn", role: "switch", "aria-label": e.label }, h("span", { class: "sw" }));
+      sw.addEventListener("click", function () { goptSet(e, goptUnquote(goptValue(e)) === "true" ? "false" : "true"); refresh(); });
+      ctl.append(sw);
+      refresh = function () { var on = goptUnquote(goptValue(e)) === "true"; sw.classList.toggle("on", on); sw.setAttribute("aria-checked", String(on)); };
+    } else if (e.type === "enum" && e.opts.some(function (o) { return o[0] === shown; })) {
+      var sel = h("select", { "aria-label": e.label });
+      e.opts.forEach(function (o) { sel.append(h("option", { value: o[0] }, o[1])); });
+      sel.addEventListener("change", function () { goptSet(e, goptWrite(e, sel.value)); refresh(); });
+      ctl.append(sel);
+      refresh = function () { sel.value = goptUnquote(goptValue(e)); };
+    } else if (e.type === "num" && !isNaN(parseFloat(shown)) && isFinite(shown)) {
+      var range = h("input", { type: "range", min: e.min, max: e.max, step: e.step, "aria-label": e.label });
+      var out = h("span", { class: "val" });
+      range.addEventListener("input", function () { goptSet(e, goptWrite(e, parseFloat(range.value))); out.textContent = e.fmt(parseFloat(range.value)); markRow(); });
+      ctl.append(range, out);
+      refresh = function () { var v = parseFloat(goptUnquote(goptValue(e))); range.value = String(v); out.textContent = e.fmt(v); };
+    } else {
+      // Plain text: free-form settings, ones not listed here, and any value the controls above don't know.
+      var text = h("input", { type: "text", spellcheck: "false", "aria-label": e.label });
+      var quotedText = e.type === "text" || e.type === "enum";
+      text.addEventListener("input", function () { goptSet(e, quotedText ? goptWrite(e, text.value) : text.value); markRow(); });
+      ctl.append(text);
+      refresh = function () { var v = goptValue(e); text.value = quotedText ? goptUnquote(v) : v; };
+    }
+    if (e.def != null) {
+      reset.addEventListener("click", function () { goptSet(e, goptWrite(e, e.def)); refresh(); markRow(); });
+      ctl.append(reset);
+    }
+    var markRow = function () {
+      row.classList.toggle("changed", Object.prototype.hasOwnProperty.call(gopts.edits, e.key));
+      reset.classList.toggle("off", e.def == null || goptUnquote(goptValue(e)) === goptUnquote(goptWrite(e, e.def)));
+    };
+    var oldRefresh = refresh;
+    refresh = function () { oldRefresh(); markRow(); };
+    row.append(h("div", { class: "gopt-label" }, e.label, h("span", { class: "key" }, e.key + (goptRaw(e) == null ? " · not in the file yet (default)" : ""))), ctl);
+    refresh();
+    return row;
+  }
+
+  function goptSaveBar() {
+    var bar = gopts.el && gopts.el.querySelector(".gopt-save");
+    if (!bar) return;
+    var n = Object.keys(gopts.edits).length, running = (gopts.data && gopts.data.running) || [];
+    bar.hidden = !n;
+    bar.querySelector(".n").textContent = count(n, "unsaved change", "unsaved changes");
+    bar.querySelector(".btn.primary").disabled = !connected || gopts.saving || running.length > 0;
+  }
+
+  function renderGameOptions() {
+    var el = gopts.el, d = gopts.data;
+    if (!el) return;
+    if (!d) { el.replaceChildren(h("p", { class: "hint" }, "Reading the shared settings…")); return; }
+    if (d.error) { el.replaceChildren(h("p", { class: "warnbox bad" }, d.error)); return; }
+    var q = gopts.q.toLowerCase();
+    var match = function (e) { return !q || e.label.toLowerCase().indexOf(q) >= 0 || e.key.toLowerCase().indexOf(q) >= 0; };
+    var listed = {};
+    GAME_OPTIONS.forEach(function (s) { s.items.forEach(function (e) { listed[e.key] = true; }); });
+    // Settings a mod adds: its sound volumes join the sound section, its on/off ones get a switch, the rest a text box.
+    var others = [], modSounds = [], binds = 0;
+    d.values.forEach(function (p) {
+      var k = p[0], v = p[1];
+      if (k.indexOf("key_") === 0) { binds++; return; }
+      if (listed[k] || GOPT_SKIP[k]) return;
+      if (/^soundCategory_/.test(k) && isFinite(parseFloat(v))) {
+        var name = k.slice(14).replace(/[_.]+/g, " ");
+        modSounds.push(goN(k, name.charAt(0).toUpperCase() + name.slice(1), 1, 0, 1, 0.01, goptPctOff));
+      } else others.push({ key: k, label: k, type: v === "true" || v === "false" ? "bool" : "text", def: null });
+    });
+    var sections = GAME_OPTIONS.map(function (s) {
+      if (s.id !== "sound" || !modSounds.length) return s;
+      var at = s.items.findIndex(function (e) { return e.key === "soundDevice"; });
+      return { id: s.id, title: s.title, items: s.items.slice(0, at).concat(modSounds, s.items.slice(at)) };
+    }).concat(others.length ? [{ id: "other", title: "Other (from mods)", items: others }] : []);
+    var search = h("input", { type: "search", placeholder: "Find a setting", "aria-label": "Find a game setting", spellcheck: "false" });
+    search.value = gopts.q;
+    var body = h("div", { class: "always-list" });
+    var draw = function () {
+      q = gopts.q.toLowerCase();
+      body.replaceChildren();
+      sections.forEach(function (s) {
+        var items = s.items.filter(match);
+        if (!items.length) return;
+        var det = h("details", { class: "gopt-sec" }, h("summary", null, s.title, h("span", { class: "k" }, count(items.length, "setting", "settings"))));
+        det.open = !!q || !!gopts.open[s.id];
+        var filled = false;
+        var fill = function () { if (filled || !det.open) return; filled = true; items.forEach(function (e) { det.append(goptRow(e)); }); };
+        det.addEventListener("toggle", function () { if (!q) gopts.open[s.id] = det.open; fill(); });
+        fill();
+        body.append(det);
+      });
+      if (!body.children.length) body.append(h("p", { class: "hint" }, "No setting matches “" + gopts.q + "”."));
+    };
+    search.addEventListener("input", function () { gopts.q = search.value.trim(); draw(); });
+    search.addEventListener("keydown", function (e) { if (e.key === "Escape" && search.value) { e.stopPropagation(); search.value = ""; gopts.q = ""; draw(); } });
+    var save = btn("Save", function () {
+      var changes = {};
+      Object.keys(gopts.edits).forEach(function (k) { changes[k] = gopts.edits[k]; });
+      gopts.saving = true;
+      goptSaveBar();
+      track("Saving game settings", api("POST", "/api/sharing/options", { changes: changes })).then(function (res) {
+        gopts.edits = {};
+        toast(res.changed ? "Saved " + count(res.changed, "setting", "settings") + " to " + count(res.instances, "instance", "instances") + ". They apply the next time the game starts." : "Nothing needed changing.");
+      }, function (e) { toast(e.message); }).then(function () { gopts.saving = false; return loadGameOptions(); });
+    }, "primary");
+    var discard = btn("Discard", function () { gopts.edits = {}; renderGameOptions(); }, "");
+    var running = d.running || [];
+    el.replaceChildren();
+    append(el, [
+      running.length ? h("p", { class: "warnbox" }, "Close the game (" + running.join(", ") + ") before changing these: it writes its settings back when it quits, which would undo them.") : null,
+      h("div", { class: "gopt-tools" },
+        h("label", { class: "search" }, icon("search"), search),
+        h("span", { class: "hint" }, binds ? "Its " + binds + " key binds are in the " : "Key binds are in the ",
+          h("button", { type: "button", class: "linkish", onclick: function () { setView("keys"); } }, "Key binds tab"),
+          ", and the settings mods keep in their own files in the ",
+          h("button", { type: "button", class: "linkish", onclick: function () { setView("configs"); } }, "Configs tab"), ".")),
+      body,
+      h("div", { class: "gopt-save", hidden: true }, h("span", { class: "n" }), discard, save)]);
+    draw();
+    goptSaveBar();
   }
 
   Array.prototype.forEach.call($("shared-kinds").querySelectorAll("button"), function (b) {

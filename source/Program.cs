@@ -549,6 +549,9 @@ namespace MinecraftModManager
                         case "/api/sharing":
                             result = SharingInfo();
                             break;
+                        case "/api/sharing/options":
+                            result = SharedOptionsInfo();
+                            break;
                         case "/api/always":
                         {
                             string sharedKind = req.QueryString["kind"];
@@ -869,6 +872,9 @@ namespace MinecraftModManager
                         return;
                     case "/api/sharing/instance":
                         SendJson(ctx, 200, SetInstanceSharing(Str(body, "id"), Str(body, "kind"), Bool(body, "on")));
+                        return;
+                    case "/api/sharing/options":
+                        SendJson(ctx, 200, SetSharedOptions(D(Get(body, "changes"))));
                         return;
                     case "/api/always/add-from-list":
                         SendJson(ctx, 200, AddAlwaysFromList(StrList(body, "files")));
