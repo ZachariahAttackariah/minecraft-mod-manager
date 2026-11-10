@@ -273,10 +273,21 @@ namespace MinecraftModManager
             }
             if (pathOnly == "/remote/forget")
             {
-                RemoteReply(cs, 303, "text/plain", "", "Location: /\r\nSet-Cookie: " + RemoteCookie + "=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict\r\n");
+                RemoteReply(cs, 303, "text/plain", "", "Location: /\r\nSet-Cookie: " + RemoteCookie + "=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax\r\n");
+                return;
+            }
+            // The cookie is SameSite=Lax so the page opens from a link in another app; anything else arriving from
+            // another site (a form post, a fetch, a page loading our API) is still refused.
+            string fetchSite = header("Sec-Fetch-Site");
+            bool topLevelPage = method == "GET" && !pathOnly.StartsWith("/api/") && (header("Sec-Fetch-Mode") ?? "navigate") == "navigate";
+            if (fetchSite != null && fetchSite.Equals("cross-site", StringComparison.OrdinalIgnoreCase) && !topLevelPage)
+            {
+                RemoteReply(cs, 403, "text/plain", "Forbidden");
                 return;
             }
             NoteRemoteSeen(device);
+            // Opening the page renews the pairing for another year (and moves older cookies over to SameSite=Lax).
+            string renew = topLevelPage ? "Set-Cookie: " + RemoteCookie + "=" + RemoteKeyFrom(header("Cookie")) + CookieAttributes + "\r\n" : null;
 
             // Through to the app's own server, as a local request.
             using (var upstream = new TcpClient())
@@ -321,6 +332,7 @@ namespace MinecraftModManager
                     if (line.StartsWith("Connection:", StringComparison.OrdinalIgnoreCase) || line.StartsWith("Keep-Alive:", StringComparison.OrdinalIgnoreCase)) continue;
                     rsb.Append(line).Append("\r\n");
                 }
+                if (renew != null) rsb.Append(renew);
                 rsb.Append("Connection: close\r\n\r\n");
                 byte[] rhb = Encoding.UTF8.GetBytes(rsb.ToString());
                 cs.Write(rhb, 0, rhb.Length);
@@ -388,7 +400,11 @@ namespace MinecraftModManager
                 return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(key))).Replace("-", "").ToLowerInvariant();
         }
 
-        static Dictionary<string, object> RemoteDeviceFor(string cookieHeader)
+        // A year, renewed each time the page is opened; Lax so it's sent when the page is opened from a link in another
+        // app (Strict made a phone look unpaired whenever it arrived that way).
+        const string CookieAttributes = "; Max-Age=31536000; Path=/; HttpOnly; SameSite=Lax";
+
+        static string RemoteKeyFrom(string cookieHeader)
         {
             if (string.IsNullOrEmpty(cookieHeader)) return null;
             string key = null;
@@ -397,6 +413,12 @@ namespace MinecraftModManager
                 string p = part.Trim();
                 if (p.StartsWith(RemoteCookie + "=")) key = p.Substring(RemoteCookie.Length + 1);
             }
+            return key;
+        }
+
+        static Dictionary<string, object> RemoteDeviceFor(string cookieHeader)
+        {
+            string key = RemoteKeyFrom(cookieHeader);
             if (string.IsNullOrEmpty(key) || key.Length < 32) return null;
             byte[] hash = Encoding.ASCII.GetBytes(HashKey(key));
             lock (remoteLock)
@@ -455,7 +477,7 @@ namespace MinecraftModManager
             SaveSettings();
             Log("Remote access: paired " + name);
             if (window != null && !window.IsDisposed) try { window.BeginInvoke((Action)(() => { if (!window.IsDisposed) window.Notify("refresh"); })); } catch { }
-            RemoteReply(s, 303, "text/plain", "", "Location: /\r\nSet-Cookie: " + RemoteCookie + "=" + key + "; Max-Age=31536000; Path=/; HttpOnly; SameSite=Strict\r\n");
+            RemoteReply(s, 303, "text/plain", "", "Location: /\r\nSet-Cookie: " + RemoteCookie + "=" + key + CookieAttributes + "\r\n");
         }
 
         static string GuessDeviceName(string ua)
@@ -482,7 +504,8 @@ namespace MinecraftModManager
                 "button{margin-top:18px;width:100%;padding:12px;border:0;border-radius:6px;background:#1ec85a;color:#06210f;font:700 16px system-ui,sans-serif}" +
                 ".msg{color:#ff8a7a}@media (prefers-color-scheme:light){body{background:#eef1f4;color:#15181c}main{background:#fff;border-color:#d5dbe1}input{background:#f7f9fa;border-color:#c5ccd3}p{color:#4c5560}}" +
                 "</style></head><body><main><h1>Pair this device</h1>" +
-                "<p>On the PC, open Minecraft Mod Manager, go to Settings &gt; Remote Access and choose <b>Pair a device</b>. Type the code it shows.</p>" + msg +
+                "<p>On the PC, open Minecraft Mod Manager, go to Settings &gt; Remote Access and choose <b>Pair a device</b>. Type the code it shows.</p>" +
+                "<p class=\"hint\">Paired this browser before? Make sure you're using the same address as last time (pairing belongs to the address), and that it's the same browser: a page added to the Home Screen keeps its own pairing.</p>" + msg +
                 "<form method=\"post\" action=\"/remote/pair\"><label for=\"code\">Code</label>" +
                 "<input id=\"code\" class=\"code\" name=\"code\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"9\" required autofocus>" +
                 "<label for=\"name\">Name for this device (optional)</label><input id=\"name\" name=\"name\" maxlength=\"40\" placeholder=\"e.g. My phone\">" +
