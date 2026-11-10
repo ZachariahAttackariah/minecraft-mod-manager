@@ -1135,6 +1135,9 @@ html[data-blocky="on"] :is(.set-card h2, .card h2) { font-family: var(--font-blo
 .banner .b-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .cards { display: grid; gap: 14px; }
+/* A grid cell may shrink below its content's natural width (a long row of tabs or buttons scrolls or wraps inside it
+   instead of widening the page; on a phone a too-wide page makes the browser zoom the whole app out). */
+.cards > *, .always-cards > *, .always-list > *, .cfg-wrap > *, .set-grid > *, .mods-layout > *, .main-col > *, .gopt-label.with-icon > div { min-width: 0; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 16px; min-width: 0; }
 .card h2 { margin: 0 0 4px; font: 700 17px/1.25 var(--font-display); }
 /* Every page's and card's intro text looks the same. */
@@ -1585,6 +1588,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   .sw::after { top: 3px; left: 3px; width: 16px; height: 16px; }
   .sw-btn.on .sw::after { transform: translateX(16px); }
   .check { width: 24px; height: 24px; border-radius: 6px; }
+  /* iPhones zoom the page in on any text box with text under 16px when it's tapped (and stay zoomed in) */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), select, textarea { font-size: 16px !important; }
   /* Finger-sized: segmented buttons, the reset icons, and the column names you tap to sort */
   .seg-control button { min-height: 36px; }
   .gopt-ctl .reset { width: 34px; height: 34px; }
