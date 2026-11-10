@@ -64,6 +64,9 @@ html[data-accent="sky"] { --accent: #1a8cff; --accent-fg: #4db3ff; }
 html[data-accent="amethyst"] { --accent: #8a4dff; --accent-fg: #b28cff; }
 html[data-accent="gold"] { --accent: #f0a500; --accent-fg: #ffc933; }
 html[data-accent="redstone"] { --accent: #ef2f2f; --accent-fg: #ff6a5e; }
+html[data-accent="copper"] { --accent: #e0702a; --accent-fg: #ff9a57; }
+html[data-accent="prismarine"] { --accent: #12b5a5; --accent-fg: #3fe0cf; }
+html[data-accent="cherry"] { --accent: #e8508f; --accent-fg: #ff86b6; }
 html[data-theme="light"] {
   --bg: #eceff2;
   --surface: #ffffff;
@@ -94,6 +97,23 @@ html[data-theme="light"] {
   color-scheme: light;
 }
 html[data-density="compact"] { --row-pad: 4px; --icon: 28px; }
+/* Shades (Settings › Appearance): other surfaces for the dark theme and for the light one. */
+html[data-theme="dark"][data-shade="deepslate"] { --bg: #1a1d22; --surface: #22262d; --raised: #292e36; --sunken: #14171b; --line: #323843; --btn: #323843; --btn-hover: #3c4350; }
+html[data-theme="dark"][data-shade="midnight"] { --bg: #0f1420; --surface: #161d2c; --raised: #1c2436; --sunken: #0b0f18; --line: #28324a; --btn: #28324a; --btn-hover: #323e5a; --glow-b: rgba(90, 120, 255, 0.09); }
+html[data-theme="dark"][data-shade="spruce"] { --bg: #1f1b18; --surface: #28231f; --raised: #2f2924; --sunken: #171411; --line: #3a332c; --btn: #3a332c; --btn-hover: #463e35; --glow-b: rgba(255, 150, 70, 0.06); }
+html[data-theme="dark"][data-shade="black"] { --bg: #000000; --surface: #0e0f10; --raised: #151617; --sunken: #000000; --line: #26282b; --btn: #222427; --btn-hover: #2c2f33; --glow-b: transparent; }
+html[data-theme="light"][data-lightshade="birch"] { --bg: #efe9de; --surface: #fbf8f2; --raised: #fffdf8; --sunken: #e5ddcf; --line: #dad0bf; --btn: #e8e0d2; --btn-hover: #ddd3c2; }
+html[data-theme="light"][data-lightshade="stone"] { --bg: #dfe2e6; --surface: #eef0f2; --raised: #f5f6f8; --sunken: #d3d7dc; --line: #c4cad1; --btn: #d6dade; --btn-hover: #cacfd5; }
+/* High contrast: brighter secondary text and stronger lines (after the shades, so it wins over them). */
+html[data-theme="dark"][data-contrast="high"] { --muted: #c6cbd1; --line: #555c66; --ink: #ffffff; }
+html[data-theme="light"][data-contrast="high"] { --muted: #353b42; --line: #9aa2ab; --ink: #000000; }
+/* Fonts: the page loads Noto Sans and Space Grotesk; the others are Windows' own. */
+html[data-font="grotesk"] { --font-body: "Space Grotesk", "Segoe UI", system-ui, sans-serif; --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif; }
+html[data-font="system"] { --font-body: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif; --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+html[data-font="verdana"] { --font-body: Verdana, "DejaVu Sans", Geneva, sans-serif; --font-display: Verdana, "DejaVu Sans", Geneva, sans-serif; }
+/* Glass panels: see-through, blurring what's behind (best over a background picture or the glow). Only on
+   boxes that hold nothing pinned to the window, since a blur would move those. */
+html[data-panels="glass"] :is(.panel, .card, .gopt-sec) { background-color: color-mix(in srgb, var(--surface) 64%, transparent); -webkit-backdrop-filter: blur(14px) saturate(1.15); backdrop-filter: blur(14px) saturate(1.15); }
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; }
 /* The scrollbar's room is always kept, so the page doesn't shift sideways when it appears or goes. */
@@ -317,7 +337,7 @@ html[data-actions="always"] .act { opacity: 1; }
 /* Touch screens have no hover: row buttons always show, and a long press opens the row's menu (see longPress). */
 @media (hover: none) {
   .act { opacity: 1; }
-  .row, .pack-row, .always-row, .feat-row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  .row, .pack-row, .shared-item, .feat-row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 }
 .section-label { margin: 0 0 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font: 600 14px/1.2 var(--font-display); letter-spacing: 0.01em; }
 .hint { font: 400 12px/1.2 var(--font-body); color: var(--muted); }
@@ -449,16 +469,10 @@ a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--acce
 .mark.note { color: var(--c-client); }
 .mark.always { color: var(--accent); }
 .always-list { display: grid; gap: 6px; }
-.always-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; }
-.always-main { display: grid; gap: 2px; flex: 1; min-width: 0; }
-.always-row .toggle.always-main { display: flex; align-items: flex-start; }
-.always-row .toggle.always-main > span { display: grid; gap: 2px; min-width: 0; }
 .always-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); align-items: start; }
 .always-cards .row-actions { margin-bottom: 12px; }
-.always-row.off { opacity: 0.7; }
 .clip-paste { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .clip-paste .note { color: var(--muted); }
-.always-row .hint { line-height: 1.35; overflow-wrap: anywhere; }
 .always-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
 /* Shared > Game settings: every setting in the shared options.txt, grouped like the game's own menus. */
 .gopt-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 4px; }
@@ -486,6 +500,21 @@ a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--acce
 .gopt-sec-d { margin: 0; padding: 0 12px 10px 33px; font-size: 12.5px; color: var(--muted); white-space: pre-line; }
 .sticky-bar.gopt-tools .search { flex: 1 1 100%; }
 .cfg-main .search input[type=search], #det-body .search input[type=search] { padding-left: 32px; }
+.gopt-row.wide { grid-template-columns: minmax(0, 1fr); }
+.gopt-row .d { font-size: 12.5px; color: var(--muted); }
+.gopt-row .fl { font-weight: 600; font-size: 13.5px; }
+.gopt-row.is-off .gopt-label { opacity: 0.7; }
+.gopt-label.with-icon { display: flex; align-items: flex-start; gap: 10px; }
+.gopt-label .always-tags { margin-top: 5px; }
+.shared-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.gopt-row.is-wide-ctl { grid-template-columns: minmax(0, 1fr) auto; }
+.gopt-ctl .seg-control, .gopt-ctl .swatches { flex-wrap: wrap; justify-content: flex-end; }
+.gopt-sec.set-card { display: block; margin: 0; scroll-margin-top: 12px; }
+.gopt-sec details.fine { border-top: 1px solid var(--line); }
+.gopt-sec details.fine > summary { padding: 10px 12px; }
+.gopt-sec details.fine > summary::before { content: ""; width: 6px; height: 6px; margin: 0 3px 0 1px; font-size: 0; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); }
+.gopt-sec details.fine[open] > summary::before { transform: rotate(45deg); }
+.gopt-sec details.fine > .gopt-row:first-of-type { border-top: 1px solid var(--line); }
 .gopt-ctl .act.sw-btn { opacity: 1; }
 .gopt-ctl .reset { flex: none; display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; color: var(--muted); background: none; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
 .gopt-ctl .reset:hover { color: var(--ink); background: var(--sunken); border-color: var(--line); }
@@ -502,8 +531,7 @@ a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--acce
 .note-pop .k { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; font: 700 11px/1 var(--font-body); letter-spacing: 0.05em; text-transform: uppercase; color: var(--c-client); }
 .note-pop .k svg { width: 12px; height: 12px; }
 .note-input { width: 100%; min-height: 44px; padding: 8px 10px; font: 400 13.5px/1.45 var(--font-body); color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; resize: vertical; }
-.det-extras { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 8px 16px; align-items: center; margin-top: 14px; padding: 12px; background: var(--raised); border: 1px solid var(--line); border-radius: 4px; }
-.det-extras .note-input, .det-extras .hint { grid-column: 1 / -1; }
+.det-extras { margin-top: 14px; }
 .dx { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; }
 .dx .l { color: var(--muted); white-space: nowrap; }
 .dx select { min-width: 0; max-width: 70%; padding: 5px 8px; color: var(--ink); background: var(--sunken); border: 1px solid var(--line); border-radius: 3px; font: inherit; }
@@ -1134,8 +1162,6 @@ p.lead, .lib-note { margin: 0 0 12px; max-width: 920px; font-size: 13.5px; line-
 .pop button.with-icon { display: flex; align-items: center; gap: 10px; }
 /* A divider in a row of segment buttons (the Shared tab: mods and packs | settings). */
 .seg-control .seg-sep { width: 1px; align-self: stretch; margin: 4px 6px; background: var(--line); }
-.always-default { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 10px 12px; border-top: 1px solid var(--line); }
-.always-default .hint { display: block; margin-top: 2px; }
 .pop button.with-icon svg { flex: none; color: var(--muted); }
 .pop .menu-head { max-width: 320px; }
 .pop hr { margin: 4px 2px; border: 0; border-top: 1px solid var(--line); }
@@ -1392,9 +1418,8 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
 .inst-form { display: grid; gap: 14px; padding: 4px 0 8px; }
 .inst-form .prop { align-content: start; }
 .inst-form .prop select, .inst-form .prop input[type=text] { width: 100%; }
-.inst-form .fixed { padding: 8px 10px; font-size: 13.5px; background: var(--sunken); border-radius: 3px; }
-.inst-form .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
-@media (max-width: 560px) { .inst-form .pair { grid-template-columns: minmax(0, 1fr); } }
+.inst-form .gopt-row.fixed { font-size: 13.5px; color: var(--muted); }
+.inst-form .gopt-ctl select, .inst-form .gopt-ctl input[type=text], .inst-form .gopt-ctl textarea { flex: 1; width: 100%; }
 .packs-where { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; font-size: 13px; color: var(--muted); }
 .packs-where select { padding: 7px 9px; font: 400 13.5px/1.3 var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
 /* The folder on one line, trimmed at the start so its end (instance\minecraft\resourcepacks) shows; the full path is its tooltip. */
@@ -1419,9 +1444,6 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
 .pack-actions .act { opacity: 0.7; }
 .packs-empty { padding: 22px 4px; color: var(--muted); font-size: 13.5px; }
 @media (max-width: 640px) { .pack-row { grid-template-columns: 20px 40px minmax(0, 1fr); } .pack-state, .pack-actions { grid-column: 3; } }
-.inst-form .share-box { display: grid; gap: 10px; min-width: 0; margin: 0; padding: 8px 12px 12px; border: 1px solid var(--line); border-radius: 4px; }
-.inst-form .share-box legend { padding: 0 6px; font-weight: 700; font-size: 13.5px; color: var(--ink); }
-.inst-form .share-box .prop { margin-left: 24px; }
 textarea.args { width: 100%; min-height: 56px; padding: 7px 9px; font: 400 12.5px/1.45 var(--font-mono); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; resize: vertical; }
 .shared-form { display: grid; gap: 16px; padding: 4px 0 8px; }
 .shared-form section { display: grid; gap: 8px; }
@@ -1591,7 +1613,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       <button type="button" data-view="packs">Packs</button>
       <button type="button" data-view="shared" title="Mods and packs shared across every instance the app manages">Shared</button>
       <button type="button" data-view="configs" title="Every mod's settings, from the game's and the server's config folders">Configs</button>
-      <button type="button" data-view="keys" title="Every control in the game, Minecraft's and the mods': which keys clash, and changing them">Key binds</button>
+      <button type="button" data-view="keys" title="Every control in the game, Minecraft's and the mods': which keys clash, and changing them">Key Binds</button>
       <button type="button" data-view="server">Server</button>
       <button type="button" data-view="snapshots">Snapshots</button>
       <button type="button" data-view="cleanup">Cleanup</button>
@@ -1797,9 +1819,9 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
 
   <section class="view" id="view-packs" aria-label="Packs" hidden>
     <div class="seg-control subnav" id="pack-kinds" role="group" aria-label="Kind of pack">
-      <button type="button" data-kind="resourcepacks" aria-pressed="true">Resource packs</button>
-      <button type="button" data-kind="shaderpacks" aria-pressed="false">Shader packs</button>
-      <button type="button" data-kind="datapacks" aria-pressed="false">Data packs</button>
+      <button type="button" data-kind="resourcepacks" aria-pressed="true">Resource Packs</button>
+      <button type="button" data-kind="shaderpacks" aria-pressed="false">Shader Packs</button>
+      <button type="button" data-kind="datapacks" aria-pressed="false">Data Packs</button>
     </div>
     <div class="card">
       <p class="lead" id="packs-lead"></p>
@@ -1837,7 +1859,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         <div class="srv-tabs" id="server-subnav" role="tablist" aria-label="Server tools">
           <button type="button" role="tab" data-sub="overview" aria-pressed="false">Overview</button>
           <button type="button" role="tab" data-sub="console" aria-pressed="true">Console</button>
-          <button type="button" role="tab" data-sub="sync" aria-pressed="false">Mods &amp; configs<span class="tab-badge" id="sync-badge" hidden></span></button>
+          <button type="button" role="tab" data-sub="sync" aria-pressed="false">Mods &amp; Configs<span class="tab-badge" id="sync-badge" hidden></span></button>
           <button type="button" role="tab" data-sub="players" aria-pressed="false">Players<span class="tab-count" id="players-badge" hidden></span></button>
           <button type="button" role="tab" data-sub="settings" aria-pressed="false">Settings</button>
           <button type="button" role="tab" data-sub="backups" aria-pressed="false">Backups</button>
@@ -1884,13 +1906,13 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   <section class="view" id="view-shared" aria-label="Shared" hidden>
     <div class="seg-control subnav" id="shared-kinds" role="group" aria-label="What's shared">
       <button type="button" data-kind="mods" aria-pressed="true">Mods</button>
-      <button type="button" data-kind="resourcepacks" aria-pressed="false">Resource packs</button>
-      <button type="button" data-kind="shaderpacks" aria-pressed="false">Shader packs</button>
-      <button type="button" data-kind="datapacks" aria-pressed="false">Data packs</button>
+      <button type="button" data-kind="resourcepacks" aria-pressed="false">Resource Packs</button>
+      <button type="button" data-kind="shaderpacks" aria-pressed="false">Shader Packs</button>
+      <button type="button" data-kind="datapacks" aria-pressed="false">Data Packs</button>
       <span class="seg-sep" aria-hidden="true"></span>
-      <button type="button" data-kind="options" aria-pressed="false" title="options.txt: video, sound, controls and key binds">Game settings</button>
-      <button type="button" data-kind="configs" aria-pressed="false">Mod configs</button>
-      <button type="button" data-kind="java" aria-pressed="false">Java arguments</button>
+      <button type="button" data-kind="options" aria-pressed="false" title="options.txt: video, sound, controls and key binds">Game Settings</button>
+      <button type="button" data-kind="configs" aria-pressed="false">Mod Configs</button>
+      <button type="button" data-kind="java" aria-pressed="false">Java Arguments</button>
     </div>
     <div class="cards always-cards">
       <div class="card">
@@ -1965,7 +1987,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   </section>
 
   <!-- Key binds: the controls in options.txt, Minecraft's and the mods' (KeyBinds.cs). -->
-  <section class="view" id="view-keys" aria-label="Key binds" hidden>
+  <section class="view" id="view-keys" aria-label="Key Binds" hidden>
     <p class="lead feat-lead">Every control in the game, Minecraft's and the mods', from this instance's <code>options.txt</code>. The keyboard shows which keys are taken and which are free; click a key to see what's on it. Click a bind's key to change it, then press the new key or mouse button (hold <kbd>Shift</kbd>, <kbd>Ctrl</kbd> or <kbd>Alt</kbd> with it for a combination).</p>
     <div class="feat-notes" id="keys-notes"></div>
     <div class="card kb-card" id="keys-board"></div>
@@ -2050,7 +2072,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       <button type="button" role="tab" data-tab="gallery" aria-selected="false" id="det-gallery-tab" hidden>Gallery</button>
       <button type="button" role="tab" data-tab="versions" aria-selected="false">Versions</button>
       <button type="button" role="tab" data-tab="deps" aria-selected="false">Dependencies</button>
-      <button type="button" role="tab" data-tab="configs" aria-selected="false">Config files</button>
+      <button type="button" role="tab" data-tab="configs" aria-selected="false">Config Files</button>
     </div>
     <div class="det-body" id="det-body"></div>
   </aside>
@@ -5204,8 +5226,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     ["neoforge", "fabric", "forge", "quilt"].forEach(function (l) { loaderSelect.append(h("option", { value: l }, LOADER_NAMES[l])); });
     var versionSelect = h("select", { "aria-label": "Loader version" });
     var memorySelect = h("select", { "aria-label": "Memory" });
-    var worlds = h("input", { type: "checkbox" });
-    var fixed = h("div", { class: "fixed" });
+    var worlds = { checked: false };
+    var fixed = h("div", { class: "gopt-row wide fixed" });
     var note = h("p", { class: "hint", style: "margin:0" });
     var warn = h("p", { class: "warnbox", style: "margin:0", hidden: true });
     var error = h("p", { class: "tag-error", role: "alert", hidden: true });
@@ -5214,9 +5236,17 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       return ((inst.data && inst.data.instances) || []).filter(function (it) { return it.id === id; })[0] || null;
     };
 
-    var mcProp = h("label", { class: "prop" }, h("b", null, "Minecraft version"), mcSelect);
-    var loaderProp = h("label", { class: "prop" }, h("b", null, "Loader"), loaderSelect);
-    var worldsProp = h("label", { class: "toggle" }, worlds, "Also copy the worlds (saves)");
+    // Rows like the rest of the app's settings: the name on the left, the control on the right.
+    var fRow = function (label, control, desc, cls) {
+      return h("div", { class: "gopt-row" + (cls ? " " + cls : "") }, h("div", { class: "gopt-label" }, label, desc ? h("span", { class: "desc" }, desc) : null),
+        h("div", { class: "gopt-ctl" }, control));
+    };
+    var mcProp = fRow("Minecraft version", mcSelect);
+    var loaderProp = fRow("Loader", loaderSelect);
+    var worldsSw = h("button", { type: "button", class: "act sw-btn", role: "switch", "aria-checked": "false", "aria-label": "Also copy the worlds (saves)",
+      onclick: function () { worlds.checked = !worlds.checked; worldsSw.classList.toggle("on", worlds.checked); worldsSw.setAttribute("aria-checked", String(worlds.checked)); } },
+      h("span", { class: "sw", "aria-hidden": "true" }));
+    var worldsProp = fRow("Also copy the worlds (saves)", worldsSw, null, "is-bool");
 
     // What it shares with the other instances (mods, packs, game settings, mod configs, Java arguments) is
     // chosen in the Shared tab. An instance that uses its own Java arguments changes them here.
@@ -5224,24 +5254,20 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var ownJava = !!(s0 && !s0.java);
     var ownArgs = h("textarea", { class: "args", rows: "2", spellcheck: "false", maxlength: "4000", placeholder: "For example -XX:+UseZGC -XX:+ZGenerational", "aria-label": "This instance's own Java arguments" });
     ownArgs.value = s0 && s0.javaArgs || "";
-    var ownArgsProp = h("label", { class: "prop" }, h("b", null, "This instance's own Java arguments"), ownArgs,
-      h("span", null, "Set the memory above, so leave out -Xmx and -Xms."));
-    var shareBox = h("div", { class: "share-box" },
-      ownJava ? ownArgsProp : null,
-      h("p", { class: "hint", style: "margin:0;line-height:1.4" }, (settings ? "What this instance shares" : "What a new instance shares") +
-        " with your other instances (mods, packs, game settings, mod configs" + (ownJava ? "" : ", Java arguments") + ") is set in the ",
-        h("button", { type: "button", class: "linkish", onclick: function () { closeBig(); showShared(ownJava ? "java" : "options"); } }, "Shared tab"), "."));
-    form.append.apply(form, [
-      h("label", { class: "prop" }, h("b", null, "Name"), nameInput),
-      settings ? null : h("label", { class: "prop" }, h("b", null, "Start from"), copySelect),
-      fixed,
-      h("div", { class: "pair" }, mcProp, loaderProp),
-      h("div", { class: "pair" },
-        h("label", { class: "prop" }, h("b", null, "Loader version"), versionSelect),
-        h("label", { class: "prop" }, h("b", null, "Memory"), memorySelect, h("span", null, "How much RAM the game may use."))),
+    var ownArgsProp = h("div", { class: "gopt-row wide" }, h("div", { class: "gopt-label" }, "This instance's own Java arguments",
+      h("span", { class: "desc" }, "Set the memory above, so leave out -Xmx and -Xms.")), h("div", { class: "gopt-ctl" }, ownArgs));
+    var shareHint = h("p", { class: "hint", style: "margin:0;line-height:1.4" }, (settings ? "What this instance shares" : "What a new instance shares") +
+      " with your other instances (mods, packs, game settings, mod configs" + (ownJava ? "" : ", Java arguments") + ") is set in the ",
+      h("button", { type: "button", class: "linkish", onclick: function () { closeBig(); showShared(ownJava ? "java" : "options"); } }, "Shared tab"), ".");
+    var box = h("div", { class: "gopt-sec" });
+    [fRow("Name", nameInput),
+      settings ? null : fRow("Start from", copySelect),
+      fixed, mcProp, loaderProp,
+      fRow("Loader version", versionSelect),
+      fRow("Memory", memorySelect, "How much RAM the game may use."),
       settings ? null : worldsProp,
-      shareBox,
-      warn, note, error].filter(Boolean));
+      ownJava ? ownArgsProp : null].filter(Boolean).forEach(function (r) { box.append(r); });
+    form.append(box, shareHint, warn, note, error);
 
     var go = btn(settings ? "Save" : "Create instance", function () { submit(); }, "primary");
     openBig(settings ? source.name + " settings" : source ? "Duplicate " + source.name : "New instance",
@@ -5628,6 +5654,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     $("always-count").textContent = d.items.length ? count(d.items.length, k.noun, k.nouns) + " · going to " + count(ticked.length, "place", "places") : "";
 
     if (!d.items.length) modsEl.append(h("p", { class: "hint" }, k.empty));
+    var itemsBox = d.items.length ? h("div", { class: "gopt-sec" }) : null;
+    if (itemsBox) modsEl.append(itemsBox);
     d.items.forEach(function (m) {
       // Where this one is: every ticked place that isn't waiting for it and where it can go.
       var named = function (list) { return list.indexOf(m.name) >= 0; };
@@ -5641,27 +5669,21 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       if (cant.length) reach.push((kind === "mods" ? "can't load in " : "can't go in ") + cant.map(function (t) { return t.name; }).join(", "));
       var meta = kind === "mods" ? [m.version, m.loader, m.minecraft ? "Minecraft " + m.minecraft : null].filter(Boolean).join(" · ")
         : [m.file, formatBytes(m.size), m.format ? "format " + m.format : null].filter(Boolean).join(" · ");
-      var main = h("div", { class: "always-main" },
-        h("strong", null, m.name),
-        m.description ? h("span", { class: "hint" }, m.description) : null,
-        h("span", { class: "hint" }, meta || m.file),
-        h("span", { class: "hint" }, reach.join(" · ")),
+      var text = h("div", null, m.name,
+        h("span", { class: "key" }, meta || m.file),
+        m.description ? h("span", { class: "desc" }, m.description) : null,
+        h("span", { class: "desc" }, reach.join(" · ") + (m.settings ? ". Its shader settings are shared too." : "")),
         m.tags.length ? h("span", { class: "always-tags" }, m.tags.map(function (t) { return h("span", { class: "chip", style: "--c:" + colorOf(t) }, t); })) : null);
-      if (m.settings) main.append(h("span", { class: "hint" }, "Its shader settings are shared too."));
-      modsEl.append(h("div", { class: "always-row", "data-file": m.file, tabindex: "0" },
-        kind === "mods" ? null : m.icon ? h("img", { class: "pack-icon", src: m.icon, alt: "" }) : h("span", { class: "pack-icon", "aria-hidden": "true" }),
-        main,
-        h("button", { type: "button", class: "act delete", disabled: !connected, title: "Stop sharing…", "aria-label": "Stop sharing " + m.name, onclick: function () { askRemoveAlways(m); } }, icon("trash"))));
+      itemsBox.append(h("div", { class: "gopt-row is-wide-ctl shared-item", "data-file": m.file, tabindex: "0" },
+        h("div", { class: "gopt-label" + (kind === "mods" ? "" : " with-icon") },
+          kind === "mods" ? null : m.icon ? h("img", { class: "pack-icon", src: m.icon, alt: "" }) : h("span", { class: "pack-icon", "aria-hidden": "true" }), text),
+        h("div", { class: "gopt-ctl" },
+          h("button", { type: "button", class: "act delete", disabled: !connected, title: "Stop sharing…", "aria-label": "Stop sharing " + m.name, onclick: function () { askRemoveAlways(m); } }, icon("trash")))));
     });
 
+    var targetsBox = h("div", { class: "gopt-sec" });
+    if (d.targets.length) targetsEl.append(targetsBox);
     d.targets.forEach(function (t) {
-      var box = h("input", { type: "checkbox", "aria-label": (t.on ? "Stop adding them to " : "Add them to ") + t.name });
-      box.checked = t.on;
-      box.disabled = !connected;
-      box.addEventListener("change", function () {
-        box.disabled = true;
-        alwaysAction(api("POST", "/api/always/target", { path: t.path, on: box.checked }), box.checked ? "Adding to " + t.name : "Updating");
-      });
       // Packs that can't go in share one reason (no Iris, a server), so it's said once.
       var why = kind === "mods" ? null : t.misfits.length ? t.misfits[0].why : null;
       var bits = [];
@@ -5676,18 +5698,35 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         if (t.on && t.missing.length) bits.push(t.missing.length + " to add: " + t.missing.join(", "));
         if (t.on && t.stale.length) bits.push(t.stale.length + " to update: " + t.stale.join(", "));
       }
-      targetsEl.append(h("div", { class: "always-row" + (t.on ? "" : " off") },
-        h("label", { class: "toggle always-main" }, box, h("span", null,
-          h("strong", null, t.name + (t.current ? " (open now)" : "")),
-          h("span", { class: "hint" }, bits.join(" · ")),
-          why ? h("span", { class: "hint" }, "None go here: " + why) :
-          t.misfits.length ? h("span", { class: "hint" }, "Can't load here: " + t.misfits.map(function (x) { return x.name + " (" + x.why + ")"; }).join(", ")) : null))));
+      var sw = sharedSwitch(t.on, (t.on ? "Stop adding them to " : "Add them to ") + t.name, function (on) {
+        return alwaysAction(api("POST", "/api/always/target", { path: t.path, on: on }), on ? "Adding to " + t.name : "Updating");
+      });
+      targetsBox.append(h("div", { class: "gopt-row is-bool" + (t.on ? "" : " is-off") },
+        h("div", { class: "gopt-label" }, t.name + (t.current ? " (open now)" : ""),
+          h("span", { class: "desc" }, bits.join(" · ")),
+          why ? h("span", { class: "desc" }, "None go here: " + why) :
+          t.misfits.length ? h("span", { class: "desc" }, "Can't load here: " + t.misfits.map(function (x) { return x.name + " (" + x.why + ")"; }).join(", ")) : null),
+        h("div", { class: "gopt-ctl" }, sw)));
     });
+  }
+
+  // An on/off switch for the Shared tab's lists: it locks while the change is made.
+  function sharedSwitch(on, label, change) {
+    var sw = h("button", { type: "button", class: "act sw-btn" + (on ? " on" : ""), role: "switch", "aria-checked": String(on), "aria-label": label, disabled: !connected },
+      h("span", { class: "sw", "aria-hidden": "true" }));
+    sw.addEventListener("click", function () {
+      on = !on;
+      sw.classList.toggle("on", on);
+      sw.setAttribute("aria-checked", String(on));
+      sw.disabled = true;
+      change(on);
+    });
+    return sw;
   }
 
   // Right-click a shared mod or pack, like a row in the Mods list or the Packs tab.
   rowMenus($("always-list-mods"), function (t) {
-    var el = t.closest && t.closest(".always-row[data-file]");
+    var el = t.closest && t.closest(".shared-item[data-file]");
     var d = always.data;
     return el && d && d.items ? d.items.filter(function (m) { return m.file === el.getAttribute("data-file"); })[0] || null : null;
   }, function (m, x, y, focusEl) {
@@ -5739,38 +5778,33 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         : "No instance shares its " + (kind === "options" ? "game settings" : "mod configs") + " yet. Tick one on the right to start."));
       if (kind === "options" && sharing.length) gameOptionsEditor(d, mainEl);
     }
+    var instBox = h("div", { class: "gopt-sec" });
+    if (d.instances.length) targetsEl.append(instBox);
     d.instances.forEach(function (it) {
-      var box = h("input", { type: "checkbox", "aria-label": (it[flag] ? "Stop sharing with " : "Share with ") + it.name });
-      box.checked = !!it[flag];
-      box.disabled = !connected || (kind === "java" && d.prismRunning);
-      box.addEventListener("change", function () {
-        box.disabled = true;
-        var what = { options: "game settings", configs: "mod configs", java: "Java arguments" }[kind], on = box.checked;
+      var what = { options: "game settings", configs: "mod configs", java: "Java arguments" }[kind];
+      var sw = sharedSwitch(!!it[flag], (it[flag] ? "Stop sharing with " : "Share with ") + it.name, function (on) {
         if (kind === "options") gopts.data = null;
         track("Updating " + it.name, api("POST", "/api/sharing/instance", { id: it.id, kind: kind, on: on })).then(function () {
           toast(on ? it.name + " uses the shared " + what + " now." : it.name + " keeps its own " + what + " now.");
           inst.data = null;
         }, function (e) { toast(e.message); }).then(function () { always.data = null; return loadAlways(); });
       });
+      if (kind === "java" && d.prismRunning) sw.disabled = true;
       var note = kind === "java" && !it.java ? (it.javaArgs ? "its own: " + it.javaArgs : "its own: none") : it[flag] ? "shared" : "its own";
-      targetsEl.append(h("div", { class: "always-row" + (it[flag] ? "" : " off") },
-        h("label", { class: "toggle always-main" }, box, h("span", null,
-          h("strong", null, it.name + (it.current ? " (open now)" : "")),
-          h("span", { class: "hint" }, note)))));
+      instBox.append(h("div", { class: "gopt-row is-bool" + (it[flag] ? "" : " is-off") },
+        h("div", { class: "gopt-label" }, it.name + (it.current ? " (open now)" : ""), h("span", { class: "desc" }, note)),
+        h("div", { class: "gopt-ctl" }, sw)));
     });
     if (!d.instances.length) targetsEl.append(h("p", { class: "hint" }, "No launcher instances found."));
     if (kind !== "configs") {
-      var byDefault = h("input", { type: "checkbox" });
-      byDefault.checked = d.shareByDefault;
-      byDefault.disabled = !connected;
-      byDefault.addEventListener("change", function () {
-        byDefault.disabled = true;
-        api("POST", "/api/sharing/defaults", { on: byDefault.checked }).then(function (res) {
+      var byDefault = sharedSwitch(!!d.shareByDefault, "New instances share game settings and Java arguments", function (on) {
+        api("POST", "/api/sharing/defaults", { on: on }).then(function (res) {
           toast(res.shareByDefault ? "New instances share their game settings and Java arguments." : "New instances keep their own game settings and Java arguments.");
-        }, function (e) { byDefault.checked = !byDefault.checked; toast(e.message); }).then(function () { always.data = null; loadAlways(); });
+        }, function (e) { toast(e.message); }).then(function () { always.data = null; loadAlways(); });
       });
-      targetsEl.append(h("label", { class: "toggle always-default" }, byDefault,
-        h("span", null, "New instances share game settings and Java arguments", h("span", { class: "hint" }, "Instances made here, and ones the app finds for the first time."))));
+      targetsEl.append(h("div", { class: "gopt-sec" }, h("div", { class: "gopt-row is-bool" },
+        h("div", { class: "gopt-label" }, "New instances share game settings and Java arguments", h("span", { class: "desc" }, "Instances made here, and ones the app finds for the first time.")),
+        h("div", { class: "gopt-ctl" }, byDefault))));
     }
   }
 
@@ -6160,7 +6194,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       h("div", { class: "gopt-tools" },
         h("label", { class: "search" }, icon("search"), search),
         h("span", { class: "hint" }, binds ? "Its " + binds + " key binds are in the " : "Key binds are in the ",
-          h("button", { type: "button", class: "linkish", onclick: function () { setView("keys"); } }, "Key binds tab"),
+          h("button", { type: "button", class: "linkish", onclick: function () { setView("keys"); } }, "Key Binds tab"),
           ", and the settings mods keep in their own files in the ",
           h("button", { type: "button", class: "linkish", onclick: function () { setView("configs"); } }, "Configs tab"), ".")),
       body,
@@ -8223,7 +8257,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   function paletteItems() {
     var items = [];
     var go = function (label, hint, fn, kind) { items.push({ label: label, hint: hint, fn: fn, kind: kind || "action" }); };
-    [["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["shared", "Shared"], ["configs", "Configs"], ["keys", "Key binds"], ["server", "Server"], ["snapshots", "Snapshots"], ["cleanup", "Cleanup"], ["settings", "Settings"]]
+    [["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["shared", "Shared"], ["configs", "Configs"], ["keys", "Key Binds"], ["server", "Server"], ["snapshots", "Snapshots"], ["cleanup", "Cleanup"], ["settings", "Settings"]]
       .forEach(function (v) { go("Go to " + v[1], "page", function () { setView(v[0]); }, "page"); });
     // The pages within pages: Features' kinds, Packs' kinds and the Server's tabs.
     Object.keys(FEAT_KINDS).forEach(function (k) {
@@ -8236,7 +8270,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         setView("packs");
       }, "page");
     });
-    [["overview", "Overview"], ["console", "Console"], ["sync", "Mods & configs"], ["players", "Players"], ["settings", "Settings"], ["backups", "Backups"]].forEach(function (s) {
+    [["overview", "Overview"], ["console", "Console"], ["sync", "Mods & Configs"], ["players", "Players"], ["settings", "Settings"], ["backups", "Backups"]].forEach(function (s) {
       go("Go to Server " + s[1], "Server", function () { setView("server"); setSub(s[0]); }, "page");
     });
     go("Add mods", "search Modrinth" + (server && server.curseforge ? " and CurseForge" : ""), function () { setView("mods"); openSearch(); });
@@ -8339,10 +8373,10 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
 
   var SHORTCUTS = [
     ["Ctrl+K", "Command palette: jump to any mod, tag, page, config file, feature, item, key bind or action"],
-    ["/", "Search the page's list (Mods, Features, Packs, Configs, Key binds, Snapshots)"],
+    ["/", "Search the page's list (Mods, Features, Packs, Configs, Key Binds, Snapshots)"],
     ["?", "This list"],
     ["Click, Ctrl+click, Shift+click", "Select one mod, add or remove one, select a range (in Features, Packs and the server's mods a click adds or removes one)"],
-    ["Ctrl+A", "Select everything shown (Mods, Features, Packs, Key binds)"],
+    ["Ctrl+A", "Select everything shown (Mods, Features, Packs, Key Binds)"],
     ["↑ / ↓", "Move through the mod list (Shift extends the selection)"],
     ["Enter", "Details of the selected mod (double-click works too)"],
     ["Space", "Turn the selected mods, features or resource packs off (or hide the selected items in JEI), or on when they're all off"],
@@ -8485,7 +8519,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   // settings file) and sends it with every state. A copy in localStorage paints the right theme before
   // the first state arrives.
 
-  var PREF_DEFAULTS = { theme: "dark", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha", tagHide: "ctrl", accentColor: "#1ec85a", background: "glow", corners: "round", textSize: "100", tagStyle: "tint",
+  var PREF_DEFAULTS = { theme: "dark", darkShade: "charcoal", lightShade: "snow", contrast: "normal", font: "noto", panels: "solid", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha", tagHide: "ctrl", accentColor: "#1ec85a", background: "glow", corners: "round", textSize: "100", tagStyle: "tint",
     motion: "system", rowStyle: "lines", showIcons: true, colSide: true, colTags: true, colVersion: false, startPage: "mods", bgDim: "75", tagHues: {},
     worldBackups: false, updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false, hidePrism: true,
     serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false, autoLibraries: true, tagLibraries: true, tagSides: true, serverConfigsAuto: true };
@@ -8498,7 +8532,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   var ACCENTS = [
     { key: "emerald", label: "Emerald", color: "#1ec85a" }, { key: "sky", label: "Sky", color: "#1a8cff" },
     { key: "amethyst", label: "Amethyst", color: "#8a4dff" }, { key: "gold", label: "Gold", color: "#f0a500" },
-    { key: "redstone", label: "Redstone", color: "#ef2f2f" }
+    { key: "redstone", label: "Redstone", color: "#ef2f2f" }, { key: "copper", label: "Copper", color: "#e0702a" },
+    { key: "prismarine", label: "Prismarine", color: "#12b5a5" }, { key: "cherry", label: "Cherry", color: "#e8508f" }
   ];
   var systemDark = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
   var reducedMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
@@ -8509,7 +8544,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var look = { "data-theme": theme, "data-accent": pref("accent"), "data-density": pref("density"), "data-tags": pref("tagColors"),
       "data-files": pref("fileNames") ? "on" : "off", "data-actions": pref("rowActions"), "data-blocky": pref("blockyTitle") ? "on" : "off",
       "data-bg": pref("background"), "data-corners": pref("corners"), "data-tagstyle": pref("tagStyle"), "data-icons": pref("showIcons") ? "on" : "off",
-      "data-rows": pref("rowStyle"), "data-motion": pref("motion"),
+      "data-rows": pref("rowStyle"), "data-motion": pref("motion"), "data-shade": pref("darkShade"), "data-lightshade": pref("lightShade"),
+      "data-contrast": pref("contrast"), "data-font": pref("font"), "data-panels": pref("panels"),
       // Always plays animations whatever Windows says; Follow Windows plays them unless its animation effects are off.
       "data-anim": pref("motion") === "on" ? "on" : pref("motion") === "reduce" ? "off" : (reducedMotion && reducedMotion.matches ? "off" : "on") };
     Object.keys(look).forEach(function (k) { root.setAttribute(k, look[k]); });
@@ -8548,7 +8584,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   if (reducedMotion && reducedMotion.addEventListener) reducedMotion.addEventListener("change", function () { applyPrefs(); });
 
   // keepPage: the control already shows the change (a switch that slid), so the Settings page stays as it is.
-  var LOOK_KEYS = ["theme", "accent", "accentColor", "background", "corners", "tagColors", "tagStyle", "density", "rowStyle", "bgDim", "blockyTitle"];
+  var LOOK_KEYS = ["theme", "accent", "accentColor", "background", "corners", "tagColors", "tagStyle", "density", "rowStyle", "bgDim", "blockyTitle", "darkShade", "lightShade", "contrast", "font", "panels"];
   function savePref(key, value, keepPage) {
     var body = {};
     body[key] = value;
@@ -8581,6 +8617,9 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     { id: "look", title: "Appearance", items: [
       { key: "preset", label: "Quick looks", desc: "Theme, accent and background in one click.", custom: presetControl },
       { key: "theme", label: "Theme", desc: "System follows Windows.", choices: [["dark", "Dark"], ["light", "Light"], ["system", "System"]] },
+      { key: "darkShade", label: "Dark shade", desc: "The surfaces of the dark theme.",
+        choices: [["charcoal", "Charcoal"], ["deepslate", "Deepslate"], ["midnight", "Midnight"], ["spruce", "Spruce"], ["black", "Black"]] },
+      { key: "lightShade", label: "Light shade", desc: "The surfaces of the light theme.", choices: [["snow", "Snow"], ["birch", "Birch"], ["stone", "Stone"]] },
       { key: "accent", label: "Accent colour", desc: "PLAY, switches and the selected tab. The last swatch picks any colour.", swatches: true },
       { key: "tagLook", label: "Tags", desc: "Each tag's own colour is set in Manage tags.",
         choices: [["vivid", "Vivid"], ["soft", "Soft"], ["solid", "Solid"], ["outline", "Outline"]], get: tagLook, set: setTagLook },
@@ -8588,13 +8627,17 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       { key: "background", label: "Background", desc: "A faint glow of the accent, plain, or a block grid.", choices: [["glow", "Glow"], ["plain", "Plain"], ["blocks", "Blocks"]], fine: true },
       { key: "bgPicture", label: "Background picture", desc: "", custom: backgroundPictureControl, fine: true },
       { key: "corners", label: "Corners", desc: "Square looks more like the game.", choices: [["round", "Rounded"], ["square", "Square"]], fine: true },
+      { key: "panels", label: "Panels", desc: "Glass lets the background show through, blurred.", choices: [["solid", "Solid"], ["glass", "Glass"]], fine: true },
+      { key: "font", label: "Font", desc: "For everything but the pixel-font titles.",
+        choices: [["noto", "Noto Sans"], ["grotesk", "Space Grotesk"], ["system", "Segoe UI"], ["verdana", "Verdana"]], fine: true },
+      { key: "contrast", label: "Contrast", desc: "High makes secondary text and lines easier to see.", choices: [["normal", "Normal"], ["high", "High"]], fine: true },
       { key: "density", label: "Row spacing", desc: "Compact fits more on screen.", choices: [["comfortable", "Comfortable"], ["compact", "Compact"]], fine: true },
       { key: "motion", label: "Animation", desc: "Follow Windows respects its animation setting.", choices: [["system", "Follow Windows"], ["on", "Always"], ["reduce", "Reduce"]], fine: true },
       { key: "blockyTitle", label: "Pixel font", desc: "The title, PLAY and dialog titles in the game's pixel font.", fine: true },
       { key: "userCss", label: "Your own styles (user.css)", desc: "", custom: userCssControl, fine: true }
     ] },
-    { id: "list", title: "Mod list", items: [
-      { key: "startPage", label: "Open on", desc: "The page shown when the app starts.", select: [["last", "Where I left off"], ["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["shared", "Shared"], ["configs", "Configs"], ["keys", "Key binds"], ["server", "Server"], ["snapshots", "Snapshots"]] },
+    { id: "list", title: "Mod List", items: [
+      { key: "startPage", label: "Open on", desc: "The page shown when the app starts.", select: [["last", "Where I left off"], ["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["shared", "Shared"], ["configs", "Configs"], ["keys", "Key Binds"], ["server", "Server"], ["snapshots", "Snapshots"]] },
       { key: "columns", label: "Show", desc: "What each row shows.", multi: [["showIcons", "Icons"], ["fileNames", "File names"], ["colVersion", "Version"], ["colSide", "Side"], ["colTags", "Tags"]] },
       { key: "rowStyle", label: "Rows", desc: "Lines between rows, or stripes.", choices: [["lines", "Lines"], ["zebra", "Stripes"]] },
       { key: "rowActions", label: "Row buttons", desc: "Updates always show.", choices: [["hover", "On hover"], ["always", "Always"]] },
@@ -8602,7 +8645,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       { key: "tagOrder", label: "Tag order", desc: "In the side panel, on rows and in the tag picker.", choices: [["alpha", "A to Z"], ["file", "As in the file"]] },
       { key: "tagHide", label: "Hiding a tag", desc: "Right-clicking a tag also hides it.", choices: [["ctrl", "Ctrl+click"], ["cycle", "Click twice"]] }
     ] },
-    { id: "auto", title: "Automatic actions", items: [
+    { id: "auto", title: "Automatic Actions", items: [
       { key: "whatChanged", label: "What changed, on opening", desc: "New updates and added or removed jars since this folder was last open." },
       { key: "confirmDelete", label: "Ask before deleting", desc: "Off sends mods straight to the Recycle Bin." },
       { key: "autoLibraries", label: "Turn on dependencies", desc: "Turning a mod on also turns on its turned-off dependencies." },
@@ -8610,7 +8653,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       { key: "tagLibraries", label: "Tag new libraries", desc: "Jars the sites list as libraries go under Libraries." },
       { key: "serverExtras", label: "Client mods with server features", desc: "Detect marks them as both sides." }
     ] },
-    { id: "play", title: "Play and updates", items: [
+    { id: "play", title: "Play and Updates", items: [
       { key: "checkBeforePlay", label: "Check mods before Play", desc: "Only stops you when something would keep the game from starting." },
       { key: "hidePrism", label: "Keep the launcher out of sight", desc: "Prism still starts the game; its window shows only if it needs you." },
       { key: "updateChannel", label: "Updates come from", desc: "Match keeps releases on releases and betas on betas. Each mod can override it.",
@@ -8621,7 +8664,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       { key: "searchSources", label: "Search", desc: "Results on both sites show once and download from Modrinth.", choices: [["both", "Both"], ["modrinth", "Modrinth"], ["curseforge", "CurseForge"]] },
       { key: "curseforgeKey", label: "CurseForge API key", desc: "", custom: curseforgeKeyControl }
     ] },
-    { id: "remote", title: "Remote access", items: [
+    { id: "remote", title: "Remote Access", items: [
       { key: "remote", label: "", desc: "", custom: remoteControl }
     ] },
     { id: "folders", title: "Folders", items: [
@@ -8738,7 +8781,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var d = remote.info;
     if (!d) { if (!remote.loading) setTimeout(loadRemote, 0); return h("div", { class: "d" }, "Loading…"); }
     var on = !!d.enabled;
-    var sw = h("button", { type: "button", class: "toggle sw-btn" + (on ? " on" : ""), role: "switch", "aria-checked": String(on), "aria-label": "Allow phones and other computers",
+    var sw = h("button", { type: "button", class: "act sw-btn" + (on ? " on" : ""), role: "switch", "aria-checked": String(on), "aria-label": "Allow phones and other computers",
       onclick: function () { remoteAction("/api/remote/enable", { on: !on }); } }, h("span", { class: "sw", "aria-hidden": "true" }));
     var box = h("div", null, h("div", { class: "remote-head" },
       h("div", null, h("div", { class: "fl" }, "Allow phones and other computers"),
@@ -8776,20 +8819,24 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
 
   // Quick looks: each sets the theme, accent and background together, nodding to a place in the game.
   var PRESETS = [
-    { key: "overworld", label: "Overworld", theme: "dark", accent: "emerald", background: "glow", colors: ["#1ec85a", "#2f9e2a", "#7a4f24"] },
-    { key: "nether", label: "Nether", theme: "dark", accent: "custom", accentColor: "#ff4a1c", background: "blocks", colors: ["#ff4a1c", "#8f1a1a", "#2b1414"] },
-    { key: "end", label: "The End", theme: "dark", accent: "amethyst", background: "glow", colors: ["#8a4dff", "#f0e98a", "#1c1530"] },
-    { key: "deepdark", label: "Deep Dark", theme: "dark", accent: "custom", accentColor: "#0fd0c2", background: "plain", colors: ["#0fd0c2", "#0f2a33", "#0b1114"] },
-    { key: "snowy", label: "Snowy", theme: "light", accent: "sky", background: "plain", colors: ["#1a8cff", "#e8f2fb", "#ffffff"] }
+    { key: "overworld", label: "Overworld", theme: "dark", darkShade: "charcoal", accent: "emerald", background: "glow", colors: ["#1ec85a", "#2f9e2a", "#7a4f24"] },
+    { key: "nether", label: "Nether", theme: "dark", darkShade: "spruce", accent: "custom", accentColor: "#ff4a1c", background: "blocks", colors: ["#ff4a1c", "#8f1a1a", "#2b1414"] },
+    { key: "end", label: "The End", theme: "dark", darkShade: "midnight", accent: "amethyst", background: "glow", colors: ["#8a4dff", "#f0e98a", "#1c1530"] },
+    { key: "deepdark", label: "Deep Dark", theme: "dark", darkShade: "black", accent: "custom", accentColor: "#0fd0c2", background: "plain", colors: ["#0fd0c2", "#0f2a33", "#0b1114"] },
+    { key: "ocean", label: "Ocean", theme: "dark", darkShade: "midnight", accent: "prismarine", background: "glow", colors: ["#12b5a5", "#1d4f8f", "#0f1420"] },
+    { key: "snowy", label: "Snowy", theme: "light", lightShade: "snow", accent: "sky", background: "plain", colors: ["#1a8cff", "#e8f2fb", "#ffffff"] },
+    { key: "cherry", label: "Cherry Grove", theme: "light", lightShade: "birch", accent: "cherry", background: "glow", colors: ["#e8508f", "#f6c9da", "#fbf8f2"] }
   ];
   function presetControl() {
     var box = h("div", { class: "presets" });
     PRESETS.forEach(function (ps) {
-      var on = pref("theme") === ps.theme && pref("accent") === ps.accent && pref("background") === ps.background && (ps.accent !== "custom" || pref("accentColor") === ps.accentColor);
+      // A look is its theme, shade, accent and background together.
+      var keys = ["theme", ps.darkShade ? "darkShade" : "lightShade", "background", "accent"];
+      var on = keys.every(function (k) { return pref(k) === ps[k]; }) && (ps.accent !== "custom" || pref("accentColor") === ps.accentColor);
       box.append(h("button", { type: "button", class: "preset-card" + (on ? " on" : ""), "aria-pressed": String(on), onclick: function () {
           var steps = Promise.resolve();
           if (ps.accentColor) steps = steps.then(function () { return savePref("accentColor", ps.accentColor); });
-          ["theme", "background", "accent"].forEach(function (k) { steps = steps.then(function () { return savePref(k, ps[k]); }); });
+          keys.forEach(function (k) { steps = steps.then(function () { return savePref(k, ps[k]); }); });
         } },
         h("span", { class: "preset-swatch" }, ps.colors.map(function (c) { return h("span", { style: "background:" + c }); })),
         h("span", { class: "preset-name" }, ps.label)));
@@ -8830,17 +8877,21 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     renderPrefs();
   }
   var fineOpen = false;
-  // Settings: the sections listed down the left (a click scrolls to one), the cards in one column on the right.
+  // Settings: the sections listed down the left (a click opens and scrolls to one), each a box like the ones in
+  // Shared › Game settings, with a row per setting. These save as soon as they're changed.
   function renderPrefs() {
     prefsSig = settingsSig();
     var root = $("settings-body");
     var scroll = window.scrollY;
     root.replaceChildren();
     var nav = h("nav", { class: "set-nav", "aria-label": "Settings sections" });
-    var col = h("div", { class: "set-col" });
+    var col = h("div", { class: "set-col always-list" });
+    if (!renderPrefs.folded) renderPrefs.folded = {};
     SETTINGS.forEach(function (card) {
-      nav.append(h("a", { href: "#settings", onclick: function (e) { e.preventDefault(); var el = $("set-" + card.id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); } }, card.title));
-      var el = h("section", { class: "panel set-card", id: "set-" + card.id }, h("h2", null, card.title));
+      var el = h("details", { class: "gopt-sec set-card", id: "set-" + card.id }, h("summary", null, card.title));
+      el.open = !renderPrefs.folded[card.id];
+      el.addEventListener("toggle", function () { renderPrefs.folded[card.id] = !el.open; });
+      nav.append(h("a", { href: "#settings", onclick: function (e) { e.preventDefault(); el.open = true; el.scrollIntoView({ behavior: "smooth", block: "start" }); } }, card.title));
       var fine = null;
       card.items.forEach(function (s) {
         var into = el;
@@ -8855,7 +8906,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         }
         var value = s.get ? s.get() : pref(s.key);
         var choose = function (v) { return s.set ? s.set(v) : savePref(s.key, v); };
-        if (s.custom) { into.append(h("div", { class: "set-row wide" }, s.label ? h("div", { class: "l" }, s.label) : null, s.custom())); return; }
+        if (s.custom) { into.append(h("div", { class: "gopt-row wide" }, s.label ? h("div", { class: "gopt-label" }, s.label) : null, s.custom())); return; }
         var control;
         if (s.swatches) {
           control = h("div", { class: "swatches", role: "group", "aria-label": s.label });
@@ -8883,13 +8934,13 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
             control.append(h("button", { type: "button", "aria-pressed": String(value === c[0]), onclick: function () { choose(c[0]); } }, c[1]));
           });
         } else if (s.select) {
-          control = h("select", { class: "set-select", "aria-label": s.label });
+          control = h("select", { "aria-label": s.label });
           s.select.forEach(function (c) { control.append(h("option", { value: c[0] }, c[1])); });
           control.value = value;
           control.addEventListener("change", function () { choose(control.value); });
         } else {
           var on = !!pref(s.key);
-          control = h("button", { type: "button", class: "toggle sw-btn" + (on ? " on" : ""), role: "switch", "aria-checked": String(on), "aria-label": s.label,
+          control = h("button", { type: "button", class: "act sw-btn" + (on ? " on" : ""), role: "switch", "aria-checked": String(on), "aria-label": s.label,
             onclick: function () {
               on = !on;
               control.classList.toggle("on", on);
@@ -8897,7 +8948,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
               savePref(s.key, on, true);
             } }, h("span", { class: "sw", "aria-hidden": "true" }));
         }
-        into.append(h("div", { class: "set-row" }, h("div", { class: "l" }, s.label), s.desc ? h("div", { class: "d" }, s.desc) : null, h("div", { class: "c" }, control)));
+        into.append(h("div", { class: "gopt-row" + (s.choices || s.multi || s.swatches ? " is-wide-ctl" : "") },
+          h("div", { class: "gopt-label" }, s.label, s.desc ? h("span", { class: "desc" }, s.desc) : null), h("div", { class: "gopt-ctl" }, control)));
       });
       col.append(el);
     });
@@ -9658,16 +9710,18 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     ["release", "beta", "alpha"].forEach(function (c) { sel.append(h("option", { value: c }, CHANNEL_NAMES[c])); });
     sel.value = ex.channel || "";
     sel.addEventListener("change", function () { setExtras([r], { channel: sel.value }, "Updates for " + r.name + ": " + (sel.value ? CHANNEL_NAMES[sel.value] : "the default")); });
-    var pin = h("button", { type: "button", class: "toggle sw-btn" + (ex.pin ? " on" : ""), role: "switch", "aria-checked": String(!!ex.pin), disabled: !known,
+    var pin = h("button", { type: "button", class: "act sw-btn" + (ex.pin ? " on" : ""), role: "switch", "aria-checked": String(!!ex.pin), disabled: !known,
       "aria-label": "Pin this version", onclick: function () { pinMods([r], !ex.pin); closeDetails(); } }, h("span", { class: "sw", "aria-hidden": "true" }));
     var note = h("textarea", { class: "note-input", rows: "2", maxlength: "1000", placeholder: "A note: why it's here, known issues…", "aria-label": "Note" });
     note.value = ex.note || "";
     note.addEventListener("change", function () { setExtras([r], { note: note.value }, null); });
-    return h("div", { class: "det-extras" },
-      h("label", { class: "dx" }, h("span", { class: "l" }, "Updates from"), sel),
-      h("div", { class: "dx" }, h("span", { class: "l" }, "Pin this version"), pin),
-      note,
-      known ? null : h("p", { class: "hint", style: "margin:0" }, "Neither Modrinth nor CurseForge knows this jar, so there are no updates to pin or filter."));
+    // Rows like the app's other settings.
+    return h("div", { class: "gopt-sec det-extras" },
+      h("div", { class: "gopt-row" }, h("div", { class: "gopt-label" }, "Updates from"), h("div", { class: "gopt-ctl" }, sel)),
+      h("div", { class: "gopt-row is-bool" }, h("div", { class: "gopt-label" }, "Pin this version",
+        known ? null : h("span", { class: "desc" }, "Neither Modrinth nor CurseForge knows this jar, so there are no updates to pin or filter.")),
+        h("div", { class: "gopt-ctl" }, pin)),
+      h("div", { class: "gopt-row wide" }, h("div", { class: "gopt-label" }, "Note", h("span", { class: "desc" }, "Shown when the cursor rests on its row.")), h("div", { class: "gopt-ctl" }, note)));
   }
 
   function vtypeTag(type) { return type && type !== "release" ? h("span", { class: "vtype " + type }, type) : h("span", { class: "vtype" }, "release"); }
@@ -10129,7 +10183,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     if (!cfg.open) {
       main.append(h("h2", null, "Configs"), h("p", { class: "lead", style: "margin:0" },
         "Every mod's settings, from your game's config folder" + (cfg.files && cfg.files.hasServer ? " and the server's" : "") + ". Pick a file, or type in the box to find a setting in any of them. " +
-        "The old file is kept as a backup each time you save, and configs you change in the game reach the server by themselves (Server › Mods & configs)."));
+        "The old file is kept as a backup each time you save, and configs you change in the game reach the server by themselves (Server › Mods & Configs)."));
       return;
     }
     var o = cfg.open, f = cfgFileInfo(o.path), d = cfg.doc, embed = cfg.embed;
@@ -10758,13 +10812,23 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var form = h("form", { class: "inst-form", onsubmit: function (e) { e.preventDefault(); submit(); } });
     var nameInput = h("input", { type: "text", maxlength: "60", autocomplete: "off", spellcheck: "false" });
     var instanceSelect = h("select", { "aria-label": "Based on" });
-    var where = h("div", { class: "fixed" }, "…");
+    var where = h("span", { class: "desc" }, "…");
     var parent = null;
     var memorySelect = h("select", { "aria-label": "Memory" });
-    var portInput = h("input", { type: "number", min: "1024", max: "65535" });
+    var portInput = h("input", { type: "number", min: "1024", max: "65535", "aria-label": "Port" });
     portInput.value = "25565";
-    var copyMods = h("input", { type: "checkbox", checked: true });
-    var eula = h("input", { type: "checkbox" });
+    // Switches like the rest of the app's settings; .checked is what submit() reads.
+    var switchFor = function (state, label) {
+      var sw = h("button", { type: "button", class: "act sw-btn" + (state.checked ? " on" : ""), role: "switch", "aria-checked": String(state.checked), "aria-label": label,
+        onclick: function () { state.checked = !state.checked; sw.classList.toggle("on", state.checked); sw.setAttribute("aria-checked", String(state.checked)); } },
+        h("span", { class: "sw", "aria-hidden": "true" }));
+      return sw;
+    };
+    var copyMods = { checked: true }, eula = { checked: false };
+    var fRow = function (label, control, desc, cls) {
+      return h("div", { class: "gopt-row" + (cls ? " " + cls : "") }, h("div", { class: "gopt-label" }, label, desc ? h("span", { class: "desc" }, desc) : null),
+        h("div", { class: "gopt-ctl" }, control));
+    };
     var error = h("p", { class: "tag-error", role: "alert", hidden: true });
     var instances = [];
     var showWhere = function () {
@@ -10772,19 +10836,19 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       where.textContent = "Folder: " + (parent || "…") + "\\" + folder;
     };
     form.append(
-      h("label", { class: "prop" }, h("b", null, "Name"), nameInput, h("span", null, "Also shown under the server in the multiplayer list.")),
-      h("label", { class: "prop" }, h("b", null, "Based on"), instanceSelect,
-        h("span", null, "The server gets this instance's Minecraft version and loader, and (below) its server-side mods and configs.")),
-      h("div", { class: "prop" }, h("b", null, "Location"), where,
-        h("span", null, btn("Change location…", function () {
-          api("POST", "/api/server/pick-parent", { current: parent }).then(function (res) { if (res.folder) { parent = res.folder; showWhere(); } }, function (e) { toast(e.message); });
-        }))),
-      h("div", { class: "pair" },
-        h("label", { class: "prop" }, h("b", null, "Memory"), memorySelect),
-        h("label", { class: "prop" }, h("b", null, "Port"), portInput, h("span", null, "25565 is Minecraft's usual port."))),
-      h("label", { class: "toggle" }, copyMods, "Copy the instance's server-side mods and configs"),
-      h("div", { class: "prop" }, h("label", { class: "toggle" }, eula, "I accept Minecraft's EULA"),
-        h("span", null, "The server won't start without it. ", h("button", { type: "button", class: "linkish", onclick: function () { openTab("https://aka.ms/MinecraftEULA"); } }, "Read the EULA"))),
+      h("div", { class: "gopt-sec" },
+        fRow("Name", nameInput, "Also shown under the server in the multiplayer list."),
+        fRow("Based on", instanceSelect, "The server gets this instance's Minecraft version and loader, and (below) its server-side mods and configs."),
+        h("div", { class: "gopt-row is-wide-ctl" }, h("div", { class: "gopt-label" }, "Location", where),
+          h("div", { class: "gopt-ctl" }, btn("Change…", function () {
+            api("POST", "/api/server/pick-parent", { current: parent }).then(function (res) { if (res.folder) { parent = res.folder; showWhere(); } }, function (e) { toast(e.message); });
+          }, "pc-only"))),
+        fRow("Memory", memorySelect),
+        fRow("Port", portInput, "25565 is Minecraft's usual port."),
+        fRow("Copy the instance's server-side mods and configs", switchFor(copyMods, "Copy the instance's server-side mods and configs"), null, "is-bool"),
+        h("div", { class: "gopt-row is-bool" }, h("div", { class: "gopt-label" }, "I accept Minecraft's EULA",
+          h("span", { class: "desc" }, "The server won't start without it. ", h("button", { type: "button", class: "linkish", onclick: function () { openTab("https://aka.ms/MinecraftEULA"); } }, "Read the EULA"))),
+          h("div", { class: "gopt-ctl" }, switchFor(eula, "I accept Minecraft's EULA")))),
       h("p", { class: "hint", style: "margin:0" }, "Downloads the loader's official server installer (a few MB) and runs it, which then downloads Minecraft's server files. It takes a minute or two; the progress shows in the console."),
       error);
     var go = btn("Create server", function () { submit(); }, "primary", { disabled: true });
@@ -11126,16 +11190,17 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         btn("Sync with game", syncEverything, "primary", { disabled: !connected || srv.syncLoading || srv.syncApplying,
           title: "Everything at once, your game as the source: the changes ticked by default and every config file that differs" }))));
     // Configs changed in the game follow to the server by themselves (ConfigSharing.cs).
-    var autoCfg = h("input", { type: "checkbox" });
-    autoCfg.checked = pref("serverConfigsAuto") !== false;
-    autoCfg.addEventListener("change", function () { savePref("serverConfigsAuto", autoCfg.checked, true); });
+    var autoOn = pref("serverConfigsAuto") !== false;
+    var autoCfg = h("button", { type: "button", class: "act sw-btn" + (autoOn ? " on" : ""), role: "switch", "aria-checked": String(autoOn), "aria-label": "Configs follow your game automatically",
+      onclick: function () { autoOn = !autoOn; autoCfg.classList.toggle("on", autoOn); autoCfg.setAttribute("aria-checked", String(autoOn)); savePref("serverConfigsAuto", autoOn, true); } },
+      h("span", { class: "sw", "aria-hidden": "true" }));
     var lastAuto = s && s.lastAutoConfigs;
-    p.append(h("div", { class: "auto-cfg", style: "margin-top:12px" },
-      h("label", { class: "toggle" }, autoCfg, h("strong", null, "Configs follow your game automatically")),
-      h("div", { class: "hint", style: "margin:2px 0 0 2px;line-height:1.4" },
-        "A config you change in your game is copied to the server before it starts from here, and every few minutes while it's stopped. " +
-        "Client-only configs, configs only the server has and changes made only on the server are left alone; overwritten files are backed up." +
-        (lastAuto ? " Last copied at " + clock(new Date(lastAuto.at)) + ": " + lastAuto.files.slice(0, 4).join(", ") + (lastAuto.files.length > 4 ? ", …" : "") + "." : ""))));
+    p.append(h("div", { class: "gopt-sec", style: "margin-top:12px" }, h("div", { class: "gopt-row is-bool" },
+      h("div", { class: "gopt-label" }, "Configs follow your game automatically",
+        h("span", { class: "desc" }, "A config you change in your game is copied to the server before it starts from here, and every few minutes while it's stopped. " +
+          "Client-only configs, configs only the server has and changes made only on the server are left alone; overwritten files are backed up." +
+          (lastAuto ? " Last copied at " + clock(new Date(lastAuto.at)) + ": " + lastAuto.files.slice(0, 4).join(", ") + (lastAuto.files.length > 4 ? ", …" : "") + "." : ""))),
+      h("div", { class: "gopt-ctl" }, autoCfg))));
     if (srv.syncResult) p.append(syncResultBox());
     if (!s) { if (srv.syncLoading) p.append(h("p", { class: "search-empty" }, "Comparing your game and the server…")); return; }
     if (s.error) { p.append(h("p", { class: "search-empty" }, s.error)); return; }

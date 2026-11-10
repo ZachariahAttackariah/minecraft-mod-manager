@@ -15,10 +15,15 @@ namespace MinecraftModManager
         static readonly Dictionary<string, string[]> PrefChoices = new Dictionary<string, string[]>
         {
             { "theme", new[] { "dark", "light", "system" } },
-            { "accent", new[] { "emerald", "sky", "amethyst", "gold", "redstone", "custom" } },
+            { "accent", new[] { "emerald", "sky", "amethyst", "gold", "redstone", "copper", "prismarine", "cherry", "custom" } },
             { "background", new[] { "glow", "plain", "blocks" } },
             { "corners", new[] { "round", "square" } },
-            { "textSize", new[] { "90", "100", "110", "120" } },
+            { "textSize", new[] { "90", "100", "110", "120", "150", "175", "200" } },
+            { "darkShade", new[] { "charcoal", "deepslate", "midnight", "spruce", "black" } },
+            { "lightShade", new[] { "snow", "birch", "stone" } },
+            { "contrast", new[] { "normal", "high" } },
+            { "font", new[] { "noto", "grotesk", "system", "verdana" } },
+            { "panels", new[] { "solid", "glass" } },
             { "tagStyle", new[] { "tint", "solid", "outline" } },
             { "motion", new[] { "system", "on", "reduce" } },
             { "rowStyle", new[] { "lines", "zebra" } },

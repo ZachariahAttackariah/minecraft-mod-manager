@@ -14,6 +14,10 @@ and after an update it offers what's new since the last time it was opened.
 - Game settings also has the video pages mods add to the game's own menu: Sodium (quality, performance, advanced), Sodium Extra, More Culling and Iris's shader options, saved into those mods' own config files in each sharing instance.
 - Configs: every setting is laid out like Game settings, in folding boxes per section, with sliders where a mod gives a range, a reset to the mod's default on each, and the same save bar. Opening the app straight onto Configs shows the file list again.
 - Server › Settings in the same style: every line of server.properties named and grouped (joining & access, gameplay, world, performance, resource pack, remote control), with switches, sliders, lists, search and resets, plus memory, restarts and backups in their own sections.
+- One look for every settings page: Settings, the Shared tab's lists (switches instead of ticks), New instance and instance settings, Create server, a mod's update and pin options, and Server › Mods & Configs use the same boxes and rows.
+- Tabs with two words are in title case (Key Binds, Resource Packs, Game Settings, Mods & Configs…).
+- More looks: Copper, Prismarine and Cherry accents; a shade for the dark theme (Charcoal, Deepslate, Midnight, Spruce, Black) and for the light one (Snow, Birch, Stone); glass panels; a choice of font; high contrast; and Ocean and Cherry Grove quick looks.
+- Text sizes above 120% save again.
 - Selecting no longer nudges anything: the list stays exactly where it is, and every selection bar keeps its height (its buttons wait greyed out until something is picked).
 
 ## 2026-11-08

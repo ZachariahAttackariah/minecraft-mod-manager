@@ -435,7 +435,7 @@ namespace MinecraftModManager
             lock (remoteLock)
             {
                 bool live = pairCode != null && DateTime.UtcNow < pairExpires;
-                if (!live) { RemoteReply(s, 200, "text/html; charset=utf-8", PairPage("No code is waiting. On the PC, open Settings > Remote access and choose Pair a device.")); return; }
+                if (!live) { RemoteReply(s, 200, "text/html; charset=utf-8", PairPage("No code is waiting. On the PC, open Settings > Remote Access and choose Pair a device.")); return; }
                 if (code != pairCode)
                 {
                     pairTries++;
@@ -482,7 +482,7 @@ namespace MinecraftModManager
                 "button{margin-top:18px;width:100%;padding:12px;border:0;border-radius:6px;background:#1ec85a;color:#06210f;font:700 16px system-ui,sans-serif}" +
                 ".msg{color:#ff8a7a}@media (prefers-color-scheme:light){body{background:#eef1f4;color:#15181c}main{background:#fff;border-color:#d5dbe1}input{background:#f7f9fa;border-color:#c5ccd3}p{color:#4c5560}}" +
                 "</style></head><body><main><h1>Pair this device</h1>" +
-                "<p>On the PC, open Minecraft Mod Manager, go to Settings &gt; Remote access and choose <b>Pair a device</b>. Type the code it shows.</p>" + msg +
+                "<p>On the PC, open Minecraft Mod Manager, go to Settings &gt; Remote Access and choose <b>Pair a device</b>. Type the code it shows.</p>" + msg +
                 "<form method=\"post\" action=\"/remote/pair\"><label for=\"code\">Code</label>" +
                 "<input id=\"code\" class=\"code\" name=\"code\" inputmode=\"numeric\" autocomplete=\"one-time-code\" maxlength=\"9\" required autofocus>" +
                 "<label for=\"name\">Name for this device (optional)</label><input id=\"name\" name=\"name\" maxlength=\"40\" placeholder=\"e.g. My phone\">" +
