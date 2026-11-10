@@ -19,6 +19,7 @@ and after an update it offers what's new since the last time it was opened.
 - More looks: Copper, Prismarine and Cherry accents; a shade for the dark theme (Charcoal, Deepslate, Midnight, Spruce, Black) and for the light one (Snow, Birch, Stone); glass panels; a choice of font; high contrast; and Ocean and Cherry Grove quick looks.
 - Text sizes above 120% save again.
 - Look settings show a preview of every choice: theme, shades, tags, text size, background, how strongly your picture shows, corners, panels, font, contrast, row spacing, animation, pixel font, rows, row buttons and tags per row are cards you can compare side by side, and Mod List › Show has a sample row that follows the columns you pick.
+- Smoother: folding sections open and close instead of snapping, right-click menus ease in, menus and dialogs slide up on a phone, save bars rise in, buttons and cards answer a press, ticks pop in, highlights fade and the tab underline grows in. All quick, and all off with Animation › Reduce.
 - Settings on a phone: the sections in one row you swipe, quick looks filling the width, and rows of buttons (like the shades) under their name instead of squeezing it.
 - Selecting no longer nudges anything: the list stays exactly where it is, and every selection bar keeps its height (its buttons wait greyed out until something is picked).
 
