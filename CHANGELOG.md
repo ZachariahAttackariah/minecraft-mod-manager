@@ -4,6 +4,8 @@ What changed in Minecraft Mod Manager, newest first. The app shows this under Se
 and after an update it offers what's new since the last time it was opened.
 
 ## 2026-11-11
+- Descriptions: each mod's row says what it does in one line under its name (Modrinth's or CurseForge's summary, or the jar's own description for mods neither site knows), with the whole text on hover. Switch it off under Settings › Mod List › Show.
+- A jar's own description now shows in Details too, line breaks and all. Most mods write theirs over several lines, and those used to be skipped.
 - Move to another instance: right-click mods (or use Move to… in the selection bar) and pick the instance they go to from a list, without opening it. Move or Copy; tags and on/off come along, mods already there are skipped, and it says which ones won't load in that instance's Minecraft version or loader, or which mods left behind still need them.
 
 ## 2026-11-10

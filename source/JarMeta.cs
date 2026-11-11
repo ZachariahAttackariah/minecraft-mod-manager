@@ -332,8 +332,10 @@ namespace MinecraftModManager
         // A small TOML reader: enough for mods.toml files (tables, arrays of tables, strings, booleans).
         static List<KeyValuePair<string, Dictionary<string, string>>> ParseToml(string text)
         {
-            text = Regex.Replace(text, "(?s)\"\"\".*?\"\"\"", "\"\"");
-            text = Regex.Replace(text, "(?s)'''.*?'''", "''");
+            // Multi-line strings (how most mods write their description) become one-line strings with \n in
+            // them, so the line-by-line reading below keeps them instead of dropping them.
+            text = Regex.Replace(text, "(?s)\"\"\"(.*?)\"\"\"", m => "\"" + OneLineBasic(m.Groups[1].Value) + "\"");
+            text = Regex.Replace(text, "(?s)'''(.*?)'''", m => "\"" + OneLineLiteral(m.Groups[1].Value) + "\"");
             var sections = new List<KeyValuePair<string, Dictionary<string, string>>>();
             var current = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             sections.Add(new KeyValuePair<string, Dictionary<string, string>>("", current));
@@ -355,6 +357,46 @@ namespace MinecraftModManager
                 current[line.Substring(0, eq).Trim().Trim('"', '\'')] = TomlValue(line.Substring(eq + 1).Trim());
             }
             return sections;
+        }
+
+        // TOML drops a newline right after the opening quotes.
+        static string TrimFirstNewline(string s)
+        {
+            return s.StartsWith("\r\n") ? s.Substring(2) : s.StartsWith("\n") ? s.Substring(1) : s;
+        }
+
+        // The inside of a """ string as a one-line "..." string: escapes stay as they are, a backslash at the end
+        // of a line joins it to the next (TOML's line continuation), and bare quotes and newlines get escaped.
+        static string OneLineBasic(string s)
+        {
+            s = Regex.Replace(TrimFirstNewline(s), @"(?<!\\)((?:\\\\)*)\\[ \t]*\r?\n\s*", "$1");
+            var sb = new StringBuilder();
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+                if (c == '\\' && i + 1 < s.Length) { sb.Append(c).Append(s[++i]); continue; }
+                if (c == '"') sb.Append("\\\"");
+                else if (c == '\n') sb.Append("\\n");
+                else if (c != '\r') sb.Append(c);
+            }
+            return sb.ToString();
+        }
+
+        // The inside of a ''' string (no escapes in it) as a one-line "..." string.
+        static string OneLineLiteral(string s)
+        {
+            return TrimFirstNewline(s).Replace("\r", "").Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n");
+        }
+
+        // A jar's own description for the mod list: its first paragraph as plain text on one line (Details shows
+        // the rest), or null when it's empty or a build-time placeholder that was never filled in.
+        static string JarDescription(ModInfo main)
+        {
+            if (main == null || string.IsNullOrWhiteSpace(main.Description) || main.Description.Contains("${")) return null;
+            string first = Regex.Split(main.Description.Trim(), @"\r?\n[ \t]*\r?\n").FirstOrDefault(p => p.Trim().Length > 0) ?? "";
+            string s = Regex.Replace(first, @"\s+", " ").Trim();
+            if (s.Length == 0) return null;
+            return s.Length > 500 ? s.Substring(0, 500).TrimEnd() + "…" : s;
         }
 
         static string StripTomlComment(string line)

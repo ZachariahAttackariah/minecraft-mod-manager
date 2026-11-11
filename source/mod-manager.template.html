@@ -12,7 +12,7 @@
 /* Look: neutral charcoal (or light) surfaces, blocky bevelled buttons and panels that nod to Minecraft
    without copying any of its screens, and colour only where it means something: the accent for the main
    action and "on", vivid tag and side colours, red for danger. Settings (on <html>): data-theme
-   dark | light, data-accent, data-density, data-tags vivid | soft, data-files, data-actions, data-blocky. */
+   dark | light, data-accent, data-density, data-tags vivid | soft, data-files, data-desc, data-actions, data-blocky. */
 :root {
   --bg: #1c1e21;
   --surface: #25282c;
@@ -460,6 +460,10 @@ html[data-actions="always"] .act { opacity: 1; }
 a.mod-name:hover { text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 2px; }
 .file-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 2px; }
 .file { font: 400 12.5px/1.35 var(--font-mono); color: var(--muted); overflow-wrap: anywhere; min-width: 0; }
+/* What the mod is, in one line (the whole text is its tooltip and in Details). Every row has the line, empty or
+   not, so rows stay the same height. */
+.desc-line { min-height: 1.35em; margin-top: 1px; font-size: 12.5px; line-height: 1.35; color: color-mix(in srgb, var(--muted) 70%, var(--ink)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html[data-desc="off"] .row .desc-line { display: none; }
 .badge { --c: var(--muted); padding: 2px 6px; font: 600 11px/1.3 var(--font-body); white-space: nowrap; color: color-mix(in srgb, var(--c) 85%, var(--ink)); border: 1px dashed color-mix(in srgb, var(--c) 60%, transparent); border-radius: 3px; }
 .badge.missing { --c: var(--c-x2); border-style: solid; }
 .badge.untracked { --c: var(--c-x3); }
@@ -1068,6 +1072,7 @@ details.fine > .set-row:first-of-type { border-top: 1px solid var(--line); }
 .pv-modname { display: grid; flex: 1; min-width: 0; }
 .pv-modname b { font-weight: 600; }
 .pv-modname code { font: 400 11px/1.3 var(--font-mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pv-modname .pv-desc { font-size: 11px; line-height: 1.3; color: color-mix(in srgb, var(--muted) 70%, var(--ink)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pv-col { flex: none; display: inline-flex; align-items: center; font: 400 11.5px/1 var(--font-mono); color: var(--muted); }
 .pv-slot { display: inline-grid; place-items: center; width: 16px; height: 16px; font: 600 9.5px/1 var(--font-body); color: var(--slot-ink); background: var(--c-client); border-radius: 2px; }
 .preset-card.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
@@ -2663,9 +2668,12 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       modified: f ? f.modified : null,
       requiredBy: f ? f.requiredBy || 0 : 0,
       modId: f ? f.modId || null : null,
-      version: f ? f.version : null
+      version: f ? f.version : null,
+      jarDesc: f ? f.description || null : null
     };
   }
+  // What a mod is, in a sentence: Modrinth's or CurseForge's summary when it's known there, else the jar's own.
+  function descOf(r) { return (r.mr && r.mr.description) || r.jarDesc || ""; }
 
   // Mods tagged library (some tag files call it "libraries") live in the Libraries tab; the Mods tab hides
   // them. Everything on the page (list, counts, side chart, tag counts) works on the current tab's mods.
@@ -3132,7 +3140,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         // "Off" sits on the icon, so a turned-off mod's row is no taller than the others.
         h("div", { class: "c-name", role: "cell" }, h("span", { class: "icon-wrap" }, modIcon(r),
             r.status === "disabled" ? h("span", { class: "off-tag", title: "Turned off: renamed to .jar.disabled, so the game skips it" }, "off") : null),
-          h("div", { class: "c-name-text" }, name, h("div", { class: "file-line" }, h("span", { class: "file" }, r.file), badges))),
+          h("div", { class: "c-name-text" }, name, h("div", { class: "desc-line", title: descOf(r) || null }, descOf(r)),
+            h("div", { class: "file-line" }, h("span", { class: "file" }, r.file), badges))),
         h("div", { class: "c-version col-version", role: "cell", title: ((r.mr && r.mr.versionNumber) || r.version || "") + (r.mr && r.mr.versionNumber ? " (from " + (r.mr.source === "curseforge" ? "CurseForge" : "Modrinth") + ")" : r.version ? " (from the jar)" : "") },
           (r.mr && r.mr.versionNumber) || r.version || "—"),
         h("div", { class: "c-slots", role: "cell" }, h("span", { class: "slots" }, slot("C", "client", r), slot("S", "server", r))),
@@ -3188,7 +3197,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var ex = extOf(r), m = r.mr || {};
     return [r.file, r.status, r.name, r.tracked, r.tags.join(","), r.topics.join(","), r.update ? r.update.versionNumber + "/" + r.update.type : "",
       m.versionNumber, m.source, m.downloadsAllowed, m.icon, m.url, r.logo, r.held ? r.held.versionNumber + "/" + r.held.why : "", !!ex.pin, ex.note || "",
-      isNewRow(r), !!r.requiredBy, r.version, !!busy[r.key], r.slug, currentView === "libraries",
+      isNewRow(r), !!r.requiredBy, r.version, !!busy[r.key], r.slug, currentView === "libraries", descOf(r),
       // Tags being filtered on come first on a row and show pressed; only rows that have one change.
       r.topics.filter(function (x) { return state.tags.indexOf(x) >= 0; }).join(",")].join("\u0001");
   }
@@ -8760,7 +8769,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
 
   var PREF_DEFAULTS = { theme: "dark", darkShade: "charcoal", lightShade: "snow", contrast: "normal", font: "noto", panels: "solid", accent: "emerald", density: "comfortable", tagColors: "vivid", rowActions: "hover", tagsPerRow: "3", tagOrder: "alpha", tagHide: "ctrl", accentColor: "#1ec85a", background: "glow", corners: "round", textSize: "100", tagStyle: "tint",
     motion: "system", rowStyle: "lines", showIcons: true, colSide: true, colTags: true, colVersion: false, startPage: "mods", bgDim: "75", tagHues: {},
-    worldBackups: false, updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, blockyTitle: true, checkBeforePlay: false, hidePrism: true,
+    worldBackups: false, updateChannel: "auto", searchSources: "both", serverRestart: "off", fileNames: true, descriptions: true, blockyTitle: true, checkBeforePlay: false, hidePrism: true,
     serverExtras: true, confirmDelete: true, whatChanged: true, serverBackups: false, autoLibraries: true, tagLibraries: true, tagSides: true, serverConfigsAuto: true };
   var localPrefs = {};
   try { localPrefs = JSON.parse(localStorage.getItem("mmm.prefs") || "{}") || {}; } catch (e) {}
@@ -8781,7 +8790,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var root = document.documentElement;
     var theme = pref("theme") === "system" ? (systemDark && !systemDark.matches ? "light" : "dark") : pref("theme");
     var look = { "data-theme": theme, "data-accent": pref("accent"), "data-density": pref("density"), "data-tags": pref("tagColors"),
-      "data-files": pref("fileNames") ? "on" : "off", "data-actions": pref("rowActions"), "data-blocky": pref("blockyTitle") ? "on" : "off",
+      "data-files": pref("fileNames") ? "on" : "off", "data-desc": pref("descriptions") ? "on" : "off", "data-actions": pref("rowActions"), "data-blocky": pref("blockyTitle") ? "on" : "off",
       "data-bg": pref("background"), "data-corners": pref("corners"), "data-tagstyle": pref("tagStyle"), "data-icons": pref("showIcons") ? "on" : "off",
       "data-rows": pref("rowStyle"), "data-motion": pref("motion"), "data-shade": pref("darkShade"), "data-lightshade": pref("lightShade"),
       "data-contrast": pref("contrast"), "data-font": pref("font"), "data-panels": pref("panels"),
@@ -8877,7 +8886,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     ] },
     { id: "list", title: "Mod List", items: [
       { key: "startPage", label: "Open on", desc: "The page shown when the app starts.", select: [["last", "Where I left off"], ["mods", "Mods"], ["libraries", "Libraries"], ["features", "Features"], ["packs", "Packs"], ["shared", "Shared"], ["configs", "Configs"], ["keys", "Key Binds"], ["server", "Server"], ["snapshots", "Snapshots"]] },
-      { key: "columns", label: "Show", desc: "What each row shows.", multi: [["showIcons", "Icons"], ["fileNames", "File names"], ["colVersion", "Version"], ["colSide", "Side"], ["colTags", "Tags"]] },
+      { key: "columns", label: "Show", desc: "What each row shows.", multi: [["showIcons", "Icons"], ["descriptions", "Descriptions"], ["fileNames", "File names"], ["colVersion", "Version"], ["colSide", "Side"], ["colTags", "Tags"]] },
       { key: "rowStyle", label: "Rows", desc: "Lines between rows, or stripes.", choices: [["lines", "Lines"], ["zebra", "Stripes"]] },
       { key: "rowActions", label: "Row buttons", desc: "Updates always show.", choices: [["hover", "On hover"], ["always", "Always"]] },
       { key: "tagsPerRow", label: "Tags per row", desc: "The rest fold into +N.", choices: [["3", "3"], ["5", "5"], ["all", "All"]] },
@@ -9258,7 +9267,9 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var on = function (k) { return !!pref(k); };
     var row = h("div", { class: "pv-modrow" });
     if (on("showIcons")) row.append(h("span", { class: "pv-icon", style: "width:22px;height:22px" }));
-    row.append(h("span", { class: "pv-modname" }, h("b", null, "Sodium"), on("fileNames") ? h("code", null, "sodium-neoforge-0.6.13.jar") : null));
+    row.append(h("span", { class: "pv-modname" }, h("b", null, "Sodium"),
+      on("descriptions") ? h("span", { class: "pv-desc" }, "The fastest and most compatible rendering optimization mod") : null,
+      on("fileNames") ? h("code", null, "sodium-neoforge-0.6.13.jar") : null));
     if (on("colVersion")) row.append(h("span", { class: "pv-col" }, "0.6.13"));
     if (on("colSide")) row.append(h("span", { class: "pv-col" }, h("span", { class: "pv-slot" }, "C")));
     if (on("colTags")) row.append(h("span", { class: "pv-col" }, pvChip("client", "var(--c-client)", tagLook() === "solid" || tagLook() === "outline" ? tagLook() : "tint")));
@@ -10055,8 +10066,10 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
 
   function renderOverview(body, d, mr, main) {
     var r = det.row;
-    var desc = mr.description || main.description;
-    if (desc) body.append(h("p", { style: "margin:0 0 12px;font-size:15px" }, desc));
+    // The jar's own description (when no site knows the mod) keeps its line breaks; a build placeholder isn't one.
+    var jarDesc = main.description && main.description.indexOf("${") < 0 ? main.description.trim() : "";
+    var desc = mr.description || jarDesc;
+    if (desc) body.append(h("p", { style: "margin:0 0 12px;font-size:15px" + (mr.description ? "" : ";white-space:pre-line") }, desc));
     var actions = h("div", { class: "row-actions" });
     if (connected && r.status !== "missing") {
       if (r.update) actions.append(btn("Update to " + r.update.versionNumber, function () { closeDetails(); updateMods([r]); }, "primary"));
@@ -10090,9 +10103,10 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       if (safeUrl(l[1])) links.append(btn(l[0], function () { openTab(l[1]); }));
     });
     if (links.childNodes.length) body.append(links);
+    var missingHere = jarDesc ? "version list here (the description above is the jar's own)." : "description or version list here.";
     if (!mr.found) body.append(h("p", { class: "hint" }, mr.error ? mr.error : server && server.curseforge
-      ? "Neither Modrinth nor CurseForge knows this jar, so there's no description or version list here."
-      : "This jar isn't on Modrinth (it may come from CurseForge: add a CurseForge key in Settings to see it), so there's no description or version list here."));
+      ? "Neither Modrinth nor CurseForge knows this jar, so there's no " + missingHere
+      : "This jar isn't on Modrinth (it may come from CurseForge: add a CurseForge key in Settings to see it), so there's no " + missingHere));
     if (mr.body) {
       body.append(h("h3", { style: "margin:18px 0 4px;font:700 16px/1.3 var(--font-display)" }, "Description"));
       var md = h("div", { class: "md" });

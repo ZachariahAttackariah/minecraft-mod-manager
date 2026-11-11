@@ -258,7 +258,7 @@ namespace MinecraftModManager
                 if (latest != null) updates++;
                 found++;
                 mods[p.Key] = Obj("source", "curseforge", "loose", Bool(match, "loose"), "cfModId", CfId(Get(mod, "id")), "projectId", null, "slug", null,
-                    "url", CfUrl(mod), "title", S(mod, "name"), "icon", CfIcon(mod), "clientSide", null, "serverSide", null,
+                    "url", CfUrl(mod), "title", S(mod, "name"), "description", S(mod, "summary"), "icon", CfIcon(mod), "clientSide", null, "serverSide", null,
                     "versionNumber", S(file, "displayName"), "versionType", CfReleaseName(Get(file, "releaseType")), "held", heldUpdate, "downloadsAllowed", CfDownloadsAllowed(mod),
                     "update", latest == null ? null : Obj("versionId", "cf:" + CfId(Get(latest, "fileId")), "versionNumber", S(latest, "filename"), "type", CfReleaseName(Get(latest, "releaseType"))));
             }

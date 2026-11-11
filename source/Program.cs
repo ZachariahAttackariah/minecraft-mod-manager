@@ -1112,7 +1112,7 @@ namespace MinecraftModManager
                     int needers;
                     requiredBy.TryGetValue(file.Name, out needers);
                     files.Add(Obj("name", file.Name, "size", file.Length, "modified", file.LastWriteTimeUtc.ToString("o"),
-                        "modId", info[0], "displayName", info[1], "logo", main != null && main.Logo != null, "requiredBy", needers,
+                        "modId", info[0], "displayName", info[1], "logo", main != null && main.Logo != null, "requiredBy", needers, "description", JarDescription(main),
                         "version", main != null && main.Version != null && !main.Version.Contains("${") ? main.Version : null));
                 }
                 string tagsPath = Path.Combine(dir, "mod-tags.json");
@@ -1498,6 +1498,7 @@ namespace MinecraftModManager
                         "projectId", S(version, "project_id"),
                         "slug", S(project, "slug"),
                         "title", S(project, "title"),
+                        "description", S(project, "description"),
                         "icon", S(project, "icon_url"),
                         "clientSide", S(project, "client_side"),
                         "serverSide", S(project, "server_side"),
