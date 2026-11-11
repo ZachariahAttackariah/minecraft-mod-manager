@@ -7,6 +7,8 @@
 //    pasted with a warning, since pasting was asked for.
 //  - Cut moves: the originals go to the Recycle Bin once the copies are in, and the clipboard empties.
 //    A game (or the server) that's running keeps its files, so cutting from it waits until it's closed.
+//  - Move to / Copy to (SendMods) does the same for mods in one step: the other instance is picked from a
+//    list, so it never has to be opened. Its own Minecraft version and loader decide the "won't load" notes.
 
 using System;
 using System.Collections.Generic;
@@ -106,15 +108,9 @@ namespace MinecraftModManager
             var moved = new List<string>();
             var notes = new List<string>();
             Directory.CreateDirectory(dest);
-            if (kind == "mods") PasteMods(c, dest, pasted, moved, notes);
+            if (kind == "mods") PasteMods(c, dest, destName, gameVersion, loader, pasted, moved, notes);
             else PastePacks(c, dest, pasted, moved, notes);
-            if (moved.Count > 0)
-            {
-                var paths = moved.Select(n => Path.Combine(c.Dir, n)).ToList();
-                if (kind == "shaderpacks") paths.AddRange(moved.Select(n => Path.Combine(c.Dir, n + ".txt")).Where(File.Exists));
-                if (!RecyclePaths(paths)) notes.Add("The copies are in, but Windows couldn't move every original in " + c.From + " to the Recycle Bin (a file may be in use).");
-                else if (kind == "mods") RemoveTagEntries(c.Dir, moved.Select(BaseJarName).ToList());
-            }
+            RecycleMoved(c, moved, notes);
             // What was cut and moved is here now, so it leaves the clipboard; what stayed behind can still be pasted elsewhere.
             if (c.Cut && moved.Count > 0)
                 lock (ClipLock)
@@ -124,7 +120,55 @@ namespace MinecraftModManager
             return Obj("ok", true, "pasted", pasted, "moved", moved.Count > 0, "from", c.From, "to", destName, "notes", notes, "clip", ClipInfo());
         }
 
-        static void PasteMods(ClipState c, string dest, List<string> pasted, List<string> moved, List<string> notes)
+        // Once the copies are in, a move's originals go to the Recycle Bin (and a mod's tags leave with it).
+        static void RecycleMoved(ClipState c, List<string> moved, List<string> notes)
+        {
+            if (moved.Count == 0) return;
+            var paths = moved.Select(n => Path.Combine(c.Dir, n)).ToList();
+            if (c.Kind == "shaderpacks") paths.AddRange(moved.Select(n => Path.Combine(c.Dir, n + ".txt")).Where(File.Exists));
+            if (!RecyclePaths(paths)) notes.Add("The copies are in, but Windows couldn't move every original in " + c.From + " to the Recycle Bin (a file may be in use).");
+            else if (c.Kind == "mods") RemoveTagEntries(c.Dir, moved.Select(BaseJarName).ToList());
+        }
+
+        // Move to / Copy to: mods from the instance open now straight into another one (a Prism instance or a
+        // mods folder from the instance list), without opening it. Same rules as Cut / Copy and Paste.
+        static Dictionary<string, object> SendMods(List<string> files, string to, bool move)
+        {
+            if (files.Count == 0) throw new UserError("Nothing was selected.");
+            if (string.IsNullOrWhiteSpace(to)) throw new UserError("No instance was chosen.");
+            string dest = Path.GetFullPath(to);
+            InstanceInfo target = PrismInstances().FirstOrDefault(i => SamePath(i.Mods, dest));
+            bool known;
+            lock (recentFolders) known = target != null || recentFolders.Any(f => SamePath(f, dest));
+            if (!known) throw new UserError("That instance isn't in the list any more. Close this and try again.");
+            if (SamePath(dest, modsDir)) throw new UserError("They're in this instance already.");
+            if (target != null && target.Loader == null) throw new UserError(target.Name + " has no mod loader, so it can't take mods.");
+            if (target == null && !Directory.Exists(dest)) throw new UserError(dest + " isn't there any more.");
+            foreach (string f in files) ResolveModFile(modsDir, f);
+            var c = new ClipState { Kind = "mods", Cut = move, Dir = modsDir, From = FolderOwnerName(modsDir), SourceGame = GameDir(), SourceSide = "game",
+                Names = files.Distinct(StringComparer.OrdinalIgnoreCase).ToList() };
+            if (move && GameRunning(c.SourceGame)) throw new UserError(c.From + " is running, so its mods can't be moved out yet. Close it, or Copy instead.");
+            string destName = target != null ? target.Name : FolderLabel(dest);
+            var pasted = new List<string>();
+            var moved = new List<string>();
+            var notes = new List<string>();
+            Directory.CreateDirectory(dest); // a new instance may not have a mods folder until its first launch
+            PasteMods(c, dest, destName, target != null ? target.Minecraft : null, target != null ? target.Loader : null, pasted, moved, notes);
+            RecycleMoved(c, moved, notes);
+            // Mods that were waiting on the clipboard to be pasted somewhere are gone from here now.
+            if (moved.Count > 0)
+                lock (ClipLock)
+                    if (clip != null && clip.Kind == "mods" && SamePath(clip.Dir, c.Dir))
+                    {
+                        clip.Names = clip.Names.Where(n => !moved.Contains(n, StringComparer.OrdinalIgnoreCase)).ToList();
+                        if (clip.Names.Count == 0) clip = null;
+                    }
+            if (pasted.Count > 0)
+                Log((move ? "Moved     " : "Copied    ") + string.Join(", ", pasted) + " from " + c.From + " to " + destName + " (" + dest + ")");
+            return Obj("ok", true, "sent", pasted, "moved", moved.Count > 0, "to", destName, "notes", notes, "clip", ClipInfo());
+        }
+
+        static void PasteMods(ClipState c, string dest, string destName, string mc, string ld, List<string> pasted, List<string> moved, List<string> notes)
         {
             TagsDoc sourceTags = TagsDocOf(c.Dir);
             List<FileInfo> jars = new DirectoryInfo(dest).GetFiles().Where(f => JarName.IsMatch(f.Name)).ToList();
@@ -137,14 +181,14 @@ namespace MinecraftModManager
                 ModInfo main = MainMod(meta);
                 string title = main != null && !string.IsNullOrEmpty(main.Name) ? main.Name : name;
                 List<FileInfo> same = SameModIn(jars, source);
-                if (same.Count > 0) { notes.Add(title + " is already here (" + same[0].Name + "), so it was left as it is."); continue; }
+                if (same.Count > 0) { notes.Add(title + " is already in " + destName + " (" + same[0].Name + "), so it was left as it is."); continue; }
                 string target = Path.Combine(dest, name), other = Path.Combine(dest, name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase) ? BaseJarName(name) : name + ".disabled");
-                if (File.Exists(target) || File.Exists(other)) { notes.Add("A different mod here is already called " + BaseJarName(name) + ", so " + title + " wasn't pasted."); continue; }
+                if (File.Exists(target) || File.Exists(other)) { notes.Add("A different mod in " + destName + " is already called " + BaseJarName(name) + ", so " + title + " wasn't added."); continue; }
                 if (c.Cut) AssertNotInUse(source.FullName);
                 CopyIn(source.FullName, target);
                 TagAlwaysCopy(dest, BaseJarName(name), null, sourceTags);
-                string why = AlwaysMisfit(meta, gameVersion, loader, connector);
-                if (why != null) notes.Add(title + " was pasted, but it won't load here: " + why + ".");
+                string why = AlwaysMisfit(meta, mc, ld, connector);
+                if (why != null) notes.Add(title + " went in, but it won't load in " + destName + ": " + why + ".");
                 pasted.Add(name);
                 if (c.Cut) moved.Add(name);
                 jars.Add(new FileInfo(target));

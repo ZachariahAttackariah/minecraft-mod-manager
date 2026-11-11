@@ -895,6 +895,9 @@ namespace MinecraftModManager
                         ClipClear();
                         SendJson(ctx, 200, Obj("ok", true, "clip", null));
                         return;
+                    case "/api/mods/send":
+                        SendJson(ctx, 200, SendMods(StrList(body, "files"), Str(body, "to"), Bool(body, "move")));
+                        return;
                     case "/api/always/add-packs":
                         SendJson(ctx, 200, AddSharedPacksFromPlace(Str(body, "kind"), Str(body, "place"), StrList(body, "names")));
                         return;

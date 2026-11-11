@@ -3,6 +3,9 @@
 What changed in Minecraft Mod Manager, newest first. The app shows this under Settings → Changelog,
 and after an update it offers what's new since the last time it was opened.
 
+## 2026-11-11
+- Move to another instance: right-click mods (or use Move to… in the selection bar) and pick the instance they go to from a list, without opening it. Move or Copy; tags and on/off come along, mods already there are skipped, and it says which ones won't load in that instance's Minecraft version or loader, or which mods left behind still need them.
+
 ## 2026-11-10
 - Remote access: a paired phone stays paired when the page is opened from a link in another app (it used to ask for a code again), and each visit renews the pairing for another year. A phone paired before this change is picked up again automatically (the pairing page reopens itself once so its old cookie comes along). The pairing page also says what to check when a device that was paired before is asked again.
 

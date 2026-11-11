@@ -1494,6 +1494,12 @@ button.mod-name:hover { text-decoration: underline; text-decoration-color: var(-
 .inst-form .prop select, .inst-form .prop input[type=text] { width: 100%; }
 .inst-form .gopt-row.fixed { font-size: 13.5px; color: var(--muted); }
 .inst-form .gopt-ctl select, .inst-form .gopt-ctl input[type=text], .inst-form .gopt-ctl textarea { flex: 1; width: 100%; }
+.send-form { display: grid; gap: 12px; padding: 4px 0 8px; }
+.send-form > .seg-control { justify-self: start; }
+.send-list { display: grid; gap: 2px; max-height: min(46vh, 380px); overflow: auto; padding: 4px; border: 1px solid var(--line); border-radius: 4px; }
+.send-list .inst-item[aria-checked="true"] { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+.send-list .inst-item .d.send-other { color: var(--warn); white-space: normal; }
+.send-warn { margin: 0; padding: 8px 10px; font-size: 13px; line-height: 1.4; background: color-mix(in srgb, var(--warn) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line)); border-radius: 4px; }
 .packs-where { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 12px; font-size: 13px; color: var(--muted); }
 .packs-where select { padding: 7px 9px; font: 400 13.5px/1.3 var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; }
 /* The folder on one line, trimmed at the start so its end (instance\minecraft\resourcepacks) shows; the full path is its tooltip. */
@@ -2294,7 +2300,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     dots: [["circle", { cx: "3.5", cy: "8", r: ".6" }], ["circle", { cx: "8", cy: "8", r: ".6" }], ["circle", { cx: "12.5", cy: "8", r: ".6" }]],
     layers: [["path", { d: "M8 2.5l5.5 3L8 8.5 2.5 5.5z" }], ["path", { d: "M2.5 8.5L8 11.5l5.5-3" }], ["path", { d: "M2.5 11.25L8 14.25l5.5-3" }]],
     cut: [["circle", { cx: "4.5", cy: "11.5", r: "2" }], ["circle", { cx: "11.5", cy: "11.5", r: "2" }], ["path", { d: "M5.9 10L12 2.5M10.1 10L4 2.5" }]],
-    paste: [["rect", { x: "3", y: "3", width: "10", height: "11", rx: "1.3" }], ["path", { d: "M6 3V1.8h4V3" }], ["path", { d: "M5.5 7.5h5M5.5 10h3.5" }]]
+    paste: [["rect", { x: "3", y: "3", width: "10", height: "11", rx: "1.3" }], ["path", { d: "M6 3V1.8h4V3" }], ["path", { d: "M5.5 7.5h5M5.5 10h3.5" }]],
+    move: [["path", { d: "M8.5 4.5V3.3a.8.8 0 0 0-.8-.8H2.3a.8.8 0 0 0-.8.8v9.4c0 .4.4.8.8.8h5.4a.8.8 0 0 0 .8-.8v-1.2" }], ["path", { d: "M5.5 8h9" }], ["path", { d: "M11.5 5l3 3-3 3" }]]
   };
 
   function $(id) { return document.getElementById(id); }
@@ -3274,6 +3281,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         g.disabled.length ? h("button", { type: "button", class: "btn", disabled: !connected, onclick: function () { setEnabled(g.disabled, true); } }, "Turn on " + g.disabled.length) : null,
         g.enabled.length ? h("button", { type: "button", class: "btn", disabled: !connected, onclick: function () { setEnabled(g.enabled, false); } }, "Turn off " + g.enabled.length) : null,
         g.present.length ? h("button", { type: "button", class: "btn danger-outline", disabled: !connected, onclick: function () { askDelete(g.present); } }, "Delete " + g.present.length + "…") : null,
+        // Just an icon, so the bar doesn't grow a second line when a mod is picked (the list would jump down).
+        g.present.length ? h("button", { type: "button", class: "btn icon-btn", disabled: !connected, title: "Move to another instance…", "aria-label": "Move to another instance", onclick: function () { sendDialog(g.present); } }, icon("move")) : null,
         h("button", { type: "button", class: "btn", onclick: function (e) {
           var rect = e.currentTarget.getBoundingClientRect();
           openMenu(keys, rect.left, rect.bottom + 6, e.currentTarget);
@@ -4942,6 +4951,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         var clipNames = forAll.map(function (r) { return r.file; });
         actions.append(menuItem(single ? "Copy (Ctrl+C)" : "Copy " + forAll.length + " (Ctrl+C)", "copy", function () { clipCopy("mods", null, clipNames, false); }));
         actions.append(menuItem(single ? "Cut (Ctrl+X)" : "Cut " + forAll.length + " (Ctrl+X)", "cut", function () { clipCopy("mods", null, clipNames, true); }));
+        actions.append(menuItem(single ? "Move to another instance…" : "Move " + forAll.length + " to another instance…", "move", function () { sendDialog(forAll); }));
       }
       var clipHere = clipNow();
       if (clipHere && clipHere.kind === "mods" && !clipHere.fromHere)
@@ -6398,6 +6408,124 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     e.preventDefault();
     clipCopy(kind, place, names, k === "x");
     return true;
+  }
+
+  // ---------- Move to / Copy to another instance (SendMods in Clipboard.cs) ----------
+  // Cut, switch instance and Paste in one step: the other instance is picked from a list and never opened.
+  var lastSendTo = null; // the instance picked last time comes up picked again
+  function sendDialog(rows) {
+    rows = rows.filter(function (r) { return r.status !== "missing"; });
+    if (!rows.length || !connected) return;
+    var single = rows.length === 1, move = true, pick = null, deps = null, busy = false;
+    var here = (server && server.prism && server.prism.instanceName) || folderLabel(server && server.modsDir);
+    var t = server && server.target;
+    // Shared mods go to every instance anyway, and one moved out would come straight back.
+    var shared = rows.filter(isAlways);
+    var send = rows.filter(function (r) { return !isAlways(r); });
+    var seg = h("div", { class: "seg-control", role: "group", "aria-label": "Move or copy" });
+    var list = h("div", { class: "send-list", role: "radiogroup", "aria-label": "Where they go" });
+    var about = h("p", { class: "hint", style: "margin:0" });
+    var warn = h("p", { class: "send-warn", hidden: true });
+    var error = h("p", { class: "tag-error", role: "alert", hidden: true });
+    var go = btn("", function () { submit(); }, "primary", { disabled: true });
+
+    [[true, "Move"], [false, "Copy"]].forEach(function (o) {
+      seg.append(h("button", { type: "button", "aria-pressed": String(o[0] === move), onclick: function () { move = o[0]; draw(); } }, o[1]));
+    });
+
+    var sameGame = function (it) { return !t || !it.minecraft || (it.minecraft === t.gameVersion && it.loader === t.loader); };
+    var places = function () {
+      var d = inst.data;
+      if (!d) return [];
+      return d.instances.filter(function (it) { return !it.current; }).map(function (it) { return { it: it, folder: false }; })
+        .concat(d.recent.filter(function (it) { return !it.current && it.exists; }).map(function (it) { return { it: it, folder: true }; }));
+    };
+    function fillList() {
+      list.replaceChildren();
+      if (!inst.data) { list.append(h("p", { class: "inst-empty" }, inst.error || "Looking for instances…")); return; }
+      var all = places();
+      if (!all.length) { list.append(h("p", { class: "inst-empty" }, "There's no other instance yet. Make one with New instance (in the instance list) first.")); return; }
+      if (!pick && lastSendTo) pick = all.filter(function (p) { return p.it.path === lastSendTo && (p.folder || p.it.loader); }).map(function (p) { return p.it; })[0] || null;
+      all.forEach(function (p) {
+        var it = p.it, noLoader = !p.folder && !it.loader;
+        var details = noLoader ? "Vanilla (no mod loader), so it can't take mods"
+          : p.folder ? it.path
+          : ["Minecraft " + (it.minecraft || "?"), LOADER_NAMES[it.loader] || it.loader, count(it.mods, "mod", "mods")].join(" · ");
+        var other = !p.folder && !noLoader && !sameGame(it);
+        list.append(h("button", { type: "button", class: "inst-item", role: "radio", "aria-checked": String(pick === it), tabindex: pick === it || (!pick && !noLoader && list.querySelector('[tabindex="0"]') === null) ? "0" : "-1",
+            disabled: noLoader || !connected, title: it.path,
+            onclick: function () { pick = it; draw(); var me = list.querySelector('[aria-checked="true"]'); if (me) me.focus(); },
+            ondblclick: function () { pick = it; draw(); submit(); } },
+          h("span", { style: "min-width:0" }, h("span", { class: "n", style: "display:block" }, it.name),
+            h("span", { class: "d", style: "display:block" }, details),
+            other ? h("span", { class: "d send-other", style: "display:block" }, "Not the same Minecraft version or loader as " + here + ", so some mods may not load there") : null),
+          pick === it ? h("span", { class: "tick", "aria-hidden": "true" }, "✓") : h("span")));
+      });
+    }
+    // Arrow keys step through the list, like any radio group.
+    list.addEventListener("keydown", function (e) {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      var items = Array.prototype.filter.call(list.querySelectorAll(".inst-item"), function (b) { return !b.disabled; });
+      var i = items.indexOf(document.activeElement);
+      if (!items.length) return;
+      e.preventDefault();
+      var next = items[i < 0 ? 0 : (i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length];
+      next.click();
+    });
+
+    function draw() {
+      Array.prototype.forEach.call(seg.children, function (b, i) { b.setAttribute("aria-pressed", String((i === 0) === move)); });
+      fillList();
+      $("big-title").textContent = titleFor();
+      var it = send.length === 1 ? "it" : "them";
+      about.textContent = (move
+        ? "Moving takes " + it + " out of " + here + " (to the Recycle Bin) once " + (send.length === 1 ? "the copy is" : "the copies are") + " in."
+        : here + " keeps " + it + " too.") + " Tags and on/off come along" +
+        (send.length === 1 ? ", and if it's already there it's skipped." : ", and any that are already there are skipped.");
+      var lines = [];
+      if (shared.length) lines.push(shared.length === 1 && single ? rows[0].name + " is shared across instances, so every instance gets it already." :
+        count(shared.length, "of these is", "of these are") + " shared across instances, so they stay out of this (every instance gets them already).");
+      if (move && deps && deps.length) lines.push("Careful: " + neededLines(deps).slice(0, 3).join("; ") + (deps.length > 3 ? "; and " + (deps.length - 3) + " more" : "") + ", which stay in " + here + ".");
+      warn.textContent = lines.join(" ");
+      warn.hidden = !lines.length;
+      go.textContent = (move ? "Move " : "Copy ") + (single ? "" : send.length + " ") + (pick ? "to " + pick.name : "to…");
+      go.disabled = busy || !pick || !send.length || !connected;
+    }
+
+    function submit() {
+      if (!pick || busy || !send.length || !connected) return;
+      busy = true;
+      error.hidden = true;
+      draw();
+      var to = pick, moving = move;
+      track(moving ? "Moving" : "Copying", api("POST", "/api/mods/send", { files: send.map(function (r) { return r.file; }), to: to.path, move: moving })).then(function (res) {
+        lastSendTo = to.path;
+        closeBig();
+        if (server) server.clip = res.clip;
+        var n = res.sent.length;
+        var one = n === 1 ? send.filter(function (r) { return r.file === res.sent[0]; })[0] : null;
+        toast([n ? (res.moved ? "Moved " : "Copied ") + (one ? one.name : count(n, "mod", "mods")) + " to " + res.to + "." : "Nothing was " + (moving ? "moved" : "copied") + "."].concat(res.notes || []).join(" "));
+        if (res.moved) send.forEach(function (r) { if (res.sent.indexOf(r.file) >= 0) delete selected[r.key]; });
+        inst.data = null;
+        return refresh(true);
+      }, function (e) {
+        busy = false;
+        error.textContent = e.message;
+        error.hidden = false;
+        draw();
+      });
+    }
+
+    function titleFor() { return (move ? "Move " : "Copy ") + (single ? rows[0].name : count(rows.length, "mod", "mods")) + " to another instance"; }
+    var body = h("div", { class: "send-form" }, seg, list, about, warn, error);
+    openBig(titleFor(), "From " + here + ". Pick where " + (single ? "it goes." : "they go."), body, [btn("Cancel", closeBig), go]);
+    draw();
+    loadInstances().then(function () {
+      draw();
+      var first = list.querySelector('[aria-checked="true"]') || list.querySelector(".inst-item:not([disabled])");
+      if (first) first.focus();
+    });
+    if (send.length) dependentsThen(send, function (d) { deps = d; draw(); });
   }
 
 
