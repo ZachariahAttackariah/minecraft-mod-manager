@@ -464,6 +464,9 @@ namespace MinecraftModManager
                         case "/api/project/preview":
                             result = ProjectPreview(req.QueryString["id"], req.QueryString["kind"]);
                             break;
+                        case "/api/author/find":
+                            result = FindAuthor(req.QueryString["name"]);
+                            break;
                         case "/api/project/versions":
                             result = PreviewVersions(req.QueryString["id"], req.QueryString["kind"]);
                             break;
@@ -846,6 +849,9 @@ namespace MinecraftModManager
                         return;
                     case "/api/packs/update":
                         SendJson(ctx, 200, UpdatePacks(Str(body, "kind"), Str(body, "place"), StrList(body, "names")));
+                        return;
+                    case "/api/packs/switch":
+                        SendJson(ctx, 200, SwitchPackVersion(Str(body, "kind"), Str(body, "place"), Str(body, "name"), Str(body, "versionId")));
                         return;
                     case "/api/packs/delete":
                         SendJson(ctx, 200, DeletePacks(Str(body, "kind"), Str(body, "place"), StrList(body, "names")));

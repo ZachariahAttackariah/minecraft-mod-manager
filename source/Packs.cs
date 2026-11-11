@@ -580,7 +580,7 @@ namespace MinecraftModManager
                     PackLatestByKey.TryGetValue(prefix + pair.Value, out latest);
                     latest = NewerPack(version, latest);
                     result[pair.Key] = Obj("projectId", S(version, "project_id"), "slug", S(project, "slug"), "title", S(project, "title"),
-                        "versionNumber", S(version, "version_number"),
+                        "versionNumber", S(version, "version_number"), "versionId", S(version, "id"), "date", S(version, "date_published"),
                         "update", latest == null ? null : Obj("versionId", S(latest, "id"), "versionNumber", S(latest, "version_number")));
                 }
                 return result;
@@ -735,6 +735,30 @@ namespace MinecraftModManager
                 }
             }
             return Obj("ok", true, "results", results);
+        }
+
+        // A pack switched to another Modrinth version (its details' Versions tab): the new file replaces the old one,
+        // and it keeps its place (on, or the shader in use with its settings) as an update does.
+        static Dictionary<string, object> SwitchPackVersion(string kind, string placeId, string name, string versionId)
+        {
+            if (string.IsNullOrWhiteSpace(versionId) || !Regex.IsMatch(versionId, "^[A-Za-z0-9]{4,16}$")) throw new UserError("No version was chosen.");
+            PackPlace place = FindPlace(kind, placeId);
+            GuardPlace(place);
+            lock (ModrinthLock)
+            {
+                string path = ResolvePack(place, name);
+                if (!File.Exists(path)) throw new UserError(name + " is a folder, so it has no versions to switch between.");
+                string hash;
+                if (!IdentifyFiles(new List<FileInfo> { new FileInfo(path) }).TryGetValue(name, out hash) || VersionByHash[hash] == null)
+                    throw new UserError(name + " isn't on Modrinth, so it can't switch versions here.");
+                Dictionary<string, object> version = D(ModrinthGet("/version/" + versionId));
+                if (version == null) throw new UserError("Modrinth doesn't have that version any more.");
+                if (S(version, "project_id") != S(VersionByHash[hash], "project_id")) throw new UserError("That version is from a different project, so " + name + " was left as it is.");
+                string newName = DownloadPackVersion(version, place.Dir, path);
+                CarryPackState(kind, place, name, newName);
+                Log("Switched  " + name + " -> " + newName + " (Modrinth " + S(version, "version_number") + ", " + place.Label + ")");
+                return Obj("ok", true, "file", name, "newFile", newName, "versionNumber", S(version, "version_number"));
+            }
         }
 
         // An updated pack keeps its place: still on (resource packs), still the chosen shader with its settings.

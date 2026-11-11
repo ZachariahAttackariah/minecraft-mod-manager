@@ -3557,6 +3557,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   }
   function resetSearch() {
     search.hits = []; search.prevHits = null; search.total = 0; search.error = null; search.warn = null; search.loading = false; search.seq++;
+    search.authorPrompt = null; search.findingAuthor = null;
     search.mr = { offset: 0, total: 0, done: false };
     search.cf = { offset: 0, total: 0, done: false };
   }
@@ -3573,8 +3574,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var cf = !!(server && server.curseforge);
     $("search-source").hidden = !cf;
     Array.prototype.forEach.call(document.querySelectorAll("#search-source button"), function (b) { b.setAttribute("aria-pressed", String(b.dataset.src === searchSource())); });
-    $("search-q").placeholder = "Search " + searchSite() + (fabricOn() ? " for Fabric mods" : "");
-    $("search-q").setAttribute("aria-label", "Search " + searchSite() + (fabricOn() ? " for Fabric mods" : ""));
+    $("search-q").placeholder = "Search " + searchSite() + (fabricOn() ? " for Fabric mods" : "") + ", or @author";
+    $("search-q").setAttribute("aria-label", "Search " + searchSite() + (fabricOn() ? " for Fabric mods" : "") + ", or type @ and an author's name");
     $("search-fabric-wrap").hidden = !(search.kind === "mods" && connectorHost());
     $("search-fabric").setAttribute("aria-pressed", String(fabricOn()));
   }
@@ -3809,7 +3810,46 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     runSearch(true);
   });
 
+  // "@name" (or "by: name", "author: name") in the search bar: everything by that author, as clicking their name
+  // shows. It's looked up on Enter rather than while typing, so a half-typed name can't jump to someone else's page.
+  function typedAuthor() {
+    var m = /^\s*(?:@|by:|author:)\s*(\S.*?)\s*$/i.exec($("search-q").value);
+    return m ? m[1] : null;
+  }
+  function findAuthor(name) {
+    resetSearch();
+    var seq = search.seq;
+    search.loading = true;
+    search.findingAuthor = name;
+    renderSearch();
+    api("GET", "/api/author/find?name=" + encodeURIComponent(name)).then(function (a) {
+      if (seq !== search.seq) return;
+      $("search-q").value = "";
+      search.author = { name: a.name, mr: !!a.mr, cfId: Number(a.cfId) || 0 };
+      search.loading = false;
+      search.findingAuthor = null;
+      renderAuthorBar();
+      labelSearchTarget();
+      runSearch(true);
+    }, function (e) {
+      if (seq !== search.seq) return;
+      search.loading = false;
+      search.findingAuthor = null;
+      search.error = e.message;
+      renderSearch();
+    });
+  }
+
   function runSearch(reset) {
+    var who = typedAuthor();   // also from an author's page, to go to another author's
+    if (who) {
+      if (!reset) return;
+      if (search.askAuthor) { search.askAuthor = false; findAuthor(who); return; }
+      resetSearch();
+      search.authorPrompt = who;
+      renderSearch();
+      return;
+    }
     if (reset) {
       // The last results stay up (dimmed) until the new ones arrive, instead of the list blanking each time.
       var before = search.hits.length ? search.hits : search.prevHits;
@@ -3896,7 +3936,20 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   function renderSearch() {
     var list = $("search-results");
     list.replaceChildren();
+    if (search.authorPrompt || search.findingAuthor) {
+      var who = search.authorPrompt || search.findingAuthor;
+      list.append(search.findingAuthor ? h("p", { class: "search-empty" }, "Looking for ", h("b", null, who), "…")
+        : h("p", { class: "search-empty" }, "Press Enter to see everything by ", h("b", null, who), "."));
+      $("search-count").textContent = "";
+      $("search-more").hidden = true;
+      return;
+    }
     if (search.warn) list.append(h("p", { class: "hint search-warn" }, search.warn));
+    // Words that are exactly an author's name (of one of the results): a way to their page.
+    var typed = $("search-q").value.trim().toLowerCase();
+    var byTyped = typed && !search.author && !search.loading ? search.hits.filter(function (x) { var a = authorOf(x); return a.name && a.name.toLowerCase() === typed; })[0] : null;
+    if (byTyped) list.append(h("p", { class: "hint search-warn" }, h("button", { type: "button", class: "result-author", onclick: function () { showAuthor(authorOf(byTyped), search.kind); } },
+      "Everything by " + authorOf(byTyped).name), " (or type @ and a name to look anyone up)"));
     var stale = search.loading && !search.hits.length && search.prevHits && search.prevHits.length;
     if (stale) {
       list.append(h("p", { class: "search-empty searching" }, "Searching " + searchSite() + "…"));
@@ -4066,6 +4119,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       packs.loading = false;
       $("packs-check").disabled = false;
       renderPacks();
+      refreshPackDetails();
       if (check && packs.data && !packs.data.modrinthError) {
         var n = packs.data.packs.filter(function (p) { return p.modrinth && p.modrinth.update; }).length;
         toast(n ? count(n, "update", "updates") + " available." : "Everything Modrinth knows about is up to date.");
@@ -4367,7 +4421,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       p.icon ? h("img", { class: "pack-icon", src: p.icon, alt: "" }) : h("span", { class: "pack-icon", "aria-hidden": "true" }),
       h("div", { style: "min-width:0" },
         h("div", { class: "pack-name" },
-          m && m.slug ? h("a", { class: "result-title", href: "https://modrinth.com/" + MODRINTH_PATH[d.kind] + "/" + encodeURIComponent(m.slug), target: "_blank", rel: "noopener" }, packTitle(p)) : h("span", null, packTitle(p)),
+          h("button", { type: "button", class: "result-title", title: m ? "Details, versions and gallery" : "Details", onclick: function () { openPackDetails(d, p); } }, packTitle(p)),
           m && m.update ? h("span", { class: "badge update", title: "Newer on Modrinth" }, "update → " + m.update.versionNumber) : null),
         p.description ? h("div", { class: "pack-desc" }, p.description) : null,
         h("div", { class: "pack-meta" }, meta.join(" · "))),
@@ -4413,6 +4467,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     packAction(names, api("POST", "/api/packs/update", { kind: d.kind, place: d.place, names: names }), function (res) {
       var ok = res.results.filter(function (r) { return !r.error; });
       var failed = res.results.filter(function (r) { return r.error; });
+      ok.forEach(function (r) { packRenamed(d.kind, d.place, r.file, r.newFile); });
       toast((ok.length ? "Updated " + count(ok.length, PACK_NOUNS[d.kind].replace(/s$/, ""), PACK_NOUNS[d.kind]) + "." : "") +
         (failed.length ? " " + failed[0].error : ""));
     });
@@ -4498,6 +4553,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var updatable = picked.filter(function (x) { return x.modrinth && x.modrinth.update; });
     // The same actions, order and icons as the Mods list's menu.
     var items = [];
+    if (single) items.push(["Details…", function () { openPackDetails(d, one); }, false, null, "info"]);
     if (updatable.length) items.push([single ? "Update to " + one.modrinth.update.versionNumber : "Update " + updatable.length, function () { updatePacks(updatable.map(function (x) { return x.name; })); }, locked, null, "up"]);
     if (d.kind === "resourcepacks") {
       var turnOn = picked.filter(function (x) { return x.on < 0; }), turnOff = picked.filter(function (x) { return x.on >= 0; });
@@ -9927,6 +9983,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   // The jar-only tabs (what it needs, its configs) don't apply to a search preview; Versions lists what can be installed.
   function detTabsForPreview(preview) {
     ["deps", "configs"].forEach(function (t) { document.querySelector('#det-tabs [data-tab="' + t + '"]').hidden = preview; });
+    document.querySelector('#det-tabs [data-tab="versions"]').hidden = false; // a pack Modrinth doesn't know hides it
   }
 
   // A search result (mod or pack) in the details window: the site's description, gallery and links, and
@@ -10064,6 +10121,15 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         if (id.indexOf("cf:") === 0 || !cf || !cf.projectId) throw e;
         return get(cf.projectId);
       });
+    } else if (det.pack) {
+      // A pack's Modrinth versions, with the one installed marked and the ones published after it as newer.
+      var m = (detPack() || {}).modrinth;
+      ask = !m ? Promise.reject(new Error("Modrinth doesn't know this pack, so there are no versions to show.")) :
+        api("GET", "/api/project/versions?id=" + encodeURIComponent(m.projectId) + "&kind=" + encodeURIComponent(det.pack.kind)).then(function (res) {
+          res.versions.forEach(function (x) { x.installed = x.id === m.versionId; x.newer = !!m.date && String(x.date || "") > m.date; });
+          res.current = { id: m.versionId, number: m.versionNumber };
+          return res;
+        });
     } else ask = api("GET", "/api/modrinth/versions?file=" + encodeURIComponent(det.row.file));
     ask.then(function (res) {
       if (seq !== det.seq) return;
@@ -10081,6 +10147,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   function renderDetails() {
     var body = $("det-body");
     body.replaceChildren();
+    if (det.pack) { renderPackDetails(body); return; }
     if (det.error) { body.append(h("p", { class: "search-empty" }, det.error)); return; }
     var d = det.data;
     if (det.preview) {
@@ -10111,7 +10178,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   // ---- Gallery: the mod's Modrinth screenshots; click one to see it full size ----
 
   function renderGallery(body, gallery) {
-    if (!gallery.length) { body.append(h("p", { class: "search-empty" }, "This mod has no gallery on Modrinth.")); return; }
+    if (!gallery.length) { body.append(h("p", { class: "search-empty" }, "There's no gallery on its page.")); return; }
     var grid = h("div", { class: "gal-grid" });
     gallery.forEach(function (g, i) {
       grid.append(h("button", { type: "button", class: "gal-item", title: g.description || g.title || "View full size", onclick: function () { openLightbox(gallery, i); } },
@@ -10256,15 +10323,19 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var site = v.source === "curseforge" ? "CurseForge" : "Modrinth";
     // A CurseForge author can allow downloads from their website only: then versions open its page.
     var pageOnly = v.source === "curseforge" && v.downloadsAllowed === false;
-    var p = det.preview, target = targetText();
-    if (p && p.kind !== "mods") target = p.kind === "shaderpacks" ? "any Minecraft version" : "Minecraft " + (server && server.target ? server.target.gameVersion : "");
+    var p = det.preview, pk = det.pack, target = targetText();
+    var packKind = p ? p.kind : pk ? pk.kind : "mods";
+    if (packKind !== "mods") target = packKind === "shaderpacks" ? "any Minecraft version" : "Minecraft " + (server && server.target ? server.target.gameVersion : "");
     // In a search preview nothing is installed yet: each version can be installed as it is.
-    var installedPreview = p && installedNow(p.hit), busyPreview = p && !!installing[p.hit.projectId];
+    var installedPreview = p && installedNow(p.hit), busyPreview = p ? !!installing[p.hit.projectId] : pk ? packLocked() : false;
     body.append(h("p", { class: "hint", style: "margin:0 0 8px" }, "Every " + site + " version for " + target + ", newest first. Open one to read its changelog." +
       (p ? (installedPreview ? " It's already installed: switch versions from its details in the list." : " Install this installs that version instead of the newest.") : "") +
+      (pk ? " Switching swaps the file and keeps its place" + (pk.kind === "resourcepacks" ? " (on or off, in the same spot)." : pk.kind === "shaderpacks" ? " (the shader in use, with its settings)." : ".") : "") +
+      (pk && packsData(pk) && packsData(pk).gameRunning ? " Close the game to switch." : "") +
       (pageOnly ? " Its author only allows downloads from CurseForge's website, so " + (p ? "installing" : "switching") + " opens its page there." : "")));
-    if (v.loose && !v.versions.some(function (x) { return x.installed; })) body.append(h("p", { class: "hint", style: "margin:0 0 8px" },
-      "Your jar (" + (v.current && v.current.number || "its version") + ") isn't one of these files, so none is marked as newer. Switching replaces it with the one you pick."));
+    if ((v.loose || pk) && !v.versions.some(function (x) { return x.installed; })) body.append(h("p", { class: "hint", style: "margin:0 0 8px" },
+      pk ? "Yours (" + (v.current && v.current.number || "its version") + ") isn't listed for " + target + ". Switching replaces it with the one you pick."
+        : "Your jar (" + (v.current && v.current.number || "its version") + ") isn't one of these files, so none is marked as newer. Switching replaces it with the one you pick."));
     if (!v.versions.length) body.append(h("p", { class: "search-empty" }, site + " has no versions for " + target + "."));
     v.versions.forEach(function (ver) {
       var install = ver.installed || !connected || installedPreview ? null : btn(pageOnly ? "Open page" : p ? (busyPreview ? "Installing…" : "Install this") : ver.newer ? "Update to this" : "Switch to this", function (e) {
@@ -10272,6 +10343,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         e.stopPropagation();
         if (pageOnly) { if (safeUrl(v.url)) openTab(v.url); }
         else if (p) installPreviewVersion(v, ver);
+        else if (pk) askPackSwitch(ver);
         else askSwitch(ver);
       }, ver.newer && !pageOnly ? "primary" : "", { disabled: !!busyPreview });
       var item = h("details", { class: "ver" },
@@ -10317,6 +10389,174 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
             if (nr && !$("details-scrim").hidden) openDetails(nr);
           });
         }, function (e) { toast(e.message); });
+      }
+    });
+  }
+
+  // ---- A pack's details (resource, data and shader packs), like a mod's: its Modrinth page, versions and gallery
+  // when Modrinth knows the file, and what the pack says about itself either way ----
+
+  function packsData(pk) {
+    var d = packs.data;
+    return d && d.kind === pk.kind && d.place === pk.place ? d : null;
+  }
+  function detPack() {
+    var pk = det.pack, d = pk && packsData(pk);
+    return d ? d.packs.filter(function (x) { return x.name === pk.name; })[0] || null : null;
+  }
+  function packLocked() {
+    var pk = det.pack, d = pk && packsData(pk);
+    return !connected || !d || !!packs.busy[pk.name] || !!d.gameRunning || !!d.serverRunning;
+  }
+  function openPackDetails(d, p) {
+    endConfigEmbed();
+    if (!menuEl.hidden) closeMenu();
+    det = { seq: det.seq + 1, row: null, preview: null, pack: { kind: d.kind, place: d.place, name: p.name }, data: null, error: null, versions: null, versionsError: null, versionsLoading: false, tab: "overview" };
+    detTabsForPreview(true);
+    document.querySelector('#det-tabs [data-tab="versions"]').hidden = !p.modrinth;
+    $("det-title").textContent = packTitle(p);
+    $("det-icon").replaceChildren(p.icon ? h("img", { src: p.icon, alt: "" }) : h("span", { class: "ph" }));
+    $("det-gallery-tab").hidden = true;
+    $("details-scrim").hidden = false;
+    setDetTab("overview");
+    $("details-close").focus();
+    if (p.modrinth) loadPackInfo();
+  }
+  function loadPackInfo() {
+    var seq = det.seq, p = detPack(), m = p && p.modrinth;
+    if (!m) return;
+    det.infoFor = m.projectId;
+    api("GET", "/api/project/preview?id=" + encodeURIComponent(m.projectId) + "&kind=" + encodeURIComponent(det.pack.kind)).then(function (info) {
+      if (seq !== det.seq) return;
+      det.data = info;
+      det.error = null;
+      renderDetails();
+    }, function (e) {
+      if (seq !== det.seq) return;
+      det.error = e.message;
+      renderDetails();
+    });
+  }
+  // The pack list reloaded (turned on, updated, switched…): open pack details follow it.
+  function refreshPackDetails() {
+    if (!det.pack || $("details-scrim").hidden || !packsData(det.pack)) return;
+    var p = detPack();
+    document.querySelector('#det-tabs [data-tab="versions"]').hidden = !(p && p.modrinth);
+    if (p && p.modrinth && det.infoFor !== p.modrinth.projectId) { det.data = null; loadPackInfo(); }
+    if (det.tab === "versions" && p && p.modrinth && !det.versions && !det.versionsLoading) loadVersions();
+    renderDetails();
+  }
+  // An update or a version switch gives the pack a new file name; its open details move with it.
+  function packRenamed(kind, place, oldName, newName) {
+    var pk = det.pack;
+    if (!pk || !newName || pk.kind !== kind || pk.place !== place || pk.name !== oldName) return;
+    pk.name = newName;
+    det.versions = null;
+    det.versionsError = null;
+  }
+
+  function renderPackDetails(body) {
+    var pk = det.pack, d = packsData(pk), p = detPack();
+    if (!p) {
+      $("det-sub").textContent = "";
+      body.append(h("p", { class: "search-empty" }, d ? "This pack isn't in the folder any more." : "Getting the list…"));
+      return;
+    }
+    var info = det.data, m = p.modrinth;
+    var state = pk.kind === "resourcepacks" ? (p.on >= 0 ? "on" : "turned off") : pk.kind === "shaderpacks" ? (p.on === true ? "in use" : "not in use") : null;
+    var noun = PACK_NOUNS[pk.kind].replace(/s$/, "");
+    var sub = [noun.charAt(0).toUpperCase() + noun.slice(1), m ? "Version " + m.versionNumber : null, state].filter(Boolean).join(" · ");
+    $("det-sub").replaceChildren.apply($("det-sub"), info && info.author
+      ? [h("button", { type: "button", class: "result-author", title: "Everything by " + info.author, onclick: function () { showAuthor({ name: info.author, mr: true, cfId: 0 }, pk.kind); } }, "by " + info.author), " · " + sub]
+      : [sub]);
+    if (!p.icon && info && info.icon) $("det-icon").replaceChildren(h("img", { src: info.icon, alt: "" }));
+    var shots = info && info.gallery || [];
+    $("det-gallery-tab").hidden = !shots.length;
+    $("det-gallery-tab").textContent = "Gallery" + (shots.length ? " " + shots.length : "");
+    if (det.tab === "gallery") renderGallery(body, shots);
+    else if (det.tab === "versions") renderVersions(body, null);
+    else renderPackOverview(body, d, p, info);
+  }
+
+  function renderPackOverview(body, d, p, info) {
+    var pk = det.pack, m = p.modrinth, locked = packLocked();
+    var own = (p.description || "").trim();
+    var desc = info && info.description || own;
+    if (desc) body.append(h("p", { style: "margin:0 0 12px;font-size:15px" + (info && info.description ? "" : ";white-space:pre-line") }, desc));
+    var why = d.gameRunning ? "Close the game first" : d.serverRunning ? "Stop the server first" : null;
+    var actions = h("div", { class: "row-actions" });
+    if (m && m.update) actions.append(btn("Update to " + m.update.versionNumber, function () { updatePacks([p.name]); }, "primary", { disabled: locked, title: why }));
+    if (pk.kind === "resourcepacks") actions.append(btn(p.on >= 0 ? "Turn off" : "Turn on", function () { setResourcePack(p, p.on < 0); }, "", { disabled: locked, title: why }));
+    else if (pk.kind === "shaderpacks" && d.shaderMod && !d.shaderModOff) actions.append(btn(p.on === true ? "Turn shaders off" : "Use this shader pack",
+      function () { setShader(p.on === true ? null : p.name); }, "", { disabled: locked, title: why || (p.on === true ? null : "Only one shader pack can be in use") }));
+    if (p.shared) actions.append(btn("Shared across instances", function () { closeDetails(); showShared(pk.kind); }, "", { title: "Open the Shared tab" }));
+    else if (!p.folder) actions.append(btn("Share across instances", function () { sharePacks(d, [p.name]); }, "", { disabled: !connected || !!packs.busy[p.name], title: "Every instance gets it (the Shared tab)" }));
+    actions.append(btn("Delete…", function () { closeDetails(); askDeletePack(d, p); }, "danger-outline", { disabled: locked, title: why }));
+    body.append(actions);
+    if (packs.busy[p.name]) body.append(h("p", { class: "hint" }, "Working on it…"));
+    else if (why && connected) body.append(h("p", { class: "hint" }, d.gameRunning ? "The game is running, so changes wait until it's closed." : "The server is running, so changes wait until it's stopped."));
+
+    var kv = h("dl", { class: "kv", style: "margin-top:14px" });
+    var add = function (k, v) { if (v !== null && v !== undefined && v !== "") kv.append(h("dt", null, k), h("dd", null, v)); };
+    add("File", p.name + (p.folder ? " (a folder)" : ""));
+    add("Size", formatBytes(p.size));
+    var place = (d.places || []).filter(function (x) { return x.id === d.place; })[0];
+    add("In", place ? place.label : null);
+    if (d.sharedWith && d.sharedWith.length) add("Folder shared with", d.sharedWith.join(", "));
+    if (p.shared) add("Shared", "Across instances (the Shared tab)");
+    add("Version", m ? m.versionNumber + " (Modrinth)" : null);
+    if (m && m.update) add("Newer on Modrinth", m.update.versionNumber);
+    if (pk.kind !== "shaderpacks" && p.format) add("Pack format", String(p.format));
+    if (info && info.author) add("Author", h("button", { type: "button", class: "result-author", style: "font-size:inherit", title: "Everything by " + info.author,
+      onclick: function () { showAuthor({ name: info.author, mr: true, cfId: 0 }, pk.kind); } }, info.author));
+    if (info) {
+      if (info.categories && info.categories.length) add("Categories", info.categories.join(", "));
+      add("License", info.license);
+      add("Downloads", formatNum(info.downloads) + (info.followers ? " · " + formatNum(info.followers) + " followers" : ""));
+      add("Last updated", info.updated ? dateText(info.updated) + " (" + ago(info.updated) + ")" : null);
+    }
+    add("File date", p.modified ? dateText(p.modified) : null);
+    body.append(kv);
+
+    var links = h("div", { class: "det-links" });
+    if (m && m.slug) links.append(btn("Modrinth page", function () { openTab("https://modrinth.com/" + MODRINTH_PATH[pk.kind] + "/" + encodeURIComponent(m.slug)); }));
+    if (info) [["Source code", info.source], ["Issues", info.issues], ["Wiki", info.wiki], ["Discord", info.discord]].forEach(function (l) {
+      if (safeUrl(l[1])) links.append(btn(l[0], function () { openTab(l[1]); }));
+    });
+    if (connected) links.append(btn("Open its folder", function () { api("POST", "/api/packs/open", { kind: pk.kind, place: pk.place }).catch(function (e) { toast(e.message); }); }));
+    if (links.childNodes.length) body.append(links);
+
+    if (!m) body.append(h("p", { class: "hint" }, d.modrinthError ? d.modrinthError
+      : p.folder ? "It's a folder rather than a .zip, so Modrinth can't recognise it: there's no page or version list here."
+      : "Modrinth doesn't know this file (it may come from CurseForge or somewhere else), so there's no page or version list here." + (own ? " The description above is the pack's own." : "")));
+    else if (det.error) body.append(h("p", { class: "hint" }, det.error));
+    else if (!info) body.append(h("p", { class: "hint" }, "Getting its Modrinth page…"));
+    if (info && info.body) {
+      body.append(h("h3", { style: "margin:18px 0 4px;font:700 16px/1.3 var(--font-display)" }, "Description"));
+      var md = h("div", { class: "md" });
+      md.append(renderMarkdown(info.body));
+      body.append(md);
+    }
+  }
+
+  function askPackSwitch(ver) {
+    var pk = det.pack, d = packsData(pk), p = detPack();
+    if (!p || !d) return;
+    var keeps = pk.kind === "resourcepacks" ? (p.on >= 0 ? " It stays on, in the same spot in your list." : " It stays off.")
+      : pk.kind === "shaderpacks" ? (p.on === true ? " It stays the shader pack in use, with its settings." : " Its shader settings move to the new file.") : "";
+    confirmDialog({
+      title: (ver.newer ? "Update " : "Switch ") + packTitle(p) + " to " + ver.number + "?",
+      items: [],
+      body: (ver.newer ? "" : "This isn't newer than the one you have. ") + "The current file goes to the Recycle Bin and the new one takes its place." + keeps +
+        (d.sharedWith && d.sharedWith.length ? " The folder is shared, so " + d.sharedWith.join(", ") + " get" + (d.sharedWith.length === 1 ? "s" : "") + " it too." : ""),
+      ok: ver.newer ? "Update" : "Switch version",
+      okClass: "primary",
+      onOk: function () {
+        toast("Downloading " + packTitle(p) + " " + ver.number + "…");
+        packAction([p.name], api("POST", "/api/packs/switch", { kind: pk.kind, place: pk.place, name: p.name, versionId: ver.id }), function (res) {
+          packRenamed(pk.kind, pk.place, res.file, res.newFile);
+          toast(packTitle(p) + " is now " + res.versionNumber + ".");
+        });
       }
     });
   }
@@ -13400,7 +13640,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   $("open-search").addEventListener("click", openSearch);
   $("search-close").addEventListener("click", closeSearch);
   $("search-scrim").addEventListener("mousedown", function (e) { if (e.target === $("search-scrim")) closeSearch(); });
-  $("search-form").addEventListener("submit", function (e) { e.preventDefault(); runSearch(true); });
+  $("search-form").addEventListener("submit", function (e) { e.preventDefault(); search.askAuthor = true; runSearch(true); search.askAuthor = false; });
   var searchTimer = 0;
   $("search-q").addEventListener("input", function () {
     clearTimeout(searchTimer);
