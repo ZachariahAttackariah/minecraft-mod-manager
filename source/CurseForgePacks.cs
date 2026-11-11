@@ -80,7 +80,7 @@ namespace MinecraftModManager
             return ids;
         }
 
-        static Dictionary<string, object> CurseForgePackSearch(string kind, string placeId, string query, int offset, string sort)
+        static Dictionary<string, object> CurseForgePackSearch(string kind, string placeId, string query, int offset, string sort, long authorId = 0)
         {
             if (!CfReady) throw new UserError("CurseForge search needs a CurseForge API key (Settings > Sources).");
             PackPlace place = FindPlace(kind, placeId);
@@ -89,7 +89,7 @@ namespace MinecraftModManager
             int field = sort == "downloads" ? 6 : sort == "updated" ? 3 : sort == "newest" ? 11 : 2;
             Dictionary<string, object> result = D(CfHttp("GET", "/mods/search?gameId=" + CfMinecraft + "&classId=" + classId +
                 (kind == "shaderpacks" ? "" : "&gameVersion=" + Uri.EscapeDataString(gameVersion)) +
-                "&sortField=" + field + "&sortOrder=desc&index=" + Math.Max(0, offset) + "&pageSize=20" +
+                "&sortField=" + field + "&sortOrder=desc&index=" + Math.Max(0, offset) + "&pageSize=20" + (authorId > 0 ? "&authorId=" + authorId : "") +
                 (string.IsNullOrWhiteSpace(query) ? "" : "&searchFilter=" + Uri.EscapeDataString(query.Trim())), null));
             if (result == null) throw new UserError("CurseForge's search didn't answer. Try again.");
             HashSet<long> installed = CfInstalledPacks(place.Dir);
@@ -99,7 +99,7 @@ namespace MinecraftModManager
                 long id = CfId(Get(mod, "id"));
                 lock (CfModById) CfModById[id] = mod;
                 Dictionary<string, object> author = D(A(Get(mod, "authors")).FirstOrDefault());
-                hits.Add(Obj("source", "curseforge", "projectId", "cf:" + id, "slug", S(mod, "slug"), "title", S(mod, "name"), "author", S(author, "name"),
+                hits.Add(Obj("source", "curseforge", "projectId", "cf:" + id, "slug", S(mod, "slug"), "title", S(mod, "name"), "author", S(author, "name"), "authorId", CfId(Get(author, "id")),
                     "description", S(mod, "summary"), "icon", CfIcon(mod), "downloads", Get(mod, "downloadCount"), "updated", S(mod, "dateModified"),
                     "url", CfUrl(mod), "downloadsAllowed", CfDownloadsAllowed(mod), "installed", installed.Contains(id)));
             }

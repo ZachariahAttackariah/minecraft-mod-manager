@@ -277,6 +277,11 @@ a.src:hover { border-color: var(--c); }
 .search-warn { margin: 8px; }
 .more-like { font-size: 12px; }
 #search-cat, #search-side { max-width: 170px; }
+/* An author's page (Authors.cs): who, which kind of their projects, their profile, back to everyone's. */
+.search-author { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 0 16px 10px; }
+.search-author .sa-who { font-size: 14px; }
+button.result-author { padding: 0; font: inherit; font-size: 12.5px; color: var(--muted); background: none; border: 0; cursor: pointer; }
+button.result-author:hover, button.result-author:focus-visible { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; outline: none; }
 .search-empty { margin: 18px 8px; color: var(--muted); }
 .drawer-scrim.centered { justify-content: center; align-items: center; padding: 24px; }
 .drawer.modal { width: min(780px, 100%); height: min(880px, 100%); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
@@ -2019,6 +2024,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       <button type="button" data-kind="options" aria-pressed="false" title="options.txt: video, sound, controls and key binds">Game Settings</button>
       <button type="button" data-kind="configs" aria-pressed="false">Mod Configs</button>
       <button type="button" data-kind="java" aria-pressed="false">Java Arguments</button>
+      <button type="button" data-kind="memory" aria-pressed="false" title="How much memory (RAM) the game gets">Memory</button>
     </div>
     <div class="cards always-cards">
       <div class="card">
@@ -2246,6 +2252,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
         <button type="button" id="search-fabric" aria-pressed="false" title="Show Fabric mods instead. They run through Sinytra Connector: installing one also adds Connector and Forgified Fabric API if they aren't here yet.">Fabric</button>
       </div>
     </form>
+    <div class="search-author" id="search-author" hidden></div>
     <div class="results" id="search-results" aria-live="polite"></div>
     <div class="drawer-foot">
       <span id="search-count"></span>
@@ -3496,7 +3503,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
   // The same drawer searches for mods or, from the Packs page, for one kind of pack.
   // Mods come from Modrinth and, once a key is set up, CurseForge too: both sites' results in one list,
   // with a mod that's on both shown once and downloaded from Modrinth. Each site pages on its own.
-  var search = { kind: "mods", dest: "game", source: null, hits: [], total: 0, loading: false, error: null, warn: null, seq: 0, mr: null, cf: null };
+  var search = { kind: "mods", dest: "game", source: null, hits: [], total: 0, loading: false, error: null, warn: null, seq: 0, mr: null, cf: null, author: null };
   function searchSource() {
     if (!(server && server.curseforge)) return "modrinth";
     return search.source || pref("searchSources");
@@ -3584,6 +3591,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       : kind === "shaderpacks" ? "Showing shader packs that work with Iris. Iris is installed too if it isn't yet."
       : kind === "datapacks" ? "Showing data packs for Minecraft " + (server && server.target ? server.target.gameVersion : "") + ". They go into " + packPlaceLabel() + "."
       : "Showing resource packs for Minecraft " + (server && server.target ? server.target.gameVersion : "") + ".";
+    if (search.author) $("search-title").textContent = (AUTHOR_KINDS.filter(function (k) { return k[0] === kind; })[0] || [0, "Projects"])[1] + " by " + (search.author.name || "this author");
   }
   Array.prototype.forEach.call(document.querySelectorAll("#search-source button"), function (b) {
     b.addEventListener("click", function () { setSearchSource(b.dataset.src); });
@@ -3612,6 +3620,62 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var back = search.dest === "server" ? $("kept-add") : search.dest === "shared" ? $("always-search") : null;
     (back || $(search.kind === "mods" ? "open-search" : "packs-search")).focus();
     if (search.dest !== "game") { search.dest = "game"; if (search.hits.length) renderSearch(); }
+    // An author's page is left behind: the next Add mods starts on everyone's again.
+    if (search.author) { search.author = null; resetSearch(); renderAuthorBar(); }
+  }
+
+  // ---------- An author's projects (Authors.cs) ----------
+  // Clicking an author's name shows everything of theirs here, for this instance: mods, resource packs, data packs
+  // and shader packs, one kind at a time. Modrinth finds them by username (a Modrinth result's author), CurseForge
+  // by author id (a CurseForge result's); a result on both sites asks both.
+  var AUTHOR_KINDS = [["mods", "Mods"], ["resourcepacks", "Resource packs"], ["datapacks", "Data packs"], ["shaderpacks", "Shader packs"]];
+  function authorOf(hit) {
+    var cf = hit.source === "curseforge" ? hit : hit.also;
+    return { name: hit.author || (cf && cf.author) || "", mr: hit.source !== "curseforge", cfId: cf && Number(cf.authorId) || 0 };
+  }
+  function showAuthor(a, kind) {
+    if (!a || !connected || !(a.name || a.cfId)) return;
+    if (!$("details-scrim").hidden) closeDetails();
+    var dest = $("search-scrim").hidden ? "game" : search.dest;
+    search.author = a;
+    search.kind = kind || "mods";
+    $("search-q").value = ""; $("search-cat").value = ""; $("search-side").value = "";
+    resetSearch();
+    renderAuthorBar();
+    openSearch(search.kind, dest);
+  }
+  function authorParam(site) {
+    var a = search.author;
+    return !a ? "" : site === "curseforge" ? "&authorId=" + a.cfId : "&author=" + encodeURIComponent(a.name);
+  }
+  // Which sites can find this author: Modrinth by name (from a Modrinth result), CurseForge by id.
+  function authorSites(sites) {
+    var a = search.author;
+    return !a ? sites : sites.filter(function (s) { return s === "curseforge" ? !!a.cfId : a.mr && !!a.name; });
+  }
+  function renderAuthorBar() {
+    var bar = $("search-author"), a = search.author;
+    bar.hidden = !a;
+    bar.replaceChildren();
+    if (!a) return;
+    var kinds = h("div", { class: "seg-control", role: "group", "aria-label": "Show their" });
+    AUTHOR_KINDS.forEach(function (k) {
+      if (search.dest === "server" && k[0] !== "mods") return;   // the server only takes mods
+      kinds.append(h("button", { type: "button", "aria-pressed": String(search.kind === k[0]), onclick: function () {
+        if (search.kind === k[0]) return;
+        search.kind = k[0];
+        resetSearch();
+        labelSearch(); labelSearchTarget(); renderAuthorBar();
+        runSearch(true);
+      } }, k[1]));
+    });
+    bar.append(h("span", { class: "sa-who" }, "Everything by ", h("b", null, a.name || "this author")), kinds,
+      a.mr && a.name ? h("button", { type: "button", class: "linkish", onclick: function () { openTab("https://modrinth.com/user/" + encodeURIComponent(a.name)); } }, "Modrinth profile") : null,
+      h("button", { type: "button", class: "linkish", title: "Back to everyone's", onclick: function () {
+        search.author = null;
+        resetSearch(); renderAuthorBar(); labelSearchTarget();
+        runSearch(true);
+      } }, "Show everyone's"));
   }
 
   // The same mod on both sites. The app works it out for each CurseForge result (CrossSite.cs: the same
@@ -3770,12 +3834,22 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       search.warn = "CurseForge results are left out while a side is picked: CurseForge doesn't say which side mods run on.";
       if (!sites.length) sites = ["modrinth"];
     }
+    // An author's page asks only the sites that can find them (Modrinth by name, CurseForge by id).
+    if (search.author) {
+      sites = authorSites(sites);
+      if (!sites.length) {
+        search.loading = false;
+        search.error = "This author can only be looked up on " + (search.author.cfId ? "CurseForge" : "Modrinth") + ", which is switched off above.";
+        renderSearch();
+        return;
+      }
+    }
     var failed = [];
     var calls = sites.map(function (site) {
       var st = site === "curseforge" ? search.cf : search.mr;
       if (st.done) return Promise.resolve([]);
       var fabric = fabricOn();
-      var full = searchUrl(search.kind, site, q, cat, side, fabric) + "&offset=" + st.offset + "&sort=" + sort;
+      var full = searchUrl(search.kind, site, q, cat, side, fabric) + authorParam(site) + "&offset=" + st.offset + "&sort=" + sort;
       var kept = cachedSearch(full);
       var ask = kept ? Promise.resolve(kept.res) : api("GET", full).then(function (res) { searchCache[full] = { at: Date.now(), res: res }; return res; });
       return ask.then(function (res) {
@@ -3870,7 +3944,8 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       h("div", null,
         h("div", { class: "result-top" },
           h("button", { type: "button", class: "result-title", title: "Details, gallery and description", onclick: function () { openPreview(hit); } }, hit.title),
-          hit.author ? h("span", { class: "result-author" }, "by " + hit.author) : null, sites),
+          hit.author ? h("button", { type: "button", class: "result-author", title: "Everything by " + hit.author,
+            onclick: function () { showAuthor(authorOf(hit), search.kind); } }, "by " + hit.author) : null, sites),
         // More like this: the same category, no search words.
         isMod && hit.categories && hit.categories.length ? h("button", { type: "button", class: "linkish more-like", title: "Mods in the " + hit.categories[0] + " category",
           onclick: function () { var c = hit.categories.filter(function (x) { return $("search-cat").querySelector("option[value=\"" + x + "\"]"); })[0];
@@ -5678,9 +5753,13 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
       where: "Ticking an instance takes the shared configs and adds any only it has. New instances don't share configs until you tick them." },
     java: { settings: true, title: "Java arguments shared across instances",
       lead: "The launcher's global Java arguments, used by every instance ticked here. Memory is set for each instance in its settings, so leave out -Xmx and -Xms.",
-      where: "An unticked instance uses its own arguments, which you can change in its settings (⋯ next to it in the instance list). The launcher has to be closed to change these." }
+      where: "An unticked instance uses its own arguments, which you can change in its settings (⋯ next to it in the instance list). The launcher has to be closed to change these." },
+    memory: { settings: true, title: "Memory shared across instances",
+      lead: "How much memory (RAM) the game gets: the launcher's own setting, used by every instance ticked here. Big modpacks want more; more than they need doesn't make them faster.",
+      where: "Unticking keeps the amount an instance uses now as its own, which you can change in its settings (⋯ next to it in the instance list). The launcher has to be closed to change these." }
   };
   function sharedSettingsKind(kind) { return !!(SHARED_KINDS[kind] && SHARED_KINDS[kind].settings); }
+  function memText(mb) { return (Math.round(mb / 102.4) / 10) + " GB"; }
 
   function isAlways(r) {
     var a = server && server.always;
@@ -5768,7 +5847,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     $("always-search").hidden = !!k.settings;
     $("always-search").textContent = kind === "mods" ? "Add mods" : "Add " + k.nouns;
     $("always-search").disabled = !connected;
-    $("always-open").hidden = kind === "java";
+    $("always-open").hidden = kind === "java" || kind === "memory";
     if (!k.settings) $("always-add").textContent = k.add;
     var d = always.data && always.data.kind === kind ? always.data : null;
     var modsEl = $("always-list-mods"), targetsEl = $("always-list-targets");
@@ -5902,6 +5981,28 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
           startFrom.map(function (i) { return btn(i.name, function () { args.value = i.javaArgs; args.dispatchEvent(new Event("input")); args.focus(); }, "quiet"); })),
         d.prismRunning ? h("p", { class: "warnbox" }, "The launcher is open. Close it before changing these, or it will undo them.") : null,
         err].filter(Boolean));
+    } else if (kind === "memory") {
+      // Whole gigabytes up to what the PC can spare (2 GB left for Windows), plus the current amount if it's odd.
+      var spare = d.ramMb ? Math.floor((d.ramMb - 2048) / 1024) : 32;
+      var pick = h("select", { "aria-label": "Shared memory" });
+      [2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 20, 24, 32, 48, 64].filter(function (gb) { return gb <= spare; }).forEach(function (gb) { pick.append(h("option", { value: String(gb * 1024) }, gb + " GB")); });
+      if (!pick.querySelector('option[value="' + d.memoryMb + '"]')) pick.append(h("option", { value: String(d.memoryMb) }, memText(d.memoryMb)));
+      pick.value = String(d.memoryMb);
+      var merr = h("p", { class: "tag-error", role: "alert", hidden: true });
+      var msave = btn("Save", function () {
+        msave.disabled = true;
+        merr.hidden = true;
+        api("POST", "/api/sharing/memory", { memoryMb: Number(pick.value) }).then(function (res) {
+          toast("Instances sharing memory get " + memText(res.memoryMb) + " now.");
+          inst.data = null; always.data = null; loadAlways();
+        }, function (e) { merr.textContent = e.message; merr.hidden = false; msave.disabled = false; });
+      }, "primary", { disabled: true });
+      pick.addEventListener("change", function () { msave.disabled = !connected || Number(pick.value) === d.memoryMb; });
+      mainEl.append.apply(mainEl, [h("div", { class: "row-actions" }, pick, msave,
+          d.ramMb ? h("span", { class: "hint" }, "This PC has " + memText(d.ramMb) + ".") : null),
+        h("p", { class: "hint" }, sharing.length ? "Shared by " + sharing.map(function (i) { return i.name; }).join(", ") + "." : "No instance uses the shared memory yet. Tick one on the right."),
+        d.prismRunning ? h("p", { class: "warnbox" }, "The launcher is open. Close it before changing this, or it will undo it.") : null,
+        merr].filter(Boolean));
     } else {
       mainEl.append(h("p", { class: "hint" }, sharing.length
         ? "Shared by " + sharing.map(function (i) { return i.name; }).join(", ") + "."
@@ -5911,7 +6012,7 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     var instBox = h("div", { class: "gopt-sec" });
     if (d.instances.length) targetsEl.append(instBox);
     d.instances.forEach(function (it) {
-      var what = { options: "game settings", configs: "mod configs", java: "Java arguments" }[kind];
+      var what = { options: "game settings", configs: "mod configs", java: "Java arguments", memory: "memory" }[kind];
       var sw = sharedSwitch(!!it[flag], (it[flag] ? "Stop sharing with " : "Share with ") + it.name, function (on) {
         if (kind === "options") gopts.data = null;
         track("Updating " + it.name, api("POST", "/api/sharing/instance", { id: it.id, kind: kind, on: on })).then(function () {
@@ -5919,8 +6020,9 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
           inst.data = null;
         }, function (e) { toast(e.message); }).then(function () { always.data = null; return loadAlways(); });
       });
-      if (kind === "java" && d.prismRunning) sw.disabled = true;
-      var note = kind === "java" && !it.java ? (it.javaArgs ? "its own: " + it.javaArgs : "its own: none") : it[flag] ? "shared" : "its own";
+      if ((kind === "java" || kind === "memory") && d.prismRunning) sw.disabled = true;
+      var note = kind === "java" && !it.java ? (it.javaArgs ? "its own: " + it.javaArgs : "its own: none")
+        : kind === "memory" && !it.memory ? "its own: " + memText(it.memoryMb) : it[flag] ? "shared" : "its own";
       instBox.append(h("div", { class: "gopt-row is-bool" + (it[flag] ? "" : " is-off") },
         h("div", { class: "gopt-label" }, it.name + (it.current ? " (open now)" : ""), h("span", { class: "desc" }, note)),
         h("div", { class: "gopt-ctl" }, sw)));
@@ -9835,8 +9937,10 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     det = { seq: det.seq + 1, row: null, preview: { hit: hit, kind: kind }, data: null, error: null, versions: null, versionsError: null, versionsLoading: false, tab: "overview" };
     var cf = hit.source === "curseforge";
     $("det-title").textContent = hit.title;
-    $("det-sub").textContent = [hit.author ? "by " + hit.author : null, cf ? "CurseForge" : hit.also ? "Modrinth and CurseForge" : "Modrinth",
-      formatNum(hit.downloads) + " downloads"].filter(Boolean).join(" · ");
+    var sub = [cf ? "CurseForge" : hit.also ? "Modrinth and CurseForge" : "Modrinth", formatNum(hit.downloads) + " downloads"].join(" · ");
+    $("det-sub").replaceChildren.apply($("det-sub"), hit.author
+      ? [h("button", { type: "button", class: "result-author", title: "Everything by " + hit.author, onclick: function () { showAuthor(authorOf(hit), kind); } }, "by " + hit.author), " · " + sub]
+      : [sub]);
     $("det-icon").replaceChildren(hit.icon ? h("img", { src: hit.icon, alt: "" }) : h("span", { class: "ph" }));
     $("det-gallery-tab").hidden = true;
     detTabsForPreview(true);
@@ -10086,7 +10190,10 @@ input[type="search"], input[type="text"], input[type="password"], select, textar
     add("Version", main.version || (mr.versionNumber ? mr.versionNumber + " (Modrinth)" : null));
     add("Loader", KIND_NAMES[d.kind] || d.kind);
     if (mr.found && mr.loose) add("Matched by", "Mod id and name. This jar isn't a file " + (mr.site === "curseforge" ? "CurseForge" : "Modrinth") + " publishes byte for byte (a different build or a repack), so it's matched by what it says it is.");
-    if (mr.found && mr.site === "curseforge") add("From", "CurseForge" + (mr.author ? ", by " + mr.author : ""));
+    if (mr.found && mr.site === "curseforge") add("From", "CurseForge");
+    // Its author: a click shows everything of theirs in Add mods (Authors.cs).
+    if (mr.found && mr.author) add("Author", h("button", { type: "button", class: "result-author", style: "font-size:inherit", title: "Everything by " + mr.author,
+      onclick: function () { showAuthor({ name: mr.author, mr: mr.site !== "curseforge", cfId: mr.site === "curseforge" ? Number(mr.authorId) || 0 : 0 }, "mods"); } }, mr.author));
     if (mr.found && mr.clientSide) add("Sides", "Client: " + (SIDE_WORDS[mr.clientSide] || mr.clientSide) + " · Server: " + (SIDE_WORDS[mr.serverSide] || mr.serverSide) + " (Modrinth)");
     add("Your tags", r.tags.length ? r.tags.join(", ") : "none");
     if (mr.found) {

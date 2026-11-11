@@ -396,7 +396,7 @@ namespace MinecraftModManager
             return hit == null ? 0 : CfId(Get(hit, "id"));
         }
 
-        static Dictionary<string, object> CurseForgeSearch(string query, int offset, string sort, string category = null)
+        static Dictionary<string, object> CurseForgeSearch(string query, int offset, string sort, string category = null, long authorId = 0)
         {
             // CurseForge sort fields: 2 popularity, 3 last updated, 6 total downloads, 11 release date.
             int field = sort == "downloads" ? 6 : sort == "updated" ? 3 : sort == "newest" ? 11 : 2;
@@ -409,7 +409,7 @@ namespace MinecraftModManager
             }
             Dictionary<string, object> result = D(CfHttp("GET", "/mods/search?gameId=" + CfMinecraft + "&classId=" + CfModsClass +
                 "&gameVersion=" + Uri.EscapeDataString(gameVersion) + "&modLoaderType=" + CfLoader() + "&sortField=" + field + "&sortOrder=desc" +
-                "&index=" + Math.Max(0, offset) + "&pageSize=20" + (categoryId > 0 ? "&categoryId=" + categoryId : "") + (string.IsNullOrWhiteSpace(query) ? "" : "&searchFilter=" + Uri.EscapeDataString(query.Trim())), null));
+                "&index=" + Math.Max(0, offset) + "&pageSize=20" + (categoryId > 0 ? "&categoryId=" + categoryId : "") + (authorId > 0 ? "&authorId=" + authorId : "") + (string.IsNullOrWhiteSpace(query) ? "" : "&searchFilter=" + Uri.EscapeDataString(query.Trim())), null));
             if (result == null) throw new UserError("CurseForge's search didn't answer. Try again.");
             HashSet<long> installed;
             HashSet<string> installedOnModrinth;
@@ -425,6 +425,7 @@ namespace MinecraftModManager
                 lock (CfModById) CfModById[CfId(Get(mod, "id"))] = mod;
                 Dictionary<string, object> author = D(A(Get(mod, "authors")).FirstOrDefault());
                 hits.Add(Obj("source", "curseforge", "projectId", "cf:" + CfId(Get(mod, "id")), "slug", S(mod, "slug"), "title", S(mod, "name"), "author", S(author, "name"),
+                    "authorId", CfId(Get(author, "id")),
                     "description", S(mod, "summary"), "icon", CfIcon(mod), "downloads", Get(mod, "downloadCount"), "updated", S(mod, "dateModified"),
                     "url", CfUrl(mod), "downloadsAllowed", CfDownloadsAllowed(mod), "modrinth", twin,
                     "installed", installed.Contains(CfId(Get(mod, "id"))) || (twin != null && installedOnModrinth.Contains(S(twin, "projectId")))));

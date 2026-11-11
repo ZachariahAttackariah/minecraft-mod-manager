@@ -6,6 +6,8 @@
 //    key binds of a mod it doesn't have) are kept, so instances with different mods don't wipe each other's.
 //    Which resource packs are on stays each instance's own, since each has its own packs.
 //  - Mod configs: ConfigSharing.cs.
+//  - Memory: the launcher's global maximum (MaxMemAlloc in prismlauncher.cfg). An instance uses it unless its
+//    instance.cfg overrides it (OverrideMemory plus its own MaxMemAlloc), which its settings set.
 // Packs used to be shared by turning an instance's shaderpacks / resourcepacks folder into a junction to
 // <data>\shared\<kind>. They're shared like mods now (SharedPacks.cs): MigrateLinkedPackFolders turns each
 // such link back into a folder of the instance's own, with the packs in it, and moves the packs into the
@@ -164,6 +166,39 @@ namespace MinecraftModManager
             File.Copy(path, path + ".bak", true);
             File.WriteAllLines(path, cfg, new UTF8Encoding(false));
             Log("Shared    Java arguments: " + (args.Length == 0 ? "(none)" : args) + (takenFrom != null ? " (taken from " + takenFrom + ")" : ""));
+        }
+
+        // ---------- Memory ----------
+
+        // The launcher's global maximum memory in MB (4096 when it hasn't set one, the launcher's own default).
+        static int SharedMemoryMb()
+        {
+            try
+            {
+                string path = LauncherConfigPath();
+                int mb;
+                return File.Exists(path) && int.TryParse(IniGet(File.ReadAllLines(path).ToList(), "MaxMemAlloc"), out mb) && mb > 0 ? mb : 4096;
+            }
+            catch { return 4096; }
+        }
+
+        static string MemoryText(int mb) { return (mb / 1024.0).ToString("0.#", CultureInfo.InvariantCulture) + " GB"; }
+
+        static Dictionary<string, object> SetSharedMemory(int mb)
+        {
+            CheckMemory(mb);
+            string path = LauncherConfigPath();
+            if (!File.Exists(path)) throw new UserError("Open the launcher once first, so it can set itself up.");
+            RequirePrismClosed();
+            if (SharedMemoryMb() == mb) throw new UserError("Nothing was changed.");
+            List<string> cfg = File.ReadAllLines(path).ToList();
+            IniSet(cfg, "MaxMemAlloc", mb.ToString(CultureInfo.InvariantCulture));
+            int min;
+            if (!int.TryParse(IniGet(cfg, "MinMemAlloc"), out min) || min > mb) IniSet(cfg, "MinMemAlloc", Math.Min(1024, mb).ToString(CultureInfo.InvariantCulture));
+            File.Copy(path, path + ".bak", true);
+            File.WriteAllLines(path, cfg, new UTF8Encoding(false));
+            Log("Shared    memory: " + MemoryText(mb));
+            return Obj("ok", true, "memoryMb", mb);
         }
 
         // ---------- Sharing by default ----------
@@ -958,6 +993,7 @@ namespace MinecraftModManager
             List<string> cfg;
             try { cfg = ReadInstanceCfg(info); } catch { cfg = new List<string>(); }
             return Obj("java", !OwnJavaArgs(cfg), "javaArgs", IniGet(cfg, "JvmArgs") ?? "",
+                "memory", InstanceMemoryMb(cfg) == 0, "memoryMb", InstanceMemoryMb(cfg),
                 "options", state.Options.Contains(info.Id), "configs", SharesConfigs(info));
         }
 
@@ -987,6 +1023,19 @@ namespace MinecraftModManager
                 File.Copy(cfgPath, cfgPath + ".bak", true);
                 File.WriteAllLines(cfgPath, cfg, new UTF8Encoding(false));
             }
+            else if (kind == "memory")
+            {
+                // Unticked, it keeps the amount it uses now as its own, so nothing about how it runs changes.
+                RequirePrismClosed();
+                string cfgPath = Path.Combine(InstanceDir(info), "instance.cfg");
+                List<string> cfg = File.ReadAllLines(cfgPath).ToList();
+                if (on == (InstanceMemoryMb(cfg) == 0)) throw new UserError("Nothing was changed.");
+                int own = SharedMemoryMb();
+                SetMemoryLines(cfg, on ? 0 : own);
+                change = on ? "uses the shared memory" : "uses its own memory (" + MemoryText(own) + ")";
+                File.Copy(cfgPath, cfgPath + ".bak", true);
+                File.WriteAllLines(cfgPath, cfg, new UTF8Encoding(false));
+            }
             else throw new UserError("Unknown shared setting.");
             MarkInstanceKnown(info.Id); // chosen by hand, so the defaults don't apply to it again
             Log("Shared    " + info.Name + ": " + change);
@@ -1009,7 +1058,7 @@ namespace MinecraftModManager
                 o["current"] = SamePath(i.Mods, modsDir);
                 return (object)o;
             }).ToList();
-            return Obj("ok", true, "javaArgs", SharedJavaArgs(), "launcherSetUp", File.Exists(LauncherConfigPath()), "prismRunning", PrismRunning(),
+            return Obj("ok", true, "javaArgs", SharedJavaArgs(), "memoryMb", SharedMemoryMb(), "ramMb", TotalRamMb(), "launcherSetUp", File.Exists(LauncherConfigPath()), "prismRunning", PrismRunning(),
                 "shareByDefault", state.ShareByDefault, "optionCount", SharedOptionCount(),
                 "hasOptions", File.Exists(SharedOptionsPath()), "instances", instances,
                 "configCount", Directory.Exists(SharedConfigDir()) ? ShareableConfigs(SharedConfigDir()).Count : 0, "configsPath", SharedConfigDir(),

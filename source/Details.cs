@@ -129,6 +129,7 @@ namespace MinecraftModManager
                     if (project == null) return Obj("found", false);
                     Dictionary<string, object> license = D(Get(project, "license"));
                     return Obj("found", true, "projectId", S(project, "id"), "slug", S(project, "slug"), "title", S(project, "title"),
+                        "author", ModrinthAuthor(S(project, "id")),
                         "description", S(project, "description"), "body", S(project, "body"), "icon", S(project, "icon_url"),
                         "downloads", Get(project, "downloads"), "followers", Get(project, "followers"),
                         "clientSide", S(project, "client_side"), "serverSide", S(project, "server_side"),
@@ -162,7 +163,7 @@ namespace MinecraftModManager
                 Dictionary<string, object> author = D(A(Get(mod, "authors")).FirstOrDefault());
                 Dictionary<string, object> latest = pack ? CfPackLatestIndex(mod, kind) : CfLatestIndex(mod);
                 return Obj("found", true, "site", "curseforge", "projectId", "cf:" + cf, "slug", S(mod, "slug"), "title", S(mod, "name"),
-                    "description", S(mod, "summary"), "body", CfDescription(cf), "icon", CfIcon(mod), "author", S(author, "name"),
+                    "description", S(mod, "summary"), "body", CfDescription(cf), "icon", CfIcon(mod), "author", S(author, "name"), "authorId", CfId(Get(author, "id")),
                     "downloads", Get(mod, "downloadCount"), "followers", null, "clientSide", null, "serverSide", null,
                     "categories", A(Get(mod, "categories")).Select(c => (object)S(D(c), "name")).Where(c => c != null).ToList(),
                     "license", null, "url", S(links, "websiteUrl"), "source", S(links, "sourceUrl"), "issues", S(links, "issuesUrl"), "wiki", S(links, "wikiUrl"),
@@ -180,7 +181,7 @@ namespace MinecraftModManager
             }
             Dictionary<string, object> license = D(Get(project, "license"));
             return Obj("found", true, "projectId", S(project, "id"), "slug", S(project, "slug"), "title", S(project, "title"),
-                "projectType", S(project, "project_type"),
+                "projectType", S(project, "project_type"), "author", ModrinthAuthor(S(project, "id")),
                 "description", S(project, "description"), "body", S(project, "body"), "icon", S(project, "icon_url"),
                 "downloads", Get(project, "downloads"), "followers", Get(project, "followers"),
                 "clientSide", S(project, "client_side"), "serverSide", S(project, "server_side"),

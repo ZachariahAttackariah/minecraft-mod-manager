@@ -404,28 +404,28 @@ namespace MinecraftModManager
                 {
                     int cfOffset;
                     int.TryParse(req.QueryString["offset"], out cfOffset);
-                    SendJson(ctx, 200, CurseForgeSearch(req.QueryString["q"], cfOffset, req.QueryString["sort"], req.QueryString["category"]));
+                    SendJson(ctx, 200, CurseForgeSearch(req.QueryString["q"], cfOffset, req.QueryString["sort"], req.QueryString["category"], CfId(req.QueryString["authorId"])));
                     return;
                 }
                 if (method == "GET" && path == "/api/modrinth/search")
                 {
                     int offset;
                     int.TryParse(req.QueryString["offset"], out offset);
-                    SendJson(ctx, 200, ModrinthSearch(req.QueryString["q"], offset, req.QueryString["sort"], req.QueryString["category"], req.QueryString["side"]));
+                    SendJson(ctx, 200, ModrinthSearch(req.QueryString["q"], offset, req.QueryString["sort"], req.QueryString["category"], req.QueryString["side"], req.QueryString["author"]));
                     return;
                 }
                 if (method == "GET" && path == "/api/packs/search")
                 {
                     int offset;
                     int.TryParse(req.QueryString["offset"], out offset);
-                    SendJson(ctx, 200, SearchPacks(req.QueryString["kind"], req.QueryString["place"], req.QueryString["q"], offset, req.QueryString["sort"]));
+                    SendJson(ctx, 200, SearchPacks(req.QueryString["kind"], req.QueryString["place"], req.QueryString["q"], offset, req.QueryString["sort"], req.QueryString["author"]));
                     return;
                 }
                 if (method == "GET" && path == "/api/curseforge/packs/search")
                 {
                     int offset;
                     int.TryParse(req.QueryString["offset"], out offset);
-                    SendJson(ctx, 200, CurseForgePackSearch(req.QueryString["kind"], req.QueryString["place"], req.QueryString["q"], offset, req.QueryString["sort"]));
+                    SendJson(ctx, 200, CurseForgePackSearch(req.QueryString["kind"], req.QueryString["place"], req.QueryString["q"], offset, req.QueryString["sort"], CfId(req.QueryString["authorId"])));
                     return;
                 }
                 if (method == "GET")
@@ -834,6 +834,9 @@ namespace MinecraftModManager
                         return;
                     case "/api/sharing/java":
                         SendJson(ctx, 200, SetSharedJavaArgs(Str(body, "javaArgs")));
+                        return;
+                    case "/api/sharing/memory":
+                        SendJson(ctx, 200, SetSharedMemory(IntValue(body, "memoryMb")));
                         return;
                     case "/api/packs/install":
                         SendJson(ctx, 200, AfterSharedPackInstall(Str(body, "place"), InstallPack(Str(body, "kind"), Str(body, "place"), Str(body, "projectId"), Str(body, "versionId"))));
@@ -1555,13 +1558,15 @@ namespace MinecraftModManager
 
         // category: a Modrinth category slug (or empty). side: "client" (client-only mods), "server"
         // (mods that do something on a server), or empty.
-        static Dictionary<string, object> ModrinthSearch(string query, int offset, string sort, string category = null, string side = null)
+        static Dictionary<string, object> ModrinthSearch(string query, int offset, string sort, string category = null, string side = null, string author = null)
         {
             string index = sort == "downloads" || sort == "updated" || sort == "newest" || sort == "follows" ? sort : "relevance";
             var facetList = new List<object> { new[] { "project_type:mod" }, new[] { "categories:" + loader }, new[] { "versions:" + gameVersion } };
             if (!string.IsNullOrEmpty(category) && Regex.IsMatch(category, "^[a-z-]{2,30}$")) facetList.Add(new[] { "categories:" + category });
             if (side == "client") facetList.Add(new[] { "server_side:unsupported" });
             else if (side == "server") facetList.Add(new[] { "server_side:required", "server_side:optional" });
+            string byAuthor = AuthorFacet(author);
+            if (byAuthor != null) facetList.Add(new[] { byAuthor });
             string facets = new JavaScriptSerializer().Serialize(facetList.ToArray());
             Dictionary<string, object> result = D(ModrinthGet("/search?limit=20&offset=" + Math.Max(0, offset) + "&index=" + index +
                 "&query=" + Uri.EscapeDataString(query ?? "") + "&facets=" + Uri.EscapeDataString(facets)));

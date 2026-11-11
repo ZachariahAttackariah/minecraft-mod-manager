@@ -587,13 +587,15 @@ namespace MinecraftModManager
             }
         }
 
-        static Dictionary<string, object> SearchPacks(string kind, string placeId, string query, int offset, string sort)
+        static Dictionary<string, object> SearchPacks(string kind, string placeId, string query, int offset, string sort, string author = null)
         {
             PackPlace place = FindPlace(kind, placeId);
             string index = sort == "downloads" || sort == "updated" || sort == "newest" || sort == "follows" ? sort : "relevance";
             var facets = new List<object> { new[] { "project_type:" + ModrinthPackType(kind) } };
             if (kind == "shaderpacks") facets.Add(new[] { "categories:iris" });
             else facets.Add(new[] { "versions:" + gameVersion });
+            string byAuthor = AuthorFacet(author);
+            if (byAuthor != null) facets.Add(new[] { byAuthor });
             Dictionary<string, object> result = D(ModrinthGet("/search?limit=20&offset=" + Math.Max(0, offset) + "&index=" + index +
                 "&query=" + Uri.EscapeDataString(query ?? "") + "&facets=" + Uri.EscapeDataString(new JavaScriptSerializer().Serialize(facets))));
             if (result == null) throw new UserError("Modrinth's search didn't answer. Try again.");

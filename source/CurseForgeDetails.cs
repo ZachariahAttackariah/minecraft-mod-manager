@@ -28,7 +28,7 @@ namespace MinecraftModManager
             Dictionary<string, object> links = D(Get(mod, "links"));
             Dictionary<string, object> author = D(A(Get(mod, "authors")).FirstOrDefault());
             return Obj("found", true, "site", "curseforge", "projectId", "cf:" + id, "slug", S(mod, "slug"), "title", S(mod, "name"),
-                "description", S(mod, "summary"), "body", CfDescription(id), "icon", CfIcon(mod), "author", S(author, "name"),
+                "description", S(mod, "summary"), "body", CfDescription(id), "icon", CfIcon(mod), "author", S(author, "name"), "authorId", CfId(Get(author, "id")),
                 "downloads", Get(mod, "downloadCount"), "followers", null, "clientSide", null, "serverSide", null,
                 "categories", A(Get(mod, "categories")).Select(c => (object)S(D(c), "name")).Where(c => c != null).ToList(),
                 "license", null, "url", S(links, "websiteUrl"), "source", S(links, "sourceUrl"), "issues", S(links, "issuesUrl"), "wiki", S(links, "wikiUrl"),
